@@ -1,8 +1,15 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, ExternalLink, Maximize2, Minimize2, Smartphone, Monitor } from "lucide-react";
-import { useState, useRef, useCallback } from "react";
+import {
+  ArrowLeft,
+  ExternalLink,
+  Maximize2,
+  Minimize2,
+  Smartphone,
+  Monitor,
+} from "lucide-react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import AIEditor from "@/components/editor/AIEditor";
 
 type ViewMode = "desktop" | "mobile";
@@ -14,9 +21,30 @@ export default function PreviewPage() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isEditorActive, setIsEditorActive] = useState(false);
+  const [initialHtml, setInitialHtml] = useState<string | undefined>(undefined);
 
   const iframeSrc = `/api/analyze/${params.token}/preview/${params.index}`;
   const variantNum = Number(params.index) + 1;
+
+  // Capture initial HTML once iframe loads
+  useEffect(() => {
+    const iframe = iframeRef.current;
+    if (!iframe) return;
+
+    const handleLoad = () => {
+      try {
+        const doc = iframe.contentDocument;
+        if (doc?.documentElement) {
+          setInitialHtml(doc.documentElement.outerHTML);
+        }
+      } catch {
+        // Cross-origin - will be handled by srcdoc fallback
+      }
+    };
+
+    iframe.addEventListener("load", handleLoad);
+    return () => iframe.removeEventListener("load", handleLoad);
+  }, []);
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -47,31 +75,35 @@ export default function PreviewPage() {
   }, []);
 
   return (
-    <div className="fixed inset-0 flex flex-col" style={{ background: "var(--bg-primary)" }}>
+    <div
+      className="fixed inset-0 flex flex-col"
+      style={{ background: "var(--bg-primary)" }}
+    >
       {/* Floating Toolbar */}
-      <div
-        className="absolute top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 glass rounded-full px-4 py-2 shadow-2xl shadow-black/30 border border-white/10"
-      >
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 glass rounded-full px-4 py-2 shadow-2xl shadow-black/30 border border-white/10">
         <button
           onClick={() => router.back()}
           className="flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-full hover:bg-white/10 transition-colors"
           style={{ color: "var(--text-primary)" }}
         >
           <ArrowLeft className="h-4 w-4" />
-          Back
+          Zpet
         </button>
 
         <div className="w-px h-5 bg-white/10" />
 
-        <span className="text-xs font-medium px-2" style={{ color: "var(--text-muted)" }}>
-          Variant {variantNum}
+        <span
+          className="text-xs font-medium px-2"
+          style={{ color: "var(--text-muted)" }}
+        >
+          Varianta {variantNum}
         </span>
 
         {isEditorActive && (
           <>
             <div className="w-px h-5 bg-white/10" />
             <span className="text-xs px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 font-medium">
-              Edited
+              Upraveno
             </span>
           </>
         )}
@@ -81,17 +113,33 @@ export default function PreviewPage() {
         {/* Viewport toggles */}
         <button
           onClick={() => setViewMode("desktop")}
-          className={`p-1.5 rounded-full transition-colors ${viewMode === "desktop" ? "bg-blue-500/20 text-blue-400" : "hover:bg-white/10"}`}
-          style={viewMode !== "desktop" ? { color: "var(--text-muted)" } : undefined}
+          className={`p-1.5 rounded-full transition-colors ${
+            viewMode === "desktop"
+              ? "bg-blue-500/20 text-blue-400"
+              : "hover:bg-white/10"
+          }`}
+          style={
+            viewMode !== "desktop"
+              ? { color: "var(--text-muted)" }
+              : undefined
+          }
           title="Desktop"
         >
           <Monitor className="h-4 w-4" />
         </button>
         <button
           onClick={() => setViewMode("mobile")}
-          className={`p-1.5 rounded-full transition-colors ${viewMode === "mobile" ? "bg-blue-500/20 text-blue-400" : "hover:bg-white/10"}`}
-          style={viewMode !== "mobile" ? { color: "var(--text-muted)" } : undefined}
-          title="Mobile"
+          className={`p-1.5 rounded-full transition-colors ${
+            viewMode === "mobile"
+              ? "bg-blue-500/20 text-blue-400"
+              : "hover:bg-white/10"
+          }`}
+          style={
+            viewMode !== "mobile"
+              ? { color: "var(--text-muted)" }
+              : undefined
+          }
+          title="Mobil"
         >
           <Smartphone className="h-4 w-4" />
         </button>
@@ -102,9 +150,13 @@ export default function PreviewPage() {
           onClick={toggleFullscreen}
           className="p-1.5 rounded-full hover:bg-white/10 transition-colors"
           style={{ color: "var(--text-muted)" }}
-          title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+          title={isFullscreen ? "Ukoncit celou obrazovku" : "Cela obrazovka"}
         >
-          {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+          {isFullscreen ? (
+            <Minimize2 className="h-4 w-4" />
+          ) : (
+            <Maximize2 className="h-4 w-4" />
+          )}
         </button>
 
         <a
@@ -113,7 +165,7 @@ export default function PreviewPage() {
           rel="noopener noreferrer"
           className="p-1.5 rounded-full hover:bg-white/10 transition-colors"
           style={{ color: "var(--text-muted)" }}
-          title="Open in new tab"
+          title="Otevrit v novem panelu"
         >
           <ExternalLink className="h-4 w-4" />
         </a>
@@ -124,7 +176,7 @@ export default function PreviewPage() {
         <iframe
           ref={iframeRef}
           src={iframeSrc}
-          title={`Variant ${variantNum}`}
+          title={`Varianta ${variantNum}`}
           className="border-0 bg-white rounded-lg shadow-2xl transition-all duration-300"
           style={{
             width: viewMode === "mobile" ? "375px" : "100%",
@@ -134,11 +186,13 @@ export default function PreviewPage() {
         />
       </div>
 
-      {/* AI Editor */}
+      {/* AI Editor - all sub-components rendered inside */}
       <AIEditor
         token={params.token}
         variantIndex={Number(params.index)}
         onHtmlUpdate={handleHtmlUpdate}
+        iframeRef={iframeRef}
+        initialHtml={initialHtml}
       />
     </div>
   );
