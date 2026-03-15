@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import type { DesignVariant, AnalysisRow, ExtractedAssets } from "./supabase";
+import type { DesignVariant, AnalysisRow, ExtractedAssets, BusinessProfile } from "./supabase";
 
 /**
  * Generate 3 visually DISTINCT redesign variants using Claude.
@@ -8,7 +8,8 @@ import type { DesignVariant, AnalysisRow, ExtractedAssets } from "./supabase";
 export async function generateVariants(
   analysis: AnalysisRow,
   crawledContent: string,
-  assets?: ExtractedAssets | null
+  assets?: ExtractedAssets | null,
+  businessProfile?: BusinessProfile | null
 ): Promise<DesignVariant[]> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error("Missing ANTHROPIC_API_KEY");
@@ -43,6 +44,23 @@ export async function generateVariants(
     ? `\nWEAK AREAS to address in keyFeatures: ${weakAreas.join(", ")}`
     : "";
 
+  // Build business intelligence context
+  const businessContext = businessProfile
+    ? `
+## Business Intelligence Profile
+- Industry: ${businessProfile.industry}${businessProfile.industrySegment ? ` → ${businessProfile.industrySegment}` : ""}
+- Summary: ${businessProfile.summary}
+- Target Audience: ${businessProfile.targetAudience.slice(0, 3).join("; ") || "general"}
+- Brand Voice: ${businessProfile.brandVoice} | Maturity: ${businessProfile.businessMaturity}
+- Value Props: ${businessProfile.valuePropositions.slice(0, 3).join("; ") || "not identified"}
+- Differentiators: ${businessProfile.differentiators.slice(0, 3).join("; ") || "not identified"}
+- Geographic Focus: ${businessProfile.geographicFocus || "not specified"}
+- Customer Journey: targets ${businessProfile.customerJourneyStage} stage
+
+USE THIS PROFILE to make descriptions and keyFeatures specific to the business's actual industry, audience, and positioning. The design should reflect the brand voice (${businessProfile.brandVoice}) and maturity level (${businessProfile.businessMaturity}).
+`
+    : "";
+
   const response = await anthropic.messages.create({
     model: "claude-sonnet-4-20250514",
     max_tokens: 5000,
@@ -53,7 +71,7 @@ export async function generateVariants(
 
 Current site scores: Performance ${analysis.score_performance ?? "N/A"}/100, SEO ${analysis.score_seo ?? "N/A"}/100, Security ${analysis.score_security ?? "N/A"}/100, UX ${analysis.score_ux ?? "N/A"}/100, Content ${analysis.score_content ?? "N/A"}/100, Overall ${analysis.score_overall ?? "N/A"}/100
 ${weakAreasStr}
-${assetsContext}
+${assetsContext}${businessContext}
 Content from site:
 ${content}
 

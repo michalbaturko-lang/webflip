@@ -1,7 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import fs from "fs";
 import path from "path";
-import type { DesignVariant, AnalysisRow, ExtractedAssets } from "./supabase";
+import type { DesignVariant, AnalysisRow, ExtractedAssets, BusinessProfile } from "./supabase";
 
 // ── Template Data Interface ──
 
@@ -51,7 +51,8 @@ export async function generateHtmlVariants(
   analysis: Pick<AnalysisRow, "url" | "score_performance" | "score_seo" | "score_security" | "score_ux" | "score_content" | "score_overall">,
   variants: DesignVariant[],
   crawledContent: string,
-  assets?: ExtractedAssets | null
+  assets?: ExtractedAssets | null,
+  businessProfile?: BusinessProfile | null
 ): Promise<string[]> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error("Missing ANTHROPIC_API_KEY");
@@ -62,7 +63,7 @@ export async function generateHtmlVariants(
   // Extract structured content once using Haiku (shared across all variants)
   let templateData: TemplateData;
   try {
-    templateData = await extractStructuredContent(anthropic, analysis.url, content, assets);
+    templateData = await extractStructuredContent(anthropic, analysis.url, content, assets, businessProfile);
   } catch (err) {
     console.error("[generate-html] Content extraction failed:", err);
     templateData = buildFallbackTemplateData(analysis.url, content, assets);
@@ -99,11 +100,17 @@ async function extractStructuredContent(
   anthropic: Anthropic,
   url: string,
   crawledContent: string,
-  assets?: ExtractedAssets | null
+  assets?: ExtractedAssets | null,
+  businessProfile?: BusinessProfile | null
 ): Promise<TemplateData> {
   let siteHost: string;
   try { siteHost = new URL(url).hostname; } catch { siteHost = url; }
   const companyName = assets?.companyName || siteHost;
+
+  // Build business intelligence context for the prompt
+  const businessContext = businessProfile
+    ? buildBusinessContext(businessProfile)
+    : "";
 
   const response = await anthropic.messages.create({
     model: "claude-haiku-4-5-20251001",
@@ -114,7 +121,7 @@ async function extractStructuredContent(
         content: `You are a content extraction specialist. Analyze this crawled website content and extract structured data for a website redesign.
 
 COMPANY: "${companyName}" (${url})
-
+${businessContext}
 CRAWLED CONTENT:
 ${crawledContent}
 
@@ -130,13 +137,18 @@ AVAILABLE ASSETS:
 
 INSTRUCTIONS:
 1. Extract ALL real content from the crawled data — NEVER invent placeholder text
-2. Detect the website language (cs/en/de/sk) — ALL output text MUST be in that same language
-3. Generate 3 Blog/Aktuality posts relevant to the detected industry, written in the detected language
-4. Generate 5-8 FAQ items relevant to the company's services, in the detected language
-5. Extract real stats/numbers if present (years, clients, projects, satisfaction)
+2. ${businessProfile ? `Use the detected language "${businessProfile.language}"` : "Detect the website language (cs/en/de/sk)"} — ALL output text MUST be in that same language
+3. Generate 3 Blog/Aktuality posts — ${businessProfile
+  ? `use these seed topics grounded in the business's actual expertise: ${businessProfile.blogSeedTopics.slice(0, 4).join("; ")}. Write posts that demonstrate "${companyName}"'s knowledge of ${businessProfile.industry}/${businessProfile.industrySegment} and would attract their target audience (${businessProfile.targetAudience.slice(0, 2).join(", ")})`
+  : "relevant to the detected industry, written in the detected language"}
+4. Generate 5-8 FAQ items — ${businessProfile
+  ? `use these seed topics based on real customer questions: ${businessProfile.faqSeedTopics.slice(0, 6).join("; ")}. Answers MUST reference "${companyName}"'s actual services (${businessProfile.coreServices.slice(0, 3).map(s => s.name).join(", ")}) and value propositions (${businessProfile.valuePropositions.slice(0, 2).join("; ")}). Address pain points: ${businessProfile.painPointsSolved.slice(0, 3).join("; ")}`
+  : "relevant to the company's services, in the detected language"}
+5. Extract real stats/numbers if present (years, clients, projects, satisfaction)${businessProfile?.keyBusinessClaims.length ? ` — known claims: ${businessProfile.keyBusinessClaims.slice(0, 4).join("; ")}` : ""}
 6. Extract real testimonials if present
 7. Use real service/product names and descriptions from the crawled content
 8. For service icons, use one of: briefcase, chart, shield, globe, users, code, heart, star, lightbulb, target
+${businessProfile ? `9. The headline/subheadline should reflect the core value proposition: ${businessProfile.valuePropositions[0] || businessProfile.summary}` : ""}
 
 Return ONLY valid JSON (no markdown fences, no explanation) with this exact structure:
 {
@@ -526,6 +538,23 @@ function getServiceIconSvg(iconName: string): string {
     target: `<svg viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>`,
   };
   return icons[iconName] || icons.briefcase;
+}
+
+// ── Business Context Builder ──
+
+function buildBusinessContext(profile: BusinessProfile): string {
+  const parts: string[] = ["\nBUSINESS INTELLIGENCE (use this to inform all generated content):"];
+  parts.push(`Industry: ${profile.industry}${profile.industrySegment ? ` → ${profile.industrySegment}` : ""}`);
+  parts.push(`Summary: ${profile.summary}`);
+  if (profile.targetAudience.length) parts.push(`Target Audience: ${profile.targetAudience.join("; ")}`);
+  if (profile.valuePropositions.length) parts.push(`Value Props: ${profile.valuePropositions.join("; ")}`);
+  if (profile.coreServices.length) parts.push(`Core Services: ${profile.coreServices.map(s => s.name).join(", ")}`);
+  if (profile.painPointsSolved.length) parts.push(`Pain Points Solved: ${profile.painPointsSolved.join("; ")}`);
+  if (profile.differentiators.length) parts.push(`Differentiators: ${profile.differentiators.join("; ")}`);
+  parts.push(`Brand Voice: ${profile.brandVoice}, Maturity: ${profile.businessMaturity}`);
+  if (profile.geographicFocus) parts.push(`Geographic Focus: ${profile.geographicFocus}`);
+  if (profile.contentThemes.length) parts.push(`Content Themes: ${profile.contentThemes.join("; ")}`);
+  return parts.join("\n") + "\n";
 }
 
 // ── Helper Functions ──

@@ -10,7 +10,8 @@ import { analyzeContent } from "@/lib/analyzers/content";
 import { analyzeAIVisibility } from "@/lib/analyzers/ai-visibility";
 import { generateVariants } from "@/lib/redesign";
 import { generateHtmlVariants } from "@/lib/generate-html";
-import type { Finding } from "@/lib/supabase";
+import { interpretBusiness } from "@/lib/business-interpretation";
+import type { Finding, BusinessProfile } from "@/lib/supabase";
 
 // Vercel Pro supports up to 300s. Pipeline needs time for crawl+analyze+generate.
 export const maxDuration = 300;
@@ -110,18 +111,32 @@ async function runPipeline(url: string, token: string) {
   // Store extracted assets (logo, images, colors) for variant generation
   const extractedAssets = crawlResult.assets || null;
 
+  const allMarkdown = crawledPages.map((p) => p.markdown).join("\n\n---\n\n");
+
+  // ─── Stage 1.5: Business Interpretation ───
+  // Build a deep business profile from crawled content BEFORE analysis/generation.
+  // This profile drives FAQ, blog, and variant generation with real business intelligence.
+  console.log(`[pipeline:${token}] Stage 1.5: Building business profile...`);
+  let businessProfile: BusinessProfile | null = null;
+  try {
+    businessProfile = await interpretBusiness(allMarkdown, url, extractedAssets);
+    console.log(`[pipeline:${token}] Business profile built: ${businessProfile.industry} / ${businessProfile.industrySegment}`);
+  } catch (err) {
+    console.error(`[pipeline:${token}] Business interpretation failed (non-fatal):`, err);
+  }
+
   console.log(`[pipeline:${token}] Stage 2: Updating status to analyzing, ${crawledPages.length} pages crawled`);
   await updateAnalysis(token, {
     status: "analyzing",
     crawled_pages: crawledPages,
     page_count: crawledPages.length,
     extracted_assets: extractedAssets,
+    business_profile: businessProfile,
   });
 
   // ─── Stage 2: Analyze (parallel with incremental findings updates) ───
   const mainPage = crawledPages[0];
   const allHtml = crawledPages.map((p) => p.html).join("\n");
-  const allMarkdown = crawledPages.map((p) => p.markdown).join("\n\n---\n\n");
 
   // Track live findings — update DB as each analyzer completes
   let liveFindings: Finding[] = [];
@@ -223,7 +238,7 @@ async function runPipeline(url: string, token: string) {
     await updateAnalysis(token, {
       variant_progress: { current: 0, total: 3, message: "Designing variant concepts..." },
     });
-    variants = await generateVariants(currentAnalysis as any, allMarkdown, extractedAssets);
+    variants = await generateVariants(currentAnalysis as any, allMarkdown, extractedAssets, businessProfile);
     console.log(`[pipeline:${token}] Generated ${variants.length} variant concepts`);
     await updateAnalysis(token, { variants }).catch(() => {});
   } catch (err) {
@@ -256,7 +271,8 @@ async function runPipeline(url: string, token: string) {
           },
           [variants[i]],
           allMarkdown,
-          extractedAssets
+          extractedAssets,
+          businessProfile
         );
         htmlVariants.push(html[0]);
       } catch (err) {
