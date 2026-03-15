@@ -11,7 +11,13 @@ import {
   Lock,
   Sparkles,
   ArrowRight,
-  ExternalLink,
+  BarChart3,
+  Search,
+  Shield,
+  Monitor,
+  FileText,
+  Bot,
+  Eye,
 } from "lucide-react";
 
 import ProgressBar from "./ProgressBar";
@@ -191,10 +197,29 @@ function ScoreGauge({ score }: { score: number }) {
   );
 }
 
-function StageResults({ scores, findings }: { scores: ApiResponse["scores"]; findings: Finding[] }) {
+const CATEGORY_CARDS = [
+  { key: "performance", label: "Výkon", icon: BarChart3, color: "text-red-400", gradient: "from-red-500 to-orange-400" },
+  { key: "seo", label: "SEO", icon: Search, color: "text-yellow-400", gradient: "from-yellow-500 to-amber-400" },
+  { key: "security", label: "Bezpečnost", icon: Shield, color: "text-green-400", gradient: "from-green-500 to-emerald-400" },
+  { key: "ux", label: "UX & Design", icon: Monitor, color: "text-orange-400", gradient: "from-orange-500 to-amber-400" },
+  { key: "content", label: "Obsah", icon: FileText, color: "text-blue-400", gradient: "from-blue-500 to-cyan-400" },
+  { key: "aiVisibility", label: "AI Viditelnost", icon: Bot, color: "text-purple-400", gradient: "from-purple-500 to-violet-400" },
+] as const;
+
+function StageResults({
+  scores,
+  findings,
+  variants,
+  token,
+}: {
+  scores: ApiResponse["scores"];
+  findings: Finding[];
+  variants: Variant[];
+  token: string;
+}) {
   const overallScore = scores?.overall ?? 0;
   const criticalCount = findings.filter((f) => f.severity === "critical").length;
-  const displayFindings = findings.slice(0, 8);
+  const displayFindings = findings.slice(0, 12);
 
   return (
     <motion.div
@@ -202,54 +227,102 @@ function StageResults({ scores, findings }: { scores: ApiResponse["scores"]; fin
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="w-full max-w-3xl mx-auto"
+      className="w-full max-w-5xl mx-auto space-y-10"
     >
-      <div className="text-center mb-8">
-        <h2 className="text-2xl font-bold mb-1" style={{ color: "var(--text-primary)" }}>Analýza dokončena</h2>
-        <p className="text-sm" style={{ color: "var(--text-muted)" }}>Zde jsou výsledky vašeho webu</p>
-      </div>
-      <div className="flex flex-col md:flex-row gap-8 items-start">
-        <motion.div
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ duration: 0.6 }}
-          className="flex flex-col items-center gap-3 shrink-0 mx-auto md:mx-0"
-        >
+      {/* Header + Overall Score */}
+      <div className="text-center">
+        <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.6 }}>
+          <h2 className="text-2xl font-bold mb-1" style={{ color: "var(--text-primary)" }}>Analýza dokončena</h2>
+          <p className="text-sm mb-6" style={{ color: "var(--text-muted)" }}>Zde jsou výsledky vašeho webu</p>
           <ScoreGauge score={overallScore} />
           {criticalCount > 0 && (
             <motion.div
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 1 }}
-              className="flex items-center gap-2 bg-red-400/10 border border-red-400/20 rounded-full px-3 py-1"
+              className="flex items-center justify-center gap-2 bg-red-400/10 border border-red-400/20 rounded-full px-3 py-1 mt-4 w-fit mx-auto"
             >
               <XCircle className="h-3.5 w-3.5 text-red-400" />
               <span className="text-xs text-red-400 font-medium">{criticalCount} kritických problémů</span>
             </motion.div>
           )}
         </motion.div>
-        <div className="flex-1 flex flex-col gap-2 w-full">
-          {displayFindings.map((finding, i) => {
-            const config = severityConfig[finding.severity];
-            const Icon = config.icon;
-            return (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.3 + i * 0.1 }}
-                className={`flex items-start gap-3 rounded-lg border ${config.border} ${config.bg} p-3`}
-              >
-                <Icon className={`h-4 w-4 ${config.color} shrink-0 mt-0.5`} />
-                <div>
-                  <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{finding.title}</span>
-                  <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>{finding.description}</p>
-                </div>
-              </motion.div>
-            );
-          })}
-        </div>
       </div>
+
+      {/* 6 Category Score Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        {CATEGORY_CARDS.map((cat, i) => {
+          const scoreVal = (scores?.[cat.key as keyof NonNullable<ApiResponse["scores"]>] as number) ?? 0;
+          const CatIcon = cat.icon;
+          return (
+            <motion.div
+              key={cat.key}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 + i * 0.08 }}
+              className="glass rounded-xl p-4"
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <CatIcon className={`h-4 w-4 ${cat.color}`} />
+                <span className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>{cat.label}</span>
+              </div>
+              <div className={`text-2xl font-bold ${getScoreColor(scoreVal)}`}>{scoreVal}</div>
+              <div className="w-full h-1.5 rounded-full mt-2" style={{ background: "rgba(255,255,255,0.05)" }}>
+                <motion.div
+                  className={`h-full rounded-full bg-gradient-to-r ${cat.gradient}`}
+                  initial={{ width: 0 }}
+                  animate={{ width: `${scoreVal}%` }}
+                  transition={{ duration: 1, delay: 0.4 + i * 0.08 }}
+                />
+              </div>
+            </motion.div>
+          );
+        })}
+      </div>
+
+      {/* Findings List */}
+      {displayFindings.length > 0 && (
+        <div>
+          <h3 className="text-lg font-bold mb-4" style={{ color: "var(--text-primary)" }}>Zjištění</h3>
+          <div className="flex flex-col gap-2">
+            {displayFindings.map((finding, i) => {
+              const config = severityConfig[finding.severity];
+              const Icon = config.icon;
+              return (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.3 + i * 0.06 }}
+                  className={`flex items-start gap-3 rounded-lg border ${config.border} ${config.bg} p-3`}
+                >
+                  <Icon className={`h-4 w-4 ${config.color} shrink-0 mt-0.5`} />
+                  <div>
+                    <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{finding.title}</span>
+                    <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>{finding.description}</p>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Redesign Variants Section */}
+      {variants.length > 0 && (
+        <div>
+          <div className="text-center mb-6">
+            <Sparkles className="h-8 w-8 text-purple-400 mx-auto mb-2" />
+            <h3 className="text-xl font-bold mb-1" style={{ color: "var(--text-primary)" }}>Vaše redesign varianty</h3>
+            <p className="text-sm" style={{ color: "var(--text-muted)" }}>Vyberte směr, který odpovídá vaší vizi</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {variants.map((variant, i) => (
+              <VariantCard key={variant.name} variant={variant} index={i} token={token} />
+            ))}
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 }
@@ -351,92 +424,46 @@ function StageEmailGate({
 }
 
 function VariantCard({ variant, index, token }: { variant: Variant; index: number; token: string }) {
-  const gradients = [
-    "from-blue-500 to-cyan-400",
-    "from-purple-500 to-pink-400",
-    "from-emerald-500 to-teal-400",
-  ];
-  const gradient = gradients[index % gradients.length];
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: index * 0.2 }}
-      className="glass rounded-2xl p-5 flex flex-col gap-4 hover:border-white/20 transition-all"
+      className="glass rounded-2xl overflow-hidden flex flex-col hover:border-white/20 transition-all group"
     >
-      {/* Color palette preview */}
-      <div className="rounded-lg overflow-hidden">
-        <div className="h-24 relative" style={{ background: variant.palette.bg }}>
-          <div
-            className="absolute inset-0 flex items-center justify-center"
-            style={{ background: `linear-gradient(135deg, ${variant.palette.primary}22, ${variant.palette.accent}22)` }}
-          >
-            <div
-              className="px-4 py-2 rounded-lg text-sm font-semibold text-white"
-              style={{ background: variant.palette.primary }}
-            >
-              {variant.name}
-            </div>
-          </div>
-          <div className="absolute bottom-2 right-2 flex gap-1">
-            {Object.values(variant.palette).slice(0, 3).map((color, i) => (
-              <div key={i} className="h-4 w-4 rounded-full border border-white/20" style={{ background: color }} />
-            ))}
-          </div>
-        </div>
+      {/* Iframe Preview */}
+      <div className="relative w-full overflow-hidden bg-gray-900/50" style={{ height: "280px" }}>
+        <iframe
+          src={`/api/analyze/${token}/preview/${index}`}
+          title={variant.name}
+          className="absolute top-0 left-0 border-0"
+          style={{
+            width: "1280px",
+            height: "960px",
+            transform: "scale(0.3)",
+            transformOrigin: "top left",
+            pointerEvents: "none",
+          }}
+          loading="lazy"
+          sandbox="allow-same-origin"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
       </div>
-      <div className="flex-1">
-        <h3 className="font-bold mb-1 flex items-center gap-2" style={{ color: "var(--text-primary)" }}>
-          <span className={`h-2 w-2 rounded-full bg-gradient-to-r ${gradient}`} />
-          {variant.name}
-        </h3>
-        <p className="text-xs leading-relaxed mb-3" style={{ color: "var(--text-muted)" }}>{variant.description}</p>
-        <div className="space-y-1.5">
-          {variant.keyFeatures.slice(0, 4).map((feature, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <CheckCircle className="h-3 w-3 text-blue-400 shrink-0" />
-              <span className="text-xs" style={{ color: "var(--text-secondary)" }}>{feature}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-      <div className="flex items-center justify-between pt-2 border-t" style={{ borderColor: "var(--border-subtle)" }}>
-        <div className="text-xs" style={{ color: "var(--text-muted)" }}>
-          <span className="font-medium">Typography:</span> {variant.typography.heading} / {variant.typography.body}
+      {/* Card body */}
+      <div className="p-4 flex flex-col gap-3 flex-1">
+        <div>
+          <h3 className="font-bold text-base mb-1" style={{ color: "var(--text-primary)" }}>{variant.name}</h3>
+          <p className="text-xs leading-relaxed" style={{ color: "var(--text-muted)" }}>{variant.description}</p>
         </div>
         <a
-          href={`/api/analyze/${token}/preview/${index}`}
+          href={`/preview/${token}/${index}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-xs font-medium text-blue-400 hover:text-blue-300 transition-colors"
+          className="mt-auto flex items-center justify-center gap-2 rounded-xl bg-blue-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-400 transition-all"
         >
-          Náhled
-          <ExternalLink className="h-3 w-3" />
+          <Eye className="h-4 w-4" />
+          Zobrazit celý web
         </a>
-      </div>
-    </motion.div>
-  );
-}
-
-function StageVariants({ variants, token }: { variants: Variant[]; token: string }) {
-  return (
-    <motion.div
-      key="variants"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="w-full max-w-5xl mx-auto"
-    >
-      <div className="text-center mb-8">
-        <Sparkles className="h-10 w-10 text-purple-400 mx-auto mb-3" />
-        <h2 className="text-2xl font-bold mb-1" style={{ color: "var(--text-primary)" }}>Vaše varianty redesignu</h2>
-        <p className="text-sm" style={{ color: "var(--text-muted)" }}>Vyberte směr, který odpovídá vaší vizi</p>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {variants.map((variant, i) => (
-          <VariantCard key={variant.name} variant={variant} index={i} token={token} />
-        ))}
       </div>
     </motion.div>
   );
@@ -502,13 +529,19 @@ export default function AnalysisOrchestrator({ url, token }: Props) {
             setStage(3);
             break;
           case "complete":
-            setStage(4);
             if (pollingRef.current) {
               clearInterval(pollingRef.current);
               pollingRef.current = null;
             }
-            // Auto-advance to email gate after 3s
-            setTimeout(() => setStage(5), 3000);
+            // If email not yet submitted, show email gate first
+            if (result.emailRequired) {
+              setStage(4);
+              // Auto-advance to email gate after 3s
+              setTimeout(() => setStage(5), 3000);
+            } else {
+              // Email already submitted or not required — show full results
+              setStage(6);
+            }
             break;
           case "error":
             setError(result.error || "Analysis failed");
@@ -591,7 +624,7 @@ export default function AnalysisOrchestrator({ url, token }: Props) {
         {/* Normal flow */}
         {!error && (
           <>
-            {stage <= 4 && <ProgressBar stage={stage} />}
+            {stage <= 3 && <ProgressBar stage={stage} />}
             <AnimatePresence mode="wait">
               {stage === 0 && <StageConnecting url={url} />}
               {stage === 1 && <StageCrawling url={url} pages={data?.pages || []} />}
@@ -609,12 +642,21 @@ export default function AnalysisOrchestrator({ url, token }: Props) {
                 <StageResults
                   scores={data?.scores}
                   findings={data?.findings || data?.findingsPreview || []}
+                  variants={[]}
+                  token={data?.token || token}
                 />
               )}
               {stage === 5 && (
                 <StageEmailGate onSubmit={handleEmailSubmit} scores={data?.scores} />
               )}
-              {stage === 6 && <StageVariants variants={data?.variants || []} token={data?.token || token} />}
+              {stage === 6 && (
+                <StageResults
+                  scores={data?.scores}
+                  findings={data?.findings || data?.findingsPreview || []}
+                  variants={data?.variants || []}
+                  token={data?.token || token}
+                />
+              )}
             </AnimatePresence>
           </>
         )}
