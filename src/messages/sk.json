@@ -112,6 +112,21 @@
     "terms": "Obchodné podmienky",
     "tagline": "Redizajn webu pomocou AI"
   },
+  "editor": {
+    "title": "AI Editor",
+    "description": "Popíšte, čo chcete zmeniť",
+    "descriptionSub": "AI upraví HTML tejto varianty",
+    "suggestions": "Návrhy",
+    "placeholder": "Popíšte svoju zmenu...",
+    "enterToSend": "Enter na odoslanie · Shift+Enter pre nový riadok",
+    "applying": "Aplikujem zmeny...",
+    "applied": "Úspešne aplikované",
+    "editsApplied": "{count} úprav(a) aplikovaných",
+    "retry": "Skúsiť znova",
+    "edited": "Upravené",
+    "back": "Späť",
+    "variant": "Varianta {num}"
+  },
   "analysis": {
     "connectingTo": "Pripájame sa k {domain}",
     "somethingWentWrong": "Niečo sa pokazilo",

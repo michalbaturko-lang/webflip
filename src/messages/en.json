@@ -112,6 +112,21 @@
     "terms": "Terms of Service",
     "tagline": "AI-powered website redesign"
   },
+  "editor": {
+    "title": "AI Editor",
+    "description": "Describe what you want to change",
+    "descriptionSub": "The AI will modify the HTML of this variant",
+    "suggestions": "Suggestions",
+    "placeholder": "Describe your change...",
+    "enterToSend": "Press Enter to send · Shift+Enter for new line",
+    "applying": "Applying changes...",
+    "applied": "Applied successfully",
+    "editsApplied": "{count} edit(s) applied",
+    "retry": "Retry",
+    "edited": "Edited",
+    "back": "Back",
+    "variant": "Variant {num}"
+  },
   "analysis": {
     "connectingTo": "Connecting to {domain}",
     "somethingWentWrong": "Something went wrong",

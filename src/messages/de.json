@@ -112,6 +112,21 @@
     "terms": "AGB",
     "tagline": "KI-gestütztes Website-Redesign"
   },
+  "editor": {
+    "title": "KI-Editor",
+    "description": "Beschreiben Sie, was Sie ändern möchten",
+    "descriptionSub": "Die KI ändert das HTML dieser Variante",
+    "suggestions": "Vorschläge",
+    "placeholder": "Beschreiben Sie Ihre Änderung...",
+    "enterToSend": "Enter zum Senden · Shift+Enter für neue Zeile",
+    "applying": "Änderungen werden angewendet...",
+    "applied": "Erfolgreich angewendet",
+    "editsApplied": "{count} Änderung(en) angewendet",
+    "retry": "Wiederholen",
+    "edited": "Bearbeitet",
+    "back": "Zurück",
+    "variant": "Variante {num}"
+  },
   "analysis": {
     "connectingTo": "Verbinde mit {domain}",
     "somethingWentWrong": "Etwas ist schiefgelaufen",

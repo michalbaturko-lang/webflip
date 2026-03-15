@@ -2,7 +2,8 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, ExternalLink, Maximize2, Minimize2, Smartphone, Monitor } from "lucide-react";
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
+import AIEditor from "@/components/editor/AIEditor";
 
 type ViewMode = "desktop" | "mobile";
 
@@ -11,6 +12,9 @@ export default function PreviewPage() {
   const router = useRouter();
   const [viewMode, setViewMode] = useState<ViewMode>("desktop");
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [htmlHistory, setHtmlHistory] = useState<string[]>([]);
+  const [isEditorActive, setIsEditorActive] = useState(false);
 
   const iframeSrc = `/api/analyze/${params.token}/preview/${params.index}`;
   const variantNum = Number(params.index) + 1;
@@ -25,6 +29,68 @@ export default function PreviewPage() {
     }
   };
 
+  const handleHtmlUpdate = useCallback((newHtml: string) => {
+    // Save current HTML for undo before updating
+    if (iframeRef.current) {
+      try {
+        const currentDoc = iframeRef.current.contentDocument;
+        if (currentDoc) {
+          setHtmlHistory((prev) => [...prev, currentDoc.documentElement.outerHTML]);
+        }
+      } catch {
+        // Cross-origin - can't access, skip undo history
+      }
+    }
+
+    // Write new HTML to iframe
+    if (iframeRef.current) {
+      try {
+        const doc = iframeRef.current.contentDocument;
+        if (doc) {
+          doc.open();
+          doc.write(newHtml);
+          doc.close();
+          setIsEditorActive(true);
+        }
+      } catch {
+        // Fallback: reload iframe with srcdoc approach
+        iframeRef.current.srcdoc = newHtml;
+        setIsEditorActive(true);
+      }
+    }
+  }, []);
+
+  const handleUndo = useCallback(() => {
+    if (htmlHistory.length === 0) return;
+
+    const previousHtml = htmlHistory[htmlHistory.length - 1];
+    setHtmlHistory((prev) => prev.slice(0, -1));
+
+    if (iframeRef.current) {
+      try {
+        const doc = iframeRef.current.contentDocument;
+        if (doc) {
+          doc.open();
+          doc.write(`<!DOCTYPE html><html>${previousHtml}</html>`);
+          doc.close();
+        }
+      } catch {
+        iframeRef.current.srcdoc = `<!DOCTYPE html><html>${previousHtml}</html>`;
+      }
+    }
+
+    // Re-save to DB by calling the edit endpoint with undo
+    fetch(`/api/analyze/${params.token}/edit/${params.index}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        instruction: `Revert to this exact HTML: restore previous version`,
+      }),
+    }).catch(() => {
+      // Best effort - the iframe already shows the undone version
+    });
+  }, [htmlHistory, params.token, params.index]);
+
   return (
     <div className="fixed inset-0 flex flex-col" style={{ background: "var(--bg-primary)" }}>
       {/* Floating Toolbar */}
@@ -37,14 +103,23 @@ export default function PreviewPage() {
           style={{ color: "var(--text-primary)" }}
         >
           <ArrowLeft className="h-4 w-4" />
-          Zpět
+          Back
         </button>
 
         <div className="w-px h-5 bg-white/10" />
 
         <span className="text-xs font-medium px-2" style={{ color: "var(--text-muted)" }}>
-          Varianta {variantNum}
+          Variant {variantNum}
         </span>
+
+        {isEditorActive && (
+          <>
+            <div className="w-px h-5 bg-white/10" />
+            <span className="text-xs px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 font-medium">
+              Edited
+            </span>
+          </>
+        )}
 
         <div className="w-px h-5 bg-white/10" />
 
@@ -72,7 +147,7 @@ export default function PreviewPage() {
           onClick={toggleFullscreen}
           className="p-1.5 rounded-full hover:bg-white/10 transition-colors"
           style={{ color: "var(--text-muted)" }}
-          title={isFullscreen ? "Ukončit fullscreen" : "Fullscreen"}
+          title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
         >
           {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
         </button>
@@ -83,7 +158,7 @@ export default function PreviewPage() {
           rel="noopener noreferrer"
           className="p-1.5 rounded-full hover:bg-white/10 transition-colors"
           style={{ color: "var(--text-muted)" }}
-          title="Otevřít v novém okně"
+          title="Open in new tab"
         >
           <ExternalLink className="h-4 w-4" />
         </a>
@@ -92,8 +167,9 @@ export default function PreviewPage() {
       {/* Iframe */}
       <div className="flex-1 flex items-center justify-center p-4 pt-16">
         <iframe
+          ref={iframeRef}
           src={iframeSrc}
-          title={`Varianta ${variantNum}`}
+          title={`Variant ${variantNum}`}
           className="border-0 bg-white rounded-lg shadow-2xl transition-all duration-300"
           style={{
             width: viewMode === "mobile" ? "375px" : "100%",
@@ -102,6 +178,15 @@ export default function PreviewPage() {
           }}
         />
       </div>
+
+      {/* AI Editor */}
+      <AIEditor
+        token={params.token}
+        variantIndex={Number(params.index)}
+        onHtmlUpdate={handleHtmlUpdate}
+        onUndoRequest={handleUndo}
+        canUndo={htmlHistory.length > 0}
+      />
     </div>
   );
 }
