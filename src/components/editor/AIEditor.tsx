@@ -12,11 +12,12 @@ import {
   CheckCircle2,
   AlertCircle,
 } from "lucide-react";
+import UpsellCard from "./UpsellCard";
 
 interface EditHistoryEntry {
   instruction: string;
   timestamp: Date;
-  status: "success" | "error";
+  status: "success" | "error" | "upsell";
   errorMessage?: string;
 }
 
@@ -24,21 +25,20 @@ interface AIEditorProps {
   token: string;
   variantIndex: number;
   onHtmlUpdate: (html: string) => void;
-  onUndoRequest: () => void;
-  canUndo: boolean;
 }
 
 export default function AIEditor({
   token,
   variantIndex,
   onHtmlUpdate,
-  onUndoRequest,
-  canUndo,
 }: AIEditorProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [instruction, setInstruction] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isUndoing, setIsUndoing] = useState(false);
   const [history, setHistory] = useState<EditHistoryEntry[]>([]);
+  const [canUndo, setCanUndo] = useState(false);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const historyRef = useRef<HTMLDivElement>(null);
 
@@ -50,6 +50,33 @@ export default function AIEditor({
     "Make the navigation sticky on scroll",
     "Add hover animations to the service cards",
   ];
+
+  // Load persisted history on mount
+  useEffect(() => {
+    if (historyLoaded) return;
+    async function loadHistory() {
+      try {
+        const res = await fetch(`/api/analyze/${token}/edit/${variantIndex}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.history && data.history.length > 0) {
+          setHistory(
+            data.history.map((h: { instruction: string; timestamp: string }) => ({
+              instruction: h.instruction,
+              timestamp: new Date(h.timestamp),
+              status: "success" as const,
+            }))
+          );
+          setCanUndo(data.canUndo);
+        }
+      } catch {
+        // Silent fail — history is non-critical
+      } finally {
+        setHistoryLoaded(true);
+      }
+    }
+    loadHistory();
+  }, [token, variantIndex, historyLoaded]);
 
   useEffect(() => {
     if (historyRef.current) {
@@ -73,6 +100,20 @@ export default function AIEditor({
 
       const data = await res.json();
 
+      // Handle upsell (out-of-scope request)
+      if (res.status === 422 && data.upsell) {
+        setHistory((h) => [
+          ...h,
+          {
+            instruction: inst.trim(),
+            timestamp: new Date(),
+            status: "upsell",
+            errorMessage: data.message,
+          },
+        ]);
+        return;
+      }
+
       if (!res.ok) {
         setHistory((h) => [
           ...h,
@@ -90,6 +131,7 @@ export default function AIEditor({
         ...h,
         { instruction: inst.trim(), timestamp: new Date(), status: "success" },
       ]);
+      setCanUndo(true);
       onHtmlUpdate(data.html);
     } catch {
       setHistory((h) => [
@@ -105,6 +147,39 @@ export default function AIEditor({
       setIsLoading(false);
     }
   }, [instruction, isLoading, token, variantIndex, onHtmlUpdate]);
+
+  const handleUndo = useCallback(async () => {
+    if (isUndoing || !canUndo) return;
+    setIsUndoing(true);
+    try {
+      const res = await fetch(`/api/analyze/${token}/edit/${variantIndex}`, {
+        method: "PUT",
+      });
+      const data = await res.json();
+      if (res.ok && data.html) {
+        onHtmlUpdate(data.html);
+        // Remove last successful entry from local history
+        setHistory((h) => {
+          const idx = [...h].reverse().findIndex((e) => e.status === "success");
+          if (idx === -1) return h;
+          const removeAt = h.length - 1 - idx;
+          return h.filter((_, i) => i !== removeAt);
+        });
+        // Check if more undos are possible
+        const remaining = history.filter((e) => e.status === "success").length - 1;
+        setCanUndo(remaining > 0);
+      }
+    } catch {
+      // Silent fail
+    } finally {
+      setIsUndoing(false);
+    }
+  }, [isUndoing, canUndo, token, variantIndex, onHtmlUpdate, history]);
+
+  const handleContactClick = useCallback(() => {
+    // Open mailto as a simple contact mechanism
+    window.location.href = "mailto:info@webflip.ai?subject=Professional%20website%20services%20inquiry";
+  }, []);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -151,11 +226,16 @@ export default function AIEditor({
         <div className="flex items-center gap-1">
           {canUndo && (
             <button
-              onClick={onUndoRequest}
-              className="p-1.5 rounded-lg hover:bg-white/10 transition-colors text-gray-400 hover:text-white"
+              onClick={handleUndo}
+              disabled={isUndoing}
+              className="p-1.5 rounded-lg hover:bg-white/10 transition-colors text-gray-400 hover:text-white disabled:opacity-50"
               title="Undo last edit"
             >
-              <Undo2 className="h-4 w-4" />
+              {isUndoing ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Undo2 className="h-4 w-4" />
+              )}
             </button>
           )}
           <button
@@ -206,27 +286,35 @@ export default function AIEditor({
           </div>
         ) : (
           history.map((entry, i) => (
-            <div key={i} className="space-y-1">
+            <div key={i} className="space-y-1.5">
               {/* User instruction */}
               <div className="flex justify-end">
                 <div className="max-w-[85%] px-3 py-2 rounded-xl rounded-br-sm text-xs text-white bg-purple-600/40 border border-purple-500/20">
                   {entry.instruction}
                 </div>
               </div>
-              {/* Status */}
-              <div className="flex items-start gap-1.5">
-                {entry.status === "success" ? (
-                  <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs text-emerald-400">
-                    <CheckCircle2 className="h-3 w-3" />
-                    <span>Applied successfully</span>
+              {/* Status / Upsell */}
+              {entry.status === "upsell" ? (
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-1.5 px-2 py-1 text-xs text-gray-300">
+                    I understand what you need. That goes beyond HTML editing, but our team can help.
                   </div>
-                ) : (
-                  <div className="flex items-start gap-1.5 px-2 py-1 rounded-lg text-xs text-red-400 max-w-[85%]">
-                    <AlertCircle className="h-3 w-3 flex-shrink-0 mt-0.5" />
-                    <span>{entry.errorMessage}</span>
-                  </div>
-                )}
-              </div>
+                  <UpsellCard
+                    message={entry.errorMessage}
+                    onContact={handleContactClick}
+                  />
+                </div>
+              ) : entry.status === "success" ? (
+                <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs text-emerald-400">
+                  <CheckCircle2 className="h-3 w-3" />
+                  <span>Applied successfully</span>
+                </div>
+              ) : (
+                <div className="flex items-start gap-1.5 px-2 py-1 rounded-lg text-xs text-red-400 max-w-[85%]">
+                  <AlertCircle className="h-3 w-3 flex-shrink-0 mt-0.5" />
+                  <span>{entry.errorMessage}</span>
+                </div>
+              )}
             </div>
           ))
         )}

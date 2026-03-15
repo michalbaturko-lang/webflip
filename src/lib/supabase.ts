@@ -40,6 +40,13 @@ export interface VariantProgress {
   message: string;
 }
 
+export interface EditHistoryEntry {
+  variant_index: number;
+  instruction: string;
+  timestamp: string;
+  previous_html: string;
+}
+
 export interface AnalysisRow {
   id: string;
   token: string;
@@ -62,6 +69,7 @@ export interface AnalysisRow {
   html_variants: string[];
   extracted_assets: ExtractedAssets | null;
   variant_progress: VariantProgress | null;
+  edit_history: EditHistoryEntry[] | null;
   created_at: string;
   updated_at: string;
   completed_at: string | null;

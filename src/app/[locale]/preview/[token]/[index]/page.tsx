@@ -13,7 +13,6 @@ export default function PreviewPage() {
   const [viewMode, setViewMode] = useState<ViewMode>("desktop");
   const [isFullscreen, setIsFullscreen] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const [htmlHistory, setHtmlHistory] = useState<string[]>([]);
   const [isEditorActive, setIsEditorActive] = useState(false);
 
   const iframeSrc = `/api/analyze/${params.token}/preview/${params.index}`;
@@ -30,19 +29,6 @@ export default function PreviewPage() {
   };
 
   const handleHtmlUpdate = useCallback((newHtml: string) => {
-    // Save current HTML for undo before updating
-    if (iframeRef.current) {
-      try {
-        const currentDoc = iframeRef.current.contentDocument;
-        if (currentDoc) {
-          setHtmlHistory((prev) => [...prev, currentDoc.documentElement.outerHTML]);
-        }
-      } catch {
-        // Cross-origin - can't access, skip undo history
-      }
-    }
-
-    // Write new HTML to iframe
     if (iframeRef.current) {
       try {
         const doc = iframeRef.current.contentDocument;
@@ -53,43 +39,12 @@ export default function PreviewPage() {
           setIsEditorActive(true);
         }
       } catch {
-        // Fallback: reload iframe with srcdoc approach
+        // Fallback: use srcdoc
         iframeRef.current.srcdoc = newHtml;
         setIsEditorActive(true);
       }
     }
   }, []);
-
-  const handleUndo = useCallback(() => {
-    if (htmlHistory.length === 0) return;
-
-    const previousHtml = htmlHistory[htmlHistory.length - 1];
-    setHtmlHistory((prev) => prev.slice(0, -1));
-
-    if (iframeRef.current) {
-      try {
-        const doc = iframeRef.current.contentDocument;
-        if (doc) {
-          doc.open();
-          doc.write(`<!DOCTYPE html><html>${previousHtml}</html>`);
-          doc.close();
-        }
-      } catch {
-        iframeRef.current.srcdoc = `<!DOCTYPE html><html>${previousHtml}</html>`;
-      }
-    }
-
-    // Re-save to DB by calling the edit endpoint with undo
-    fetch(`/api/analyze/${params.token}/edit/${params.index}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        instruction: `Revert to this exact HTML: restore previous version`,
-      }),
-    }).catch(() => {
-      // Best effort - the iframe already shows the undone version
-    });
-  }, [htmlHistory, params.token, params.index]);
 
   return (
     <div className="fixed inset-0 flex flex-col" style={{ background: "var(--bg-primary)" }}>
@@ -184,8 +139,6 @@ export default function PreviewPage() {
         token={params.token}
         variantIndex={Number(params.index)}
         onHtmlUpdate={handleHtmlUpdate}
-        onUndoRequest={handleUndo}
-        canUndo={htmlHistory.length > 0}
       />
     </div>
   );
