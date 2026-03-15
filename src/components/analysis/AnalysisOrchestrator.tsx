@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Globe,
@@ -21,6 +22,7 @@ import {
 } from "lucide-react";
 
 import { useLocale, useTranslations } from "next-intl";
+import { statusToStep } from "@/types/stepper";
 
 import ProgressBar from "./ProgressBar";
 import StageCrawling from "./StageCrawling";
@@ -37,6 +39,7 @@ type Stage = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 interface Props {
   url: string;
   token: string;
+  onStatusChange?: (status: string, variantCount: number, error: string | null) => void;
 }
 
 interface ApiResponse {
@@ -485,14 +488,32 @@ function VariantCard({ variant, index, token }: { variant: Variant; index: numbe
 // Orchestrator
 // ---------------------------------------------------------------------------
 
-export default function AnalysisOrchestrator({ url, token }: Props) {
+export default function AnalysisOrchestrator({ url, token, onStatusChange }: Props) {
   const t = useTranslations("analysis");
+  const searchParams = useSearchParams();
   const [stage, setStage] = useState<Stage>(0);
   const [data, setData] = useState<ApiResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const hasStarted = useRef(false);
   const crawlStartTimeRef = useRef<number | null>(null);
+
+  // Sync ?step URL param and notify parent when status changes
+  useEffect(() => {
+    const apiStatus = data?.status;
+    if (!apiStatus) return;
+
+    const stepNum = statusToStep(apiStatus);
+    if (stepNum >= 1) {
+      const url = new URL(window.location.href);
+      if (url.searchParams.get("step") !== String(stepNum)) {
+        url.searchParams.set("step", String(stepNum));
+        window.history.replaceState({}, "", url.toString());
+      }
+    }
+
+    onStatusChange?.(apiStatus, data?.variantsCount ?? data?.variants?.length ?? 0, error);
+  }, [data?.status, data?.variantsCount, data?.variants?.length, error, onStatusChange]);
 
   // Start analysis on mount — check for existing record first
   useEffect(() => {

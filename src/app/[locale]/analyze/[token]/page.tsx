@@ -1,3 +1,4 @@
+import { notFound } from "next/navigation";
 import AnalysisOrchestrator from "@/components/analysis/AnalysisOrchestrator";
 import { getAnalysis } from "@/lib/supabase";
 
@@ -12,8 +13,19 @@ export default async function AnalyzePage({ params, searchParams }: PageProps) {
 
   let url = rawUrl;
   if (!url) {
-    const analysis = await getAnalysis(token);
-    url = analysis?.url || "";
+    try {
+      const analysis = await getAnalysis(token);
+      if (!analysis) {
+        notFound();
+      }
+      url = analysis.url;
+    } catch {
+      notFound();
+    }
+  }
+
+  if (!url) {
+    notFound();
   }
 
   return <AnalysisOrchestrator url={url} token={token} />;
