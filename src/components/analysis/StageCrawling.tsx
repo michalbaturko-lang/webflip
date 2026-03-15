@@ -54,7 +54,7 @@ export default function StageCrawling({ url, pages }: Props) {
       ? pages[pages.length - 1]?.url
       : `https://${domain}${simulatedPaths[currentUrlIdx]}`;
 
-  const maxPages = 10;
+  const maxPages = 5;
 
   return (
     <motion.div

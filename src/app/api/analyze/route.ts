@@ -12,8 +12,8 @@ import { generateVariants } from "@/lib/redesign";
 import { generateHtmlVariants } from "@/lib/generate-html";
 import type { Finding } from "@/lib/supabase";
 
-// Vercel Free = 10s, Pro = 60s. Pipeline needs ~45s for crawl+analyze+generate.
-export const maxDuration = 60;
+// Vercel Pro supports up to 300s. Pipeline needs time for crawl+analyze+generate.
+export const maxDuration = 300;
 
 export async function POST(request: Request) {
   try {
@@ -67,7 +67,21 @@ export async function POST(request: Request) {
  */
 async function runPipeline(url: string, token: string) {
   // ─── Stage 1: Crawl ───
-  const crawlResult = await crawlWebsite(url);
+  const crawlResult = await crawlWebsite(url, {
+    onProgress: (partialPages) => {
+      // Save crawled pages progressively so the frontend can show them
+      const truncated = partialPages.map((p) => ({
+        url: p.url,
+        title: p.title,
+        markdown: p.markdown.slice(0, 20000),
+        html: p.html.slice(0, 50000),
+      }));
+      updateAnalysis(token, {
+        crawled_pages: truncated,
+        page_count: truncated.length,
+      }).catch(() => {}); // best-effort, don't block the crawl
+    },
+  });
   if (!crawlResult.success || crawlResult.pages.length === 0) {
     throw new Error(crawlResult.error || "Crawl returned no pages");
   }
