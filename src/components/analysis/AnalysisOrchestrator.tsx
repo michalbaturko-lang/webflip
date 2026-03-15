@@ -4,12 +4,6 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Globe,
-  Scan,
-  BarChart3,
-  Shield,
-  Monitor,
-  FileText,
-  Bot,
   CheckCircle,
   AlertTriangle,
   XCircle,
@@ -17,8 +11,13 @@ import {
   Lock,
   Sparkles,
   ArrowRight,
-  Loader2,
+  ExternalLink,
 } from "lucide-react";
+
+import ProgressBar from "./ProgressBar";
+import StageCrawling from "./StageCrawling";
+import StageAnalyzing from "./StageAnalyzing";
+import StageGenerating from "./StageGenerating";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -54,6 +53,7 @@ interface ApiResponse {
   findingsTotal?: number;
   variants?: Variant[];
   variantsCount?: number;
+  htmlVariantsCount?: number;
   emailRequired?: boolean;
   error?: string;
 }
@@ -75,31 +75,6 @@ interface Variant {
 }
 
 // ---------------------------------------------------------------------------
-// Category config
-// ---------------------------------------------------------------------------
-
-const CATEGORY_CONFIG = [
-  { key: "performance", label: "Performance", icon: BarChart3, color: "text-red-400", bg: "bg-red-400" },
-  { key: "seo", label: "SEO", icon: Scan, color: "text-yellow-400", bg: "bg-yellow-400" },
-  { key: "security", label: "Security", icon: Shield, color: "text-green-400", bg: "bg-green-400" },
-  { key: "ux", label: "UX & Design", icon: Monitor, color: "text-orange-400", bg: "bg-orange-400" },
-  { key: "content", label: "Content", icon: FileText, color: "text-blue-400", bg: "bg-blue-400" },
-  { key: "aiVisibility", label: "AI Visibility", icon: Bot, color: "text-purple-400", bg: "bg-purple-400" },
-] as const;
-
-function getScoreColor(score: number) {
-  if (score >= 70) return "text-green-400";
-  if (score >= 50) return "text-yellow-400";
-  return "text-red-400";
-}
-
-function getScoreBg(score: number) {
-  if (score >= 70) return "bg-green-400";
-  if (score >= 50) return "bg-yellow-400";
-  return "bg-red-400";
-}
-
-// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -118,16 +93,20 @@ function getDomainFromUrl(url: string): string {
   }
 }
 
-function getPathFromUrl(url: string): string {
-  try {
-    return new URL(url).pathname;
-  } catch {
-    return url;
-  }
+function getScoreColor(score: number) {
+  if (score >= 70) return "text-green-400";
+  if (score >= 50) return "text-yellow-400";
+  return "text-red-400";
+}
+
+function getScoreBg(score: number) {
+  if (score >= 70) return "bg-green-400";
+  if (score >= 50) return "bg-yellow-400";
+  return "bg-red-400";
 }
 
 // ---------------------------------------------------------------------------
-// Sub-components
+// Sub-components (inline stages that don't have their own file)
 // ---------------------------------------------------------------------------
 
 function StageConnecting({ url }: { url: string }) {
@@ -156,7 +135,9 @@ function StageConnecting({ url }: { url: string }) {
         </div>
       </div>
       <div className="text-center">
-        <h2 className="text-2xl font-bold mb-2" style={{ color: "var(--text-primary)" }}>Connecting to {domain}</h2>
+        <h2 className="text-2xl font-bold mb-2" style={{ color: "var(--text-primary)" }}>
+          Připojujeme se k {domain}
+        </h2>
         <p className="font-mono text-sm" style={{ color: "var(--text-muted)" }}>{url}</p>
         <div className="flex items-center justify-center gap-1.5 mt-4">
           {[0, 1, 2].map((i) => (
@@ -168,340 +149,6 @@ function StageConnecting({ url }: { url: string }) {
             />
           ))}
         </div>
-      </div>
-    </motion.div>
-  );
-}
-
-function StageCrawling({ url, pages }: { url: string; pages: { url: string; title: string }[] }) {
-  const domain = getDomainFromUrl(url);
-  const [currentUrlIdx, setCurrentUrlIdx] = useState(0);
-
-  // Simulate crawling animation when no pages are available yet
-  const simulatedPaths = ["/", "/about", "/contact", "/services", "/blog"];
-  useEffect(() => {
-    if (pages.length > 0) return;
-    const interval = setInterval(() => {
-      setCurrentUrlIdx((prev) => (prev + 1) % simulatedPaths.length);
-    }, 2000);
-    return () => clearInterval(interval);
-  }, [pages.length]);
-
-  const currentCrawlUrl = pages.length > 0
-    ? pages[pages.length - 1]?.url
-    : `https://${domain}${simulatedPaths[currentUrlIdx]}`;
-
-  return (
-    <motion.div
-      key="crawling"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="flex flex-col items-center gap-8 w-full max-w-2xl mx-auto"
-    >
-      <div className="text-center">
-        <Scan className="h-10 w-10 text-cyan-400 mx-auto mb-3" />
-        <h2 className="text-2xl font-bold mb-1" style={{ color: "var(--text-primary)" }}>Crawling {domain}</h2>
-        {pages.length > 0 ? (
-          <p className="text-cyan-400 font-mono text-sm">
-            Found {pages.length} pages
-          </p>
-        ) : (
-          <p className="text-cyan-400 font-mono text-sm">
-            Searching for pages...
-          </p>
-        )}
-      </div>
-
-      {/* Live crawl URL indicator */}
-      <motion.div
-        className="glass rounded-xl px-5 py-3 w-full max-w-md"
-        animate={{ opacity: [0.7, 1, 0.7] }}
-        transition={{ duration: 2, repeat: Infinity }}
-      >
-        <div className="flex items-center gap-3">
-          <motion.div
-            className="h-2 w-2 rounded-full bg-cyan-400"
-            animate={{ scale: [1, 1.4, 1] }}
-            transition={{ duration: 1, repeat: Infinity }}
-          />
-          <span className="text-xs font-mono truncate" style={{ color: "var(--text-secondary)" }}>
-            Loading {getPathFromUrl(currentCrawlUrl)}...
-          </span>
-        </div>
-      </motion.div>
-
-      {/* Already discovered pages */}
-      {pages.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 w-full">
-          <AnimatePresence>
-            {pages.map((page) => (
-              <motion.div
-                key={page.url}
-                initial={{ opacity: 0, scale: 0.8, y: 10 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                transition={{ duration: 0.3, ease: "easeOut" }}
-                className="glass rounded-lg px-3 py-2 flex items-center gap-2"
-              >
-                <FileText className="h-3.5 w-3.5 shrink-0" style={{ color: "var(--text-muted)" }} />
-                <span className="text-xs font-mono truncate" style={{ color: "var(--text-secondary)" }}>
-                  {page.title || getPathFromUrl(page.url)}
-                </span>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </div>
-      )}
-    </motion.div>
-  );
-}
-
-function AnimatedScoreBar({ score, delay }: { score: number; delay: number }) {
-  return (
-    <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: "var(--bar-bg)" }}>
-      <motion.div
-        className={`h-full rounded-full ${getScoreBg(score)}`}
-        initial={{ width: 0 }}
-        animate={{ width: `${score}%` }}
-        transition={{ duration: 1.2, delay, ease: [0.25, 0.46, 0.45, 0.94] }}
-      />
-    </div>
-  );
-}
-
-function StageAnalyzing({
-  url,
-  scores,
-  liveFindings,
-}: {
-  url: string;
-  scores: ApiResponse["scores"];
-  liveFindings: Finding[];
-}) {
-  const domain = getDomainFromUrl(url);
-  const categories = CATEGORY_CONFIG.map((cat) => {
-    const scoreValue = scores?.[cat.key as keyof NonNullable<ApiResponse["scores"]>] ?? null;
-    return { ...cat, score: scoreValue };
-  });
-
-  // Only show non-ok findings for live feed (critical/warning are most interesting)
-  const importantFindings = liveFindings.filter(
-    (f) => f.severity === "critical" || f.severity === "warning"
-  );
-  const displayFindings = importantFindings.length > 0
-    ? importantFindings.slice(0, 5)
-    : liveFindings.slice(0, 5);
-
-  return (
-    <motion.div
-      key="analyzing"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="w-full max-w-3xl mx-auto"
-    >
-      <div className="text-center mb-8">
-        <BarChart3 className="h-10 w-10 text-blue-400 mx-auto mb-3" />
-        <h2 className="text-2xl font-bold mb-1" style={{ color: "var(--text-primary)" }}>Analyzing {domain}</h2>
-        <p className="text-sm" style={{ color: "var(--text-muted)" }}>Running 50+ checks across 6 categories</p>
-      </div>
-
-      {/* Score cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
-        {categories.map((cat, i) => {
-          const Icon = cat.icon;
-          const score = cat.score;
-          return (
-            <motion.div
-              key={cat.key}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: i * 0.15 }}
-              className="glass rounded-xl p-5 flex flex-col gap-3"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Icon className={`h-4 w-4 ${score !== null ? getScoreColor(score) : cat.color}`} />
-                  <span className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>{cat.label}</span>
-                </div>
-                {score !== null ? (
-                  <motion.span
-                    className={`text-lg font-bold ${getScoreColor(score)}`}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: i * 0.15 + 0.3 }}
-                  >
-                    {score}
-                  </motion.span>
-                ) : (
-                  <motion.div
-                    className="h-4 w-4 border-2 border-blue-400 border-t-transparent rounded-full"
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                  />
-                )}
-              </div>
-              {score !== null ? (
-                <AnimatedScoreBar score={score} delay={i * 0.15} />
-              ) : (
-                <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: "var(--bar-bg)" }}>
-                  <motion.div
-                    className="h-full bg-blue-400/30 rounded-full"
-                    animate={{ x: ["-100%", "200%"] }}
-                    transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-                    style={{ width: "40%" }}
-                  />
-                </div>
-              )}
-            </motion.div>
-          );
-        })}
-      </div>
-
-      {/* Live findings feed */}
-      {displayFindings.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-          className="space-y-2"
-        >
-          <p className="text-xs font-medium uppercase tracking-wider mb-3" style={{ color: "var(--text-muted)" }}>
-            Live findings from {domain}
-          </p>
-          {displayFindings.map((finding, i) => {
-            const config = severityConfig[finding.severity];
-            const Icon = config.icon;
-            return (
-              <motion.div
-                key={`${finding.category}-${finding.title}-${i}`}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: i * 0.15 }}
-                className={`flex items-start gap-3 rounded-lg border ${config.border} ${config.bg} p-3`}
-              >
-                <Icon className={`h-4 w-4 ${config.color} shrink-0 mt-0.5`} />
-                <div className="min-w-0">
-                  <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
-                    {finding.category.toUpperCase()}: {finding.title}
-                  </span>
-                  <p className="text-xs mt-0.5 truncate" style={{ color: "var(--text-muted)" }}>{finding.description}</p>
-                </div>
-              </motion.div>
-            );
-          })}
-          {liveFindings.length > displayFindings.length && (
-            <p className="text-xs text-center pt-1" style={{ color: "var(--text-muted)" }}>
-              +{liveFindings.length - displayFindings.length} more findings...
-            </p>
-          )}
-        </motion.div>
-      )}
-    </motion.div>
-  );
-}
-
-function StageGenerating({
-  variantProgress,
-}: {
-  variantProgress?: { current: number; total: number; message: string } | null;
-}) {
-  const current = variantProgress?.current ?? 0;
-  const total = variantProgress?.total ?? 3;
-  const message = variantProgress?.message ?? "Preparing variants...";
-
-  return (
-    <motion.div
-      key="generating"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="w-full max-w-3xl mx-auto"
-    >
-      <div className="text-center mb-8">
-        <Sparkles className="h-10 w-10 text-purple-400 mx-auto mb-3" />
-        <h2 className="text-2xl font-bold mb-1" style={{ color: "var(--text-primary)" }}>Generating Redesigns</h2>
-        <p className="text-sm" style={{ color: "var(--text-muted)" }}>{message}</p>
-        {current > 0 && (
-          <p className="text-purple-400 font-mono text-sm mt-2">
-            Variant {current}/{total}
-          </p>
-        )}
-      </div>
-
-      {/* Progress bar */}
-      <div className="w-full max-w-md mx-auto mb-8">
-        <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: "var(--bar-bg)" }}>
-          <motion.div
-            className="h-full rounded-full bg-purple-400"
-            initial={{ width: 0 }}
-            animate={{ width: `${total > 0 ? (current / total) * 100 : 0}%` }}
-            transition={{ duration: 0.5 }}
-          />
-        </div>
-      </div>
-
-      {/* Skeleton variant cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {Array.from({ length: total }).map((_, i) => {
-          const isComplete = i < current;
-          const isActive = i === current - 1 || (current === 0 && i === 0);
-
-          return (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.15 }}
-              className={`glass rounded-2xl p-5 flex flex-col gap-4 ${
-                isComplete ? "border border-purple-400/30" : ""
-              }`}
-            >
-              {/* Skeleton header */}
-              <div className="rounded-lg overflow-hidden">
-                <div className="h-24 relative" style={{ background: "var(--bar-bg)" }}>
-                  {isActive && !isComplete && (
-                    <motion.div
-                      className="absolute inset-0 bg-gradient-to-r from-transparent via-purple-400/10 to-transparent"
-                      animate={{ x: ["-100%", "100%"] }}
-                      transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-                    />
-                  )}
-                  {isComplete && (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <CheckCircle className="h-8 w-8 text-purple-400" />
-                    </div>
-                  )}
-                  {isActive && !isComplete && (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <Loader2 className="h-6 w-6 text-purple-400 animate-spin" />
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Skeleton content */}
-              <div className="space-y-3">
-                <div
-                  className="h-5 rounded-md"
-                  style={{ background: "var(--bar-bg)", width: isComplete ? "80%" : "60%" }}
-                />
-                <div className="space-y-2">
-                  <div className="h-3 rounded" style={{ background: "var(--bar-bg)", width: "100%" }} />
-                  <div className="h-3 rounded" style={{ background: "var(--bar-bg)", width: "70%" }} />
-                </div>
-                <div className="space-y-1.5 pt-2">
-                  {[1, 2, 3].map((j) => (
-                    <div key={j} className="flex items-center gap-2">
-                      <div className="h-3 w-3 rounded-full" style={{ background: "var(--bar-bg)" }} />
-                      <div className="h-3 rounded flex-1" style={{ background: "var(--bar-bg)" }} />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </motion.div>
-          );
-        })}
       </div>
     </motion.div>
   );
@@ -558,8 +205,8 @@ function StageResults({ scores, findings }: { scores: ApiResponse["scores"]; fin
       className="w-full max-w-3xl mx-auto"
     >
       <div className="text-center mb-8">
-        <h2 className="text-2xl font-bold mb-1" style={{ color: "var(--text-primary)" }}>Analysis Complete</h2>
-        <p className="text-sm" style={{ color: "var(--text-muted)" }}>Here&apos;s how your website performs</p>
+        <h2 className="text-2xl font-bold mb-1" style={{ color: "var(--text-primary)" }}>Analýza dokončena</h2>
+        <p className="text-sm" style={{ color: "var(--text-muted)" }}>Zde jsou výsledky vašeho webu</p>
       </div>
       <div className="flex flex-col md:flex-row gap-8 items-start">
         <motion.div
@@ -577,7 +224,7 @@ function StageResults({ scores, findings }: { scores: ApiResponse["scores"]; fin
               className="flex items-center gap-2 bg-red-400/10 border border-red-400/20 rounded-full px-3 py-1"
             >
               <XCircle className="h-3.5 w-3.5 text-red-400" />
-              <span className="text-xs text-red-400 font-medium">{criticalCount} critical issues</span>
+              <span className="text-xs text-red-400 font-medium">{criticalCount} kritických problémů</span>
             </motion.div>
           )}
         </motion.div>
@@ -615,6 +262,14 @@ function StageEmailGate({
   scores: ApiResponse["scores"];
 }) {
   const [email, setEmail] = useState("");
+  const CATEGORY_CONFIG = [
+    { key: "performance", label: "Performance", color: "text-red-400" },
+    { key: "seo", label: "SEO", color: "text-yellow-400" },
+    { key: "security", label: "Security", color: "text-green-400" },
+    { key: "ux", label: "UX & Design", color: "text-orange-400" },
+    { key: "content", label: "Content", color: "text-blue-400" },
+    { key: "aiVisibility", label: "AI Visibility", color: "text-purple-400" },
+  ] as const;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -636,21 +291,17 @@ function StageEmailGate({
     >
       <div className="blur-[6px] opacity-40 pointer-events-none select-none">
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-          {categories.map((cat) => {
-            const Icon = cat.icon;
-            return (
-              <div key={cat.key} className="glass rounded-xl p-5">
-                <div className="flex items-center gap-2 mb-2">
-                  <Icon className={`h-4 w-4 ${getScoreColor(cat.score as number)}`} />
-                  <span className="text-sm" style={{ color: "var(--text-secondary)" }}>{cat.label}</span>
-                </div>
-                <div className={`text-2xl font-bold ${getScoreColor(cat.score as number)}`}>{cat.score}</div>
-                <div className="w-full h-2 rounded-full mt-2" style={{ background: "var(--bar-bg)" }}>
-                  <div className={`h-full rounded-full ${getScoreBg(cat.score as number)}`} style={{ width: `${cat.score}%` }} />
-                </div>
+          {categories.map((cat) => (
+            <div key={cat.key} className="glass rounded-xl p-5">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-sm" style={{ color: "var(--text-secondary)" }}>{cat.label}</span>
               </div>
-            );
-          })}
+              <div className={`text-2xl font-bold ${getScoreColor(cat.score as number)}`}>{cat.score}</div>
+              <div className="w-full h-2 rounded-full mt-2" style={{ background: "var(--bar-bg)" }}>
+                <div className={`h-full rounded-full ${getScoreBg(cat.score as number)}`} style={{ width: `${cat.score}%` }} />
+              </div>
+            </div>
+          ))}
         </div>
       </div>
       <motion.div
@@ -664,9 +315,9 @@ function StageEmailGate({
             <div className="inline-flex items-center justify-center h-14 w-14 rounded-full bg-blue-500/10 border border-blue-500/20 mb-4">
               <Lock className="h-6 w-6 text-blue-400" />
             </div>
-            <h3 className="text-xl font-bold mb-2" style={{ color: "var(--text-primary)" }}>Unlock Full Report</h3>
+            <h3 className="text-xl font-bold mb-2" style={{ color: "var(--text-primary)" }}>Odemknout kompletní report</h3>
             <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-              Enter your email to access detailed findings, recommendations, and your redesign variants.
+              Zadejte email pro přístup ke všem zjištěním, doporučením a variantám redesignu.
             </p>
           </div>
           <form onSubmit={handleSubmit} className="flex flex-col gap-3">
@@ -676,7 +327,7 @@ function StageEmailGate({
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@company.com"
+                placeholder="vas@email.cz"
                 className="w-full bg-transparent outline-none text-sm"
                 style={{ color: "var(--text-primary)" }}
                 required
@@ -687,11 +338,11 @@ function StageEmailGate({
               className="flex items-center justify-center gap-2 rounded-xl bg-blue-500 px-6 py-3 text-sm font-semibold text-white hover:bg-blue-400 transition-all"
             >
               <Sparkles className="h-4 w-4" />
-              Unlock Results
+              Odemknout výsledky
             </button>
           </form>
           <p className="text-xs text-center mt-4" style={{ color: "var(--text-faint)" }}>
-            No spam. We&apos;ll send your report and redesign options.
+            Žádný spam. Pošleme vám report a návrhy redesignu.
           </p>
         </div>
       </motion.div>
@@ -699,7 +350,7 @@ function StageEmailGate({
   );
 }
 
-function VariantCard({ variant, index }: { variant: Variant; index: number }) {
+function VariantCard({ variant, index, token }: { variant: Variant; index: number; token: string }) {
   const gradients = [
     "from-blue-500 to-cyan-400",
     "from-purple-500 to-pink-400",
@@ -728,7 +379,6 @@ function VariantCard({ variant, index }: { variant: Variant; index: number }) {
               {variant.name}
             </div>
           </div>
-          {/* Palette dots */}
           <div className="absolute bottom-2 right-2 flex gap-1">
             {Object.values(variant.palette).slice(0, 3).map((color, i) => (
               <div key={i} className="h-4 w-4 rounded-full border border-white/20" style={{ background: color }} />
@@ -751,14 +401,25 @@ function VariantCard({ variant, index }: { variant: Variant; index: number }) {
           ))}
         </div>
       </div>
-      <div className="text-xs pt-2 border-t" style={{ borderColor: "var(--border-subtle)", color: "var(--text-muted)" }}>
-        <span className="font-medium">Typography:</span> {variant.typography.heading} / {variant.typography.body}
+      <div className="flex items-center justify-between pt-2 border-t" style={{ borderColor: "var(--border-subtle)" }}>
+        <div className="text-xs" style={{ color: "var(--text-muted)" }}>
+          <span className="font-medium">Typography:</span> {variant.typography.heading} / {variant.typography.body}
+        </div>
+        <a
+          href={`/api/analyze/${token}/preview/${index}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 text-xs font-medium text-blue-400 hover:text-blue-300 transition-colors"
+        >
+          Náhled
+          <ExternalLink className="h-3 w-3" />
+        </a>
       </div>
     </motion.div>
   );
 }
 
-function StageVariants({ variants }: { variants: Variant[] }) {
+function StageVariants({ variants, token }: { variants: Variant[]; token: string }) {
   return (
     <motion.div
       key="variants"
@@ -769,72 +430,15 @@ function StageVariants({ variants }: { variants: Variant[] }) {
     >
       <div className="text-center mb-8">
         <Sparkles className="h-10 w-10 text-purple-400 mx-auto mb-3" />
-        <h2 className="text-2xl font-bold mb-1" style={{ color: "var(--text-primary)" }}>Your Redesign Variants</h2>
-        <p className="text-sm" style={{ color: "var(--text-muted)" }}>Choose the direction that fits your vision</p>
+        <h2 className="text-2xl font-bold mb-1" style={{ color: "var(--text-primary)" }}>Vaše varianty redesignu</h2>
+        <p className="text-sm" style={{ color: "var(--text-muted)" }}>Vyberte směr, který odpovídá vaší vizi</p>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {variants.map((variant, i) => (
-          <VariantCard key={variant.name} variant={variant} index={i} />
+          <VariantCard key={variant.name} variant={variant} index={i} token={token} />
         ))}
       </div>
     </motion.div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Progress bar
-// ---------------------------------------------------------------------------
-
-function ProgressBar({ stage }: { stage: Stage }) {
-  const steps = [
-    { label: "Connect", icon: Globe },
-    { label: "Crawl", icon: Scan },
-    { label: "Analyze", icon: BarChart3 },
-    { label: "Generate", icon: Sparkles },
-    { label: "Results", icon: CheckCircle },
-  ];
-
-  // Map stage to step index (0=connect, 1=crawl, 2=analyze, 3=generating, 4+=results)
-  const stepIndex = stage <= 3 ? stage : 4;
-
-  return (
-    <div className="flex items-center justify-center gap-1 mb-12">
-      {steps.map((step, i) => {
-        const Icon = step.icon;
-        const isActive = stepIndex >= i;
-        const isCurrent = stepIndex === i;
-        return (
-          <div key={step.label} className="flex items-center">
-            <div className="flex flex-col items-center gap-1.5">
-              <motion.div
-                className={`h-8 w-8 rounded-full flex items-center justify-center border transition-colors duration-500 ${
-                  isActive
-                    ? "border-blue-400/60 bg-blue-400/10"
-                    : "border-gray-700 bg-gray-800/50"
-                } ${isCurrent ? "ring-2 ring-blue-400/30" : ""}`}
-              >
-                <Icon className={`h-3.5 w-3.5 transition-colors duration-500 ${isActive ? "text-blue-400" : "text-gray-600"}`} />
-              </motion.div>
-              <span className={`text-[10px] font-medium transition-colors duration-500 ${isActive ? "text-gray-300" : "text-gray-600"}`}>
-                {step.label}
-              </span>
-            </div>
-            {i < steps.length - 1 && (
-              <div className="w-8 sm:w-14 h-px mx-1.5 mb-5">
-                <motion.div
-                  className="h-full bg-blue-400/40"
-                  initial={{ scaleX: 0 }}
-                  animate={{ scaleX: stepIndex > i ? 1 : 0 }}
-                  transition={{ duration: 0.6 }}
-                  style={{ transformOrigin: "left" }}
-                />
-                <div className="h-px bg-gray-700 -mt-px" />
-              </div>
-            )}
-          </div>
-        );
-      })}
-    </div>
   );
 }
 
@@ -866,9 +470,8 @@ export default function AnalysisOrchestrator({ url, token }: Props) {
           setError(result.error || "Failed to start analysis");
           return;
         }
-        // Start polling with the token from API (or use existing token)
         startPolling(result.token || token);
-      } catch (err) {
+      } catch {
         setError("Failed to connect. Please try again.");
       }
     }
@@ -887,7 +490,6 @@ export default function AnalysisOrchestrator({ url, token }: Props) {
         const result: ApiResponse = await res.json();
         setData(result);
 
-        // Map API status to UI stage
         switch (result.status) {
           case "pending":
           case "crawling":
@@ -901,7 +503,6 @@ export default function AnalysisOrchestrator({ url, token }: Props) {
             break;
           case "complete":
             setStage(4);
-            // Stop polling on complete
             if (pollingRef.current) {
               clearInterval(pollingRef.current);
               pollingRef.current = null;
@@ -922,9 +523,7 @@ export default function AnalysisOrchestrator({ url, token }: Props) {
       }
     };
 
-    // First poll immediately
     poll();
-    // Then every 2 seconds
     pollingRef.current = setInterval(poll, 2000);
   }, []);
 
@@ -943,13 +542,11 @@ export default function AnalysisOrchestrator({ url, token }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
-      // Refetch to get full results
       const res = await fetch(`/api/analyze/${pollToken}`);
       const result = await res.json();
       setData(result);
       setStage(6);
     } catch {
-      // Still advance even if email save fails
       setStage(6);
     }
   };
@@ -979,13 +576,13 @@ export default function AnalysisOrchestrator({ url, token }: Props) {
             className="text-center"
           >
             <XCircle className="h-12 w-12 text-red-400 mx-auto mb-4" />
-            <h2 className="text-xl font-bold mb-2" style={{ color: "var(--text-primary)" }}>Something went wrong</h2>
+            <h2 className="text-xl font-bold mb-2" style={{ color: "var(--text-primary)" }}>Něco se pokazilo</h2>
             <p className="text-sm mb-4" style={{ color: "var(--text-muted)" }}>{error}</p>
             <a
               href="/"
               className="inline-flex items-center gap-2 rounded-xl bg-blue-500 px-6 py-3 text-sm font-semibold text-white hover:bg-blue-400 transition-all"
             >
-              Try Again
+              Zkusit znovu
               <ArrowRight className="h-4 w-4" />
             </a>
           </motion.div>
@@ -1017,7 +614,7 @@ export default function AnalysisOrchestrator({ url, token }: Props) {
               {stage === 5 && (
                 <StageEmailGate onSubmit={handleEmailSubmit} scores={data?.scores} />
               )}
-              {stage === 6 && <StageVariants variants={data?.variants || []} />}
+              {stage === 6 && <StageVariants variants={data?.variants || []} token={data?.token || token} />}
             </AnimatePresence>
           </>
         )}

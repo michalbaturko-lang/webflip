@@ -51,6 +51,12 @@ ${assetsContext}
 Current site content (first pages):
 ${content}
 
+## CRITICAL RULES
+- Your descriptions must reference the REAL company/brand name and their actual business
+- NEVER use generic placeholder descriptions — always tailor to this specific client
+- Palette for "Brand-Faithful" MUST be based on the actual colors extracted from the current site
+- All descriptions and keyFeatures must be specific to THIS website, not generic
+
 Generate exactly 3 variants as a JSON array:
 
 1. **Brand-Faithful** - Keeps the existing brand colors and feel, but modernizes layout, typography, and fixes all UX issues found.
@@ -59,11 +65,11 @@ Generate exactly 3 variants as a JSON array:
 
 Each variant must have:
 - name: string (the variant name)
-- description: string (2-3 sentences explaining the design approach and why)
+- description: string (2-3 sentences explaining the design approach, referencing the actual company/brand by name)
 - palette: { primary: hex, secondary: hex, accent: hex, bg: hex, text: hex }
 - typography: { heading: font name, body: font name }
-- layout: string (describe the layout approach in 2-3 sentences)
-- keyFeatures: string[] (4-6 specific design features/improvements)
+- layout: string (describe the layout approach in 2-3 sentences, specific to this website)
+- keyFeatures: string[] (4-6 specific design features/improvements tailored to findings from this site)
 
 Return ONLY the JSON array, no other text.`,
       },

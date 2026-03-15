@@ -68,11 +68,13 @@ ${assets.images.slice(0, 15).map((img) => `- ${img.url}${img.alt ? ` (alt: "${im
 
 Generate a COMPLETE standalone HTML page — a redesigned landing page for ${analysis.url}.
 
-## CRITICAL RULES
-1. Use ONLY the REAL text content provided below — NEVER invent placeholder text like "Lorem ipsum" or generic marketing copy
-2. Use the REAL image URLs from the client's website (absolute URLs provided below) — NEVER use placeholder.com or picsum or unsplash URLs
-3. Use the REAL company name and logo — NEVER make up brand names
+## CRITICAL RULES — VIOLATIONS WILL MAKE THE OUTPUT USELESS
+1. Use ONLY the REAL text content provided below — NEVER invent placeholder text like "Lorem ipsum", "Your Company", "Acme Corp", or generic marketing copy
+2. Use the REAL image URLs from the client's website (absolute URLs provided below) — NEVER use placeholder.com, picsum.photos, unsplash.com, via.placeholder.com, or any placeholder service
+3. Use the REAL company name and logo — NEVER make up brand names or use generic names
 4. The output must look like a REAL, production-ready website with the CLIENT'S actual content
+5. If you don't have enough content for a section, SKIP that section entirely — do NOT fill it with made-up text
+6. Every heading, paragraph, button text, and image MUST come from the real crawled content below
 ${assetsSection}
 
 ## Design Variant: "${variant.name}"
