@@ -111,5 +111,30 @@
     "privacy": "Ochrana súkromia",
     "terms": "Obchodné podmienky",
     "tagline": "Redizajn webu pomocou AI"
+  },
+  "analysis": {
+    "connectingTo": "Pripájame sa k {domain}",
+    "somethingWentWrong": "Niečo sa pokazilo",
+    "tryAgain": "Skúsiť znova",
+    "analysisComplete": "Analýza dokončená",
+    "analysisCompleteFor": "Analýza dokončená pre {domain}",
+    "resultsSubtitle": "Tu sú výsledky vášho webu",
+    "criticalIssues": "{count} kritických problémov",
+    "findings": "Zistenia",
+    "yourRedesignVariants": "Vaše redizajn varianty",
+    "chooseDirection": "Vyberte smer, ktorý zodpovedá vašej vízii",
+    "viewFullSite": "Zobraziť celý web",
+    "unlockFullReport": "Odomknúť kompletný report",
+    "unlockDescription": "Zadajte email pre prístup ku všetkým zisteniam, odporúčaniam a variantom redizajnu.",
+    "unlockButton": "Odomknúť výsledky",
+    "noSpam": "Žiadny spam. Pošleme vám report a návrhy redizajnu.",
+    "emailPlaceholder": "vas@email.sk",
+    "performance": "Výkon",
+    "seo": "SEO",
+    "security": "Bezpečnosť",
+    "ux": "UX & Dizajn",
+    "content": "Obsah",
+    "aiVisibility": "AI Viditeľnosť",
+    "analysisTakingTooLong": "Analýza trvá príliš dlho. Server pravdepodobne neodpovedá. Skúste to prosím znova."
   }
 }

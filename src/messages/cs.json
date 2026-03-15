@@ -111,5 +111,30 @@
     "privacy": "Ochrana soukromí",
     "terms": "Obchodní podmínky",
     "tagline": "Redesign webu pomocí AI"
+  },
+  "analysis": {
+    "connectingTo": "Připojujeme se k {domain}",
+    "somethingWentWrong": "Něco se pokazilo",
+    "tryAgain": "Zkusit znovu",
+    "analysisComplete": "Analýza dokončena",
+    "analysisCompleteFor": "Analýza dokončena pro {domain}",
+    "resultsSubtitle": "Zde jsou výsledky vašeho webu",
+    "criticalIssues": "{count} kritických problémů",
+    "findings": "Zjištění",
+    "yourRedesignVariants": "Vaše redesign varianty",
+    "chooseDirection": "Vyberte směr, který odpovídá vaší vizi",
+    "viewFullSite": "Zobrazit celý web",
+    "unlockFullReport": "Odemknout kompletní report",
+    "unlockDescription": "Zadejte email pro přístup ke všem zjištěním, doporučením a variantám redesignu.",
+    "unlockButton": "Odemknout výsledky",
+    "noSpam": "Žádný spam. Pošleme vám report a návrhy redesignu.",
+    "emailPlaceholder": "vas@email.cz",
+    "performance": "Výkon",
+    "seo": "SEO",
+    "security": "Bezpečnost",
+    "ux": "UX & Design",
+    "content": "Obsah",
+    "aiVisibility": "AI Viditelnost",
+    "analysisTakingTooLong": "Analýza trvá příliš dlouho. Server pravděpodobně neodpovídá. Zkuste to prosím znovu."
   }
 }

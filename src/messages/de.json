@@ -111,5 +111,30 @@
     "privacy": "Datenschutz",
     "terms": "AGB",
     "tagline": "KI-gestütztes Website-Redesign"
+  },
+  "analysis": {
+    "connectingTo": "Verbinde mit {domain}",
+    "somethingWentWrong": "Etwas ist schiefgelaufen",
+    "tryAgain": "Erneut versuchen",
+    "analysisComplete": "Analyse abgeschlossen",
+    "analysisCompleteFor": "Analyse abgeschlossen für {domain}",
+    "resultsSubtitle": "Hier sind die Ergebnisse für Ihre Website",
+    "criticalIssues": "{count} kritische Probleme",
+    "findings": "Erkenntnisse",
+    "yourRedesignVariants": "Ihre Redesign-Varianten",
+    "chooseDirection": "Wählen Sie die Richtung, die zu Ihrer Vision passt",
+    "viewFullSite": "Vollständige Seite anzeigen",
+    "unlockFullReport": "Vollständigen Bericht freischalten",
+    "unlockDescription": "Geben Sie Ihre E-Mail ein, um alle Erkenntnisse, Empfehlungen und Redesign-Varianten zu erhalten.",
+    "unlockButton": "Ergebnisse freischalten",
+    "noSpam": "Kein Spam. Wir senden Ihnen den Bericht und die Redesign-Vorschläge.",
+    "emailPlaceholder": "ihre@email.de",
+    "performance": "Performance",
+    "seo": "SEO",
+    "security": "Sicherheit",
+    "ux": "UX & Design",
+    "content": "Inhalt",
+    "aiVisibility": "KI-Sichtbarkeit",
+    "analysisTakingTooLong": "Die Analyse dauert zu lange. Der Server antwortet wahrscheinlich nicht. Bitte versuchen Sie es erneut."
   }
 }

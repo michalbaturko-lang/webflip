@@ -111,5 +111,30 @@
     "privacy": "Privacy Policy",
     "terms": "Terms of Service",
     "tagline": "AI-powered website redesign"
+  },
+  "analysis": {
+    "connectingTo": "Connecting to {domain}",
+    "somethingWentWrong": "Something went wrong",
+    "tryAgain": "Try again",
+    "analysisComplete": "Analysis complete",
+    "analysisCompleteFor": "Analysis complete for {domain}",
+    "resultsSubtitle": "Here are the results for your website",
+    "criticalIssues": "{count} critical issues",
+    "findings": "Findings",
+    "yourRedesignVariants": "Your redesign variants",
+    "chooseDirection": "Choose the direction that matches your vision",
+    "viewFullSite": "View full site",
+    "unlockFullReport": "Unlock full report",
+    "unlockDescription": "Enter your email to access all findings, recommendations, and redesign variants.",
+    "unlockButton": "Unlock results",
+    "noSpam": "No spam. We'll send you the report and redesign proposals.",
+    "emailPlaceholder": "your@email.com",
+    "performance": "Performance",
+    "seo": "SEO",
+    "security": "Security",
+    "ux": "UX & Design",
+    "content": "Content",
+    "aiVisibility": "AI Visibility",
+    "analysisTakingTooLong": "Analysis is taking too long. Server is probably not responding. Please try again."
   }
 }
