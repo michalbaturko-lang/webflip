@@ -127,6 +127,23 @@
     "back": "Späť",
     "variant": "Varianta {num}"
   },
+  "conversionStepper": {
+    "badge": "4 jednoduché kroky",
+    "title": "Ako to funguje",
+    "subtitle": "Od URL k úžasnému redizajnu za minúty, nie mesiace.",
+    "step1Title": "Vložte URL",
+    "step1Desc": "Zadajte adresu svojho webu. Naša AI začne okamžite analyzovať.",
+    "step1Detail": "Zaberie 5 sekúnd",
+    "step2Title": "AI hĺbková analýza",
+    "step2Desc": "Skenujeme 50+ parametrov výkonu, SEO, bezpečnosti a ďalších.",
+    "step2Detail": "50+ parametrov",
+    "step3Title": "Vyberte si dizajn",
+    "step3Desc": "Vyberte si z 3 unikátnych AI redizajnov prispôsobených vašej značke.",
+    "step3Detail": "3 varianty",
+    "step4Title": "Spustite & vlastnite",
+    "step4Desc": "Získajte kompletný zdrojový kód. Žiadny lock-in, žiadne predplatné. Je to vaše.",
+    "step4Detail": "100% vaše"
+  },
   "analysis": {
     "connectingTo": "Pripájame sa k {domain}",
     "somethingWentWrong": "Niečo sa pokazilo",

@@ -127,6 +127,23 @@
     "back": "Zurück",
     "variant": "Variante {num}"
   },
+  "conversionStepper": {
+    "badge": "4 einfache Schritte",
+    "title": "So funktioniert's",
+    "subtitle": "Von der URL zum beeindruckenden Redesign in Minuten, nicht Monaten.",
+    "step1Title": "URL eingeben",
+    "step1Desc": "Geben Sie Ihre Website-Adresse ein. Unsere KI beginnt sofort mit der Analyse.",
+    "step1Detail": "Dauert 5 Sekunden",
+    "step2Title": "KI-Tiefenanalyse",
+    "step2Desc": "Wir scannen 50+ Parameter für Performance, SEO, Sicherheit und mehr.",
+    "step2Detail": "50+ Parameter",
+    "step3Title": "Design wählen",
+    "step3Desc": "Wählen Sie aus 3 einzigartigen KI-Redesigns, abgestimmt auf Ihre Marke.",
+    "step3Detail": "3 Varianten",
+    "step4Title": "Starten & Besitzen",
+    "step4Desc": "Erhalten Sie den vollständigen Quellcode. Kein Lock-in, kein Abo. Es gehört Ihnen.",
+    "step4Detail": "100% Ihres"
+  },
   "analysis": {
     "connectingTo": "Verbinde mit {domain}",
     "somethingWentWrong": "Etwas ist schiefgelaufen",

@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback } from "react";
 import Navbar from "@/components/landing/Navbar";
 import Hero from "@/components/landing/Hero";
-import HowItWorks from "@/components/landing/HowItWorks";
+import ConversionStepper from "@/components/landing/ConversionStepper";
 import AnalysisDemo from "@/components/landing/AnalysisDemo";
 import ROICalculator from "@/components/landing/ROICalculator";
 import FAQ from "@/components/landing/FAQ";
@@ -50,7 +50,7 @@ export default function HomePage() {
         </div>
       )}
 
-      <HowItWorks />
+      <ConversionStepper />
       <AnalysisDemo />
       <ROICalculator />
       <FAQ />
