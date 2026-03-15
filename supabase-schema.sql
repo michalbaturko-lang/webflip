@@ -35,6 +35,9 @@ CREATE TABLE IF NOT EXISTS analyses (
   -- Extracted assets from crawl (logo, images, colors, company name)
   extracted_assets JSONB,
 
+  -- Business interpretation profile (industry, audience, value props, FAQ/blog seeds)
+  business_profile JSONB,
+
   -- Timestamps
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),

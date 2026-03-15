@@ -68,12 +68,33 @@ export interface AnalysisRow {
   variants: DesignVariant[];
   html_variants: string[];
   extracted_assets: ExtractedAssets | null;
+  business_profile: BusinessProfile | null;
   variant_progress: VariantProgress | null;
   edit_history: EditHistoryEntry[] | null;
   created_at: string;
   updated_at: string;
   completed_at: string | null;
   error_message: string | null;
+}
+
+export interface BusinessProfile {
+  industry: string;
+  industrySegment: string;
+  targetAudience: string[];
+  valuePropositions: string[];
+  coreServices: { name: string; description: string }[];
+  painPointsSolved: string[];
+  differentiators: string[];
+  brandVoice: "formal" | "friendly" | "technical" | "luxury" | "casual";
+  businessMaturity: "startup" | "growing" | "established" | "enterprise";
+  geographicFocus: string;
+  keyBusinessClaims: string[];
+  customerJourneyStage: string;
+  contentThemes: string[];
+  faqSeedTopics: string[];
+  blogSeedTopics: string[];
+  language: string;
+  summary: string;
 }
 
 export interface DesignVariant {
