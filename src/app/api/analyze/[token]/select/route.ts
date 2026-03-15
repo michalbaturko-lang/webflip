@@ -56,11 +56,9 @@ export async function POST(
       );
     }
 
-    // Store in the analysis record using the existing JSONB flexibility
-    // We use a type assertion since selected_variant is a new field
     await updateAnalysis(token, {
       selected_variant: variantIndex,
-    } as Record<string, unknown>);
+    });
 
     return NextResponse.json({
       success: true,

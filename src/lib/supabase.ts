@@ -75,6 +75,7 @@ export interface AnalysisRow {
   updated_at: string;
   completed_at: string | null;
   error_message: string | null;
+  selected_variant?: number | null;
 }
 
 export interface BusinessProfile {
