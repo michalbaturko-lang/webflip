@@ -112,6 +112,21 @@
     "terms": "Obchodní podmínky",
     "tagline": "Redesign webu pomocí AI"
   },
+  "editor": {
+    "title": "AI Editor",
+    "description": "Popište, co chcete změnit",
+    "descriptionSub": "AI upraví HTML této varianty",
+    "suggestions": "Návrhy",
+    "placeholder": "Popište svou změnu...",
+    "enterToSend": "Enter pro odeslání · Shift+Enter pro nový řádek",
+    "applying": "Aplikuji změny...",
+    "applied": "Úspěšně aplikováno",
+    "editsApplied": "{count} úprav(a) aplikováno",
+    "retry": "Zkusit znovu",
+    "edited": "Upraveno",
+    "back": "Zpět",
+    "variant": "Varianta {num}"
+  },
   "analysis": {
     "connectingTo": "Připojujeme se k {domain}",
     "somethingWentWrong": "Něco se pokazilo",
