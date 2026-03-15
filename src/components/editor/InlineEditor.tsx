@@ -91,7 +91,7 @@ export default function InlineEditor({
         };
 
         const handleMouseOver = (e: MouseEvent) => {
-          const target = e.target as Element;
+          const target = e.target as HTMLElement;
           if (isEditableText(target)) {
             target.classList.add("webflip-editable-hover");
             target.style.position = target.style.position || "relative";
@@ -99,12 +99,12 @@ export default function InlineEditor({
         };
 
         const handleMouseOut = (e: MouseEvent) => {
-          const target = e.target as Element;
+          const target = e.target as HTMLElement;
           target.classList.remove("webflip-editable-hover");
         };
 
         const handleClick = (e: MouseEvent) => {
-          const target = e.target as Element;
+          const target = e.target as HTMLElement;
           if (!isEditableText(target)) return;
           e.preventDefault();
           e.stopPropagation();
