@@ -1,0 +1,1162 @@
+<!DOCTYPE html>
+<html lang="TEMPLATE_VAR_language">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TEMPLATE_VAR_companyName</title>
+  <link rel="icon" href="TEMPLATE_VAR_faviconUrl" type="image/x-icon">
+
+  <!-- 17. OG Meta Tags -->
+  <meta property="og:title" content="TEMPLATE_VAR_companyName - TEMPLATE_VAR_headline">
+  <meta property="og:description" content="TEMPLATE_VAR_subheadline">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="TEMPLATE_VAR_siteUrl">
+  <meta property="og:image" content="TEMPLATE_VAR_ogImage">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="TEMPLATE_VAR_companyName - TEMPLATE_VAR_headline">
+  <meta name="twitter:description" content="TEMPLATE_VAR_subheadline">
+  <meta name="twitter:image" content="TEMPLATE_VAR_ogImage">
+  <meta name="description" content="TEMPLATE_VAR_subheadline">
+
+  <!-- 16. Schema.org JSON-LD: Organization -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "TEMPLATE_VAR_companyName",
+    "url": "TEMPLATE_VAR_siteUrl",
+    "logo": "TEMPLATE_VAR_logoUrl",
+    "contactPoint": {
+      "@type": "ContactPoint",
+      "telephone": "TEMPLATE_VAR_phone",
+      "email": "TEMPLATE_VAR_email",
+      "contactType": "customer service"
+    },
+    "sameAs": []
+  }
+  </script>
+
+  <!-- Schema.org JSON-LD: LocalBusiness -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "LocalBusiness",
+    "name": "TEMPLATE_VAR_companyName",
+    "url": "TEMPLATE_VAR_siteUrl",
+    "telephone": "TEMPLATE_VAR_phone",
+    "email": "TEMPLATE_VAR_email",
+    "address": {
+      "@type": "PostalAddress",
+      "streetAddress": "TEMPLATE_VAR_address"
+    },
+    "image": "TEMPLATE_VAR_logoUrl"
+  }
+  </script>
+
+  <style>
+    /* Reset */
+    *,
+    *::before,
+    *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    /* Custom Properties */
+    :root {
+      --primary-start: #6366F1;
+      --primary-end: #3B82F6;
+      --bg-dark: #0F172A;
+      --bg-card: rgba(255, 255, 255, 0.05);
+      --border-card: rgba(255, 255, 255, 0.1);
+      --text-white: #F8FAFC;
+      --text-gray: #94A3B8;
+      --text-light-gray: #CBD5E1;
+      --glow-primary: rgba(99, 102, 241, 0.25);
+      --glow-secondary: rgba(59, 130, 246, 0.2);
+      --font-body: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    }
+    html { scroll-behavior: smooth; font-size: 16px; }
+    body {
+      font-family: var(--font-body);
+      font-weight: 300;
+      background-color: var(--bg-dark);
+      color: var(--text-white);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+    /* Skip to Content */
+    .skip-to-content {
+      position: absolute;
+      top: -100%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: linear-gradient(135deg, var(--primary-start), var(--primary-end));
+      color: #fff;
+      padding: 0.75rem 1.5rem;
+      border-radius: 0 0 0.5rem 0.5rem;
+      z-index: 10000;
+      font-weight: 600;
+      text-decoration: none;
+      transition: top 0.3s ease;
+    }
+    .skip-to-content:focus {
+      top: 0;
+      outline: 2px solid var(--primary-start);
+      outline-offset: 2px;
+    }
+    /* Layout */
+    .container { width: 100%; max-width: 1280px; margin: 0 auto; padding: 0 1rem; }
+    .section-padding { padding: 4rem 0; }
+    /* Gradient Text */
+    .gradient-text {
+      background: linear-gradient(135deg, var(--primary-start), var(--primary-end));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .section-title {
+      font-size: 1.75rem;
+      font-weight: 900;
+      text-align: center;
+      margin-bottom: 3rem;
+      letter-spacing: -0.02em;
+    }
+    /* Glassmorphism Card */
+    .glass-card {
+      background: var(--bg-card);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--border-card);
+      border-radius: 1rem;
+      padding: 2rem;
+      transition: border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
+    }
+    .glass-card:hover {
+      border-color: rgba(99, 102, 241, 0.4);
+      box-shadow: 0 0 30px var(--glow-primary), 0 0 60px var(--glow-secondary);
+      transform: translateY(-4px);
+    }
+    /* Primary Button */
+    .btn-primary {
+      display: inline-block;
+      background: linear-gradient(135deg, var(--primary-start), var(--primary-end));
+      color: #fff;
+      padding: 0.875rem 2rem;
+      border: none;
+      border-radius: 0.5rem;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      transition: box-shadow 0.3s ease, transform 0.3s ease;
+    }
+    .btn-primary:hover {
+      box-shadow: 0 0 20px var(--glow-primary), 0 0 40px var(--glow-secondary);
+      transform: translateY(-2px);
+    }
+    .btn-primary:focus {
+      outline: 2px solid var(--primary-end);
+      outline-offset: 3px;
+    }
+    /* Fade-in Animations */
+    .fade-in {
+      opacity: 0;
+      transform: translateY(30px);
+      transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+    }
+    .fade-in.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    /* Reduced Motion */
+    @media (prefers-reduced-motion: reduce) {
+      .fade-in { opacity: 1; transform: none; transition: none; }
+      .glass-card, .btn-primary, .skip-to-content { transition: none; }
+      html { scroll-behavior: auto; }
+    }
+    /* 1. Navigation */
+    .navbar {
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border-card);
+      padding: 0.75rem 0;
+    }
+    .navbar .container { display: flex; align-items: center; justify-content: space-between; }
+    .navbar-logo img { height: 40px; width: auto; }
+    .navbar-links { display: none; list-style: none; gap: 1.5rem; }
+    .navbar-links a {
+      color: var(--text-gray);
+      text-decoration: none;
+      font-weight: 400;
+      font-size: 0.925rem;
+      transition: color 0.3s ease;
+    }
+    .navbar-links a:hover,
+    .navbar-links a:focus { color: var(--text-white); }
+    .hamburger {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0.5rem;
+    }
+    .hamburger span {
+      width: 24px;
+      height: 2px;
+      background: var(--text-white);
+      border-radius: 2px;
+      transition: transform 0.3s ease, opacity 0.3s ease;
+    }
+    .hamburger[aria-expanded="true"] span:nth-child(1) { transform: rotate(45deg) translate(5px, 5px); }
+    .hamburger[aria-expanded="true"] span:nth-child(2) { opacity: 0; }
+    .hamburger[aria-expanded="true"] span:nth-child(3) { transform: rotate(-45deg) translate(5px, -5px); }
+    .mobile-menu {
+      display: none;
+      flex-direction: column;
+      gap: 0.5rem;
+      padding: 1rem;
+      background: rgba(15, 23, 42, 0.95);
+      border-bottom: 1px solid var(--border-card);
+    }
+    .mobile-menu.open { display: flex; }
+    .mobile-menu a {
+      color: var(--text-gray);
+      text-decoration: none;
+      padding: 0.75rem 1rem;
+      border-radius: 0.5rem;
+      transition: background 0.3s ease, color 0.3s ease;
+    }
+    .mobile-menu a:hover,
+    .mobile-menu a:focus { background: var(--bg-card); color: var(--text-white); }
+    /* 2. Hero */
+    .hero {
+      position: relative;
+      min-height: 70vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      background: linear-gradient(135deg, var(--bg-dark) 0%, #1E1B4B 50%, var(--bg-dark) 100%);
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+      background-size: 30px 30px;
+      opacity: 0.5;
+      pointer-events: none;
+    }
+    .hero-content { position: relative; z-index: 2; max-width: 800px; padding: 2rem 1rem; }
+    .hero h1 {
+      font-size: 2.5rem;
+      font-weight: 900;
+      line-height: 1.1;
+      margin-bottom: 1.25rem;
+      letter-spacing: -0.03em;
+    }
+    .hero p {
+      font-size: 1.125rem;
+      color: var(--text-light-gray);
+      margin-bottom: 2rem;
+      font-weight: 300;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    /* 3. Stats */
+    .stats-bar {
+      background: rgba(15, 23, 42, 0.6);
+      border-top: 1px solid var(--border-card);
+      border-bottom: 1px solid var(--border-card);
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1.5rem;
+      text-align: center;
+      padding: 2rem 0;
+    }
+    .stat-item { display: flex; flex-direction: column; gap: 0.25rem; }
+    .stat-number {
+      font-size: 2rem;
+      font-weight: 900;
+      background: linear-gradient(135deg, var(--primary-start), var(--primary-end));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .stat-label { font-size: 0.875rem; color: var(--text-gray); font-weight: 400; }
+    /* 4. Services */
+    .services-grid { display: grid; grid-template-columns: 1fr; gap: 1.5rem; }
+    .service-card .service-icon { font-size: 2.5rem; margin-bottom: 1rem; display: block; }
+    .service-card h3 { font-size: 1.25rem; font-weight: 800; margin-bottom: 0.75rem; }
+    .service-card p { color: var(--text-gray); font-size: 0.95rem; line-height: 1.7; }
+    /* 5. About */
+    .about-grid { display: grid; grid-template-columns: 1fr; gap: 2rem; align-items: center; }
+    .about-text h2 { font-size: 1.75rem; font-weight: 900; margin-bottom: 1.25rem; }
+    .about-text p { color: var(--text-light-gray); font-size: 1rem; line-height: 1.8; font-weight: 300; }
+    .about-image img { width: 100%; border-radius: 1rem; border: 1px solid var(--border-card); }
+    /* 6. Blog */
+    .blog-grid { display: grid; grid-template-columns: 1fr; gap: 1.5rem; }
+    .blog-card { display: flex; flex-direction: column; }
+    .blog-card .blog-date { font-size: 0.8rem; color: var(--text-gray); margin-bottom: 0.5rem; }
+    .blog-card h3 { font-size: 1.15rem; font-weight: 800; margin-bottom: 0.75rem; }
+    .blog-card h3 a { color: var(--text-white); text-decoration: none; transition: color 0.3s ease; }
+    .blog-card h3 a:hover { color: var(--primary-start); }
+    .blog-card p { color: var(--text-gray); font-size: 0.925rem; line-height: 1.7; }
+    /* 7. Testimonials */
+    .testimonials-grid { display: grid; grid-template-columns: 1fr; gap: 1.5rem; }
+    .testimonial-card blockquote {
+      font-size: 1rem;
+      font-style: italic;
+      color: var(--text-light-gray);
+      line-height: 1.7;
+      margin-bottom: 1.25rem;
+      position: relative;
+      padding-left: 1.5rem;
+      border-left: 3px solid var(--primary-start);
+    }
+    .testimonial-author { font-weight: 700; font-size: 0.95rem; }
+    .testimonial-role { font-size: 0.85rem; color: var(--text-gray); }
+    /* 8. FAQ */
+    .faq-list { max-width: 800px; margin: 0 auto; display: flex; flex-direction: column; gap: 0.75rem; }
+    .faq-item {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 0.75rem;
+      overflow: hidden;
+      transition: border-color 0.3s ease;
+    }
+    .faq-item:hover { border-color: rgba(99, 102, 241, 0.3); }
+    .faq-question {
+      width: 100%;
+      background: none;
+      border: none;
+      color: var(--text-white);
+      padding: 1.25rem 1.5rem;
+      font-size: 1rem;
+      font-weight: 700;
+      text-align: left;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+    }
+    .faq-question:focus {
+      outline: 2px solid var(--primary-start);
+      outline-offset: -2px;
+    }
+    .faq-question::after {
+      content: '+';
+      font-size: 1.5rem;
+      font-weight: 300;
+      color: var(--primary-start);
+      flex-shrink: 0;
+      transition: transform 0.3s ease;
+    }
+    .faq-item.active .faq-question::after { content: '\2212'; transform: rotate(180deg); }
+    .faq-answer { max-height: 0; overflow: hidden; transition: max-height 0.4s ease; }
+    .faq-answer-inner {
+      padding: 0 1.5rem 1.25rem;
+      color: var(--text-gray);
+      font-size: 0.95rem;
+      line-height: 1.7;
+    }
+    .faq-item.active .faq-answer { max-height: 500px; }
+    /* 9. Gallery */
+    .gallery-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+    .gallery-item {
+      position: relative;
+      border-radius: 0.75rem;
+      overflow: hidden;
+      border: 1px solid var(--border-card);
+      aspect-ratio: 4 / 3;
+      transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+    .gallery-item:hover {
+      border-color: rgba(99, 102, 241, 0.4);
+      box-shadow: 0 0 20px var(--glow-primary);
+    }
+    .gallery-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.4s ease;
+    }
+    .gallery-item:hover img { transform: scale(1.05); }
+    /* 10. Map */
+    .map-section iframe {
+      width: 100%;
+      height: 350px;
+      border: 1px solid var(--border-card);
+      border-radius: 1rem;
+    }
+    /* 11. Contact */
+    .contact-grid { display: grid; grid-template-columns: 1fr; gap: 2rem; }
+    .contact-info h3 { font-size: 1.25rem; font-weight: 800; margin-bottom: 1.5rem; }
+    .contact-detail {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      margin-bottom: 1.25rem;
+      color: var(--text-light-gray);
+    }
+    .contact-detail-icon {
+      flex-shrink: 0;
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 0.5rem;
+      font-size: 1.1rem;
+    }
+    .contact-detail a { color: var(--text-light-gray); text-decoration: none; transition: color 0.3s ease; }
+    .contact-detail a:hover { color: var(--primary-start); }
+    .contact-form { display: flex; flex-direction: column; gap: 1rem; }
+    .form-group label {
+      display: block;
+      font-size: 0.875rem;
+      font-weight: 600;
+      margin-bottom: 0.375rem;
+      color: var(--text-light-gray);
+    }
+    .form-group input,
+    .form-group textarea {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 0.5rem;
+      color: var(--text-white);
+      font-size: 0.95rem;
+      font-family: var(--font-body);
+      transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+    .form-group input:focus,
+    .form-group textarea:focus {
+      outline: none;
+      border-color: var(--primary-start);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+    }
+    .form-group textarea { min-height: 120px; resize: vertical; }
+    /* 12. Footer */
+    .footer {
+      background: rgba(0, 0, 0, 0.3);
+      border-top: 1px solid var(--border-card);
+      padding: 3rem 0 1.5rem;
+    }
+    .footer-grid { display: grid; grid-template-columns: 1fr; gap: 2rem; margin-bottom: 2rem; }
+    .footer-brand p { color: var(--text-gray); font-size: 0.9rem; margin-top: 0.75rem; line-height: 1.6; }
+    .footer-links h4 { font-size: 1rem; font-weight: 700; margin-bottom: 1rem; }
+    .footer-links ul { list-style: none; display: flex; flex-direction: column; gap: 0.5rem; }
+    .footer-links a { color: var(--text-gray); text-decoration: none; font-size: 0.9rem; transition: color 0.3s ease; }
+    .footer-links a:hover, .footer-links a:focus { color: var(--text-white); }
+    .footer-social { display: flex; gap: 0.75rem; margin-top: 1rem; }
+    .footer-social a {
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 0.5rem;
+      color: var(--text-gray);
+      text-decoration: none;
+      font-size: 1.1rem;
+      transition: border-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
+    }
+    .footer-social a:hover {
+      border-color: var(--primary-start);
+      color: var(--text-white);
+      box-shadow: 0 0 15px var(--glow-primary);
+    }
+    .footer-bottom {
+      text-align: center;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--border-card);
+      color: var(--text-gray);
+      font-size: 0.825rem;
+    }
+    /* 13. Cookie Consent */
+    .cookie-banner {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 9999;
+      background: rgba(15, 23, 42, 0.97);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-top: 1px solid var(--border-card);
+      padding: 1.25rem;
+      display: none;
+    }
+    .cookie-banner.show { display: block; }
+    .cookie-content {
+      max-width: 1280px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      align-items: flex-start;
+    }
+    .cookie-content p { font-size: 0.875rem; color: var(--text-light-gray); line-height: 1.6; }
+    .cookie-buttons { display: flex; gap: 0.75rem; flex-shrink: 0; }
+    .cookie-btn {
+      padding: 0.5rem 1.25rem;
+      border-radius: 0.375rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: opacity 0.3s ease;
+    }
+    .cookie-btn:hover { opacity: 0.85; }
+    .cookie-btn:focus {
+      outline: 2px solid var(--primary-start);
+      outline-offset: 2px;
+    }
+    .cookie-accept {
+      background: linear-gradient(135deg, var(--primary-start), var(--primary-end));
+      color: #fff;
+    }
+    .cookie-decline {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-white);
+      border: 1px solid var(--border-card);
+    }
+    /* 14. Scroll-to-Top */
+    .scroll-to-top {
+      position: fixed;
+      bottom: 5rem;
+      right: 1.25rem;
+      width: 44px;
+      height: 44px;
+      background: linear-gradient(135deg, var(--primary-start), var(--primary-end));
+      border: none;
+      border-radius: 0.5rem;
+      color: #fff;
+      font-size: 1.25rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s ease, visibility 0.3s ease, box-shadow 0.3s ease;
+      z-index: 900;
+      box-shadow: 0 4px 15px var(--glow-primary);
+    }
+    .scroll-to-top.visible { opacity: 1; visibility: visible; }
+    .scroll-to-top:hover {
+      box-shadow: 0 4px 25px var(--glow-primary), 0 0 40px var(--glow-secondary);
+    }
+    .scroll-to-top:focus {
+      outline: 2px solid var(--primary-end);
+      outline-offset: 3px;
+    }
+    /* 15. Floating CTA */
+    .floating-cta {
+      position: fixed;
+      bottom: 1.25rem;
+      right: 1.25rem;
+      width: 52px;
+      height: 52px;
+      background: linear-gradient(135deg, var(--primary-start), var(--primary-end));
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      text-decoration: none;
+      font-size: 1.35rem;
+      z-index: 900;
+      box-shadow: 0 4px 20px var(--glow-primary);
+      transition: box-shadow 0.3s ease, transform 0.3s ease;
+    }
+    .floating-cta:hover {
+      box-shadow: 0 4px 30px var(--glow-primary), 0 0 50px var(--glow-secondary);
+      transform: scale(1.1);
+    }
+    .floating-cta:focus {
+      outline: 2px solid var(--primary-end);
+      outline-offset: 3px;
+    }
+    /* Responsive: 640px */
+    @media (min-width: 640px) {
+      .section-title { font-size: 2rem; }
+      .hero h1 { font-size: 3rem; }
+      .hero p { font-size: 1.25rem; }
+      .stats-grid { grid-template-columns: repeat(4, 1fr); }
+      .gallery-grid { grid-template-columns: repeat(3, 1fr); }
+      .cookie-content {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .footer-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    /* Responsive: 768px */
+    @media (min-width: 768px) {
+      .container { padding: 0 2rem; }
+      .section-padding { padding: 5rem 0; }
+      .section-title { font-size: 2.25rem; }
+      .hero h1 { font-size: 3.5rem; }
+      .services-grid { grid-template-columns: repeat(2, 1fr); }
+      .about-grid { grid-template-columns: 1fr 1fr; }
+      .blog-grid { grid-template-columns: repeat(2, 1fr); }
+      .testimonials-grid { grid-template-columns: repeat(2, 1fr); }
+      .contact-grid { grid-template-columns: 1fr 1fr; }
+      .stat-number { font-size: 2.5rem; }
+      .map-section iframe { height: 450px; }
+    }
+    /* Responsive: 1024px */
+    @media (min-width: 1024px) {
+      .section-title { font-size: 2.5rem; }
+      .hero h1 { font-size: 4rem; }
+      .navbar-links { display: flex; }
+      .hamburger { display: none; }
+      .services-grid { grid-template-columns: repeat(3, 1fr); }
+      .blog-grid { grid-template-columns: repeat(3, 1fr); }
+      .testimonials-grid { grid-template-columns: repeat(3, 1fr); }
+      .gallery-grid { grid-template-columns: repeat(4, 1fr); }
+      .footer-grid { grid-template-columns: 2fr 1fr 1fr 1fr; }
+    }
+    /* Responsive: 1280px */
+    @media (min-width: 1280px) {
+      .hero h1 { font-size: 4.5rem; }
+      .container { padding: 0 2rem; }
+      .section-padding { padding: 6rem 0; }
+      .stat-number { font-size: 3rem; }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Skip to Content -->
+  <a href="#main-content" class="skip-to-content">Skip to content</a>
+
+  <!-- 1. Navigation -->
+  <nav class="navbar" role="navigation" aria-label="Main navigation">
+    <div class="container">
+      <a href="#" class="navbar-logo" aria-label="TEMPLATE_VAR_companyName home">
+        <img src="TEMPLATE_VAR_logoUrl" alt="TEMPLATE_VAR_companyName logo">
+      </a>
+      <ul class="navbar-links" role="menubar">
+        <li role="none"><a href="#services" role="menuitem">Services</a></li>
+        <li role="none"><a href="#about" role="menuitem">About</a></li>
+        <li role="none"><a href="#blog" role="menuitem">Blog</a></li>
+        <li role="none"><a href="#testimonials" role="menuitem">Testimonials</a></li>
+        <li role="none"><a href="#faq" role="menuitem">FAQ</a></li>
+        <li role="none"><a href="#gallery" role="menuitem">Gallery</a></li>
+        <li role="none"><a href="#contact" role="menuitem">Contact</a></li>
+      </ul>
+      <button class="hamburger" aria-label="Toggle menu" aria-expanded="false" aria-controls="mobile-menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div class="mobile-menu" id="mobile-menu" role="menu" aria-label="Mobile navigation">
+      <a href="#services" role="menuitem">Services</a>
+      <a href="#about" role="menuitem">About</a>
+      <a href="#blog" role="menuitem">Blog</a>
+      <a href="#testimonials" role="menuitem">Testimonials</a>
+      <a href="#faq" role="menuitem">FAQ</a>
+      <a href="#gallery" role="menuitem">Gallery</a>
+      <a href="#contact" role="menuitem">Contact</a>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <main id="main-content">
+
+    <!-- 2. Hero Section -->
+    <section class="hero" aria-label="Hero">
+      <div class="hero-content">
+        <h1 class="gradient-text">TEMPLATE_VAR_headline</h1>
+        <p>TEMPLATE_VAR_subheadline</p>
+        <a href="#contact" class="btn-primary">TEMPLATE_VAR_ctaButtonText</a>
+      </div>
+    </section>
+
+    <!-- 3. Stats / Trust Bar -->
+    <section class="stats-bar section-padding" aria-label="Statistics">
+      <div class="container">
+        <div class="stats-grid fade-in">
+          <!-- REPEAT:stats -->
+          <div class="stat-item">
+            <span class="stat-number">TEMPLATE_VAR_statNumber</span>
+            <span class="stat-label">TEMPLATE_VAR_statLabel</span>
+          </div>
+          <!-- /REPEAT:stats -->
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. Services / Products -->
+    <section id="services" class="section-padding" aria-labelledby="services-heading">
+      <div class="container">
+        <h2 id="services-heading" class="section-title">
+          <span class="gradient-text">TEMPLATE_VAR_servicesHeading</span>
+        </h2>
+        <div class="services-grid">
+          <!-- REPEAT:services -->
+          <article class="glass-card service-card fade-in">
+            <span class="service-icon" aria-hidden="true">TEMPLATE_VAR_serviceIcon</span>
+            <h3>TEMPLATE_VAR_serviceTitle</h3>
+            <p>TEMPLATE_VAR_serviceDescription</p>
+          </article>
+          <!-- /REPEAT:services -->
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. About Section -->
+    <section id="about" class="section-padding" aria-labelledby="about-heading">
+      <div class="container">
+        <div class="about-grid fade-in">
+          <div class="about-text">
+            <h2 id="about-heading" class="gradient-text">TEMPLATE_VAR_aboutHeading</h2>
+            <p>TEMPLATE_VAR_aboutText</p>
+          </div>
+          <div class="about-image">
+            <img src="TEMPLATE_VAR_aboutImageUrl" alt="TEMPLATE_VAR_aboutImageAlt" loading="lazy">
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. Blog / Aktuality -->
+    <section id="blog" class="section-padding" aria-labelledby="blog-heading">
+      <div class="container">
+        <h2 id="blog-heading" class="section-title">
+          <span class="gradient-text">TEMPLATE_VAR_blogHeading</span>
+        </h2>
+        <div class="blog-grid">
+          <!-- REPEAT:blogPosts -->
+          <article class="glass-card blog-card fade-in">
+            <span class="blog-date">TEMPLATE_VAR_blogDate</span>
+            <h3><a href="TEMPLATE_VAR_blogUrl">TEMPLATE_VAR_blogTitle</a></h3>
+            <p>TEMPLATE_VAR_blogExcerpt</p>
+          </article>
+          <!-- /REPEAT:blogPosts -->
+        </div>
+      </div>
+    </section>
+
+    <!-- 7. Testimonials -->
+    <section id="testimonials" class="section-padding" aria-labelledby="testimonials-heading">
+      <div class="container">
+        <h2 id="testimonials-heading" class="section-title">
+          <span class="gradient-text">TEMPLATE_VAR_testimonialsHeading</span>
+        </h2>
+        <div class="testimonials-grid">
+          <!-- REPEAT:testimonials -->
+          <article class="glass-card testimonial-card fade-in">
+            <blockquote>TEMPLATE_VAR_testimonialQuote</blockquote>
+            <div class="testimonial-author">TEMPLATE_VAR_testimonialAuthor</div>
+            <div class="testimonial-role">TEMPLATE_VAR_testimonialRole</div>
+          </article>
+          <!-- /REPEAT:testimonials -->
+        </div>
+      </div>
+    </section>
+
+    <!-- 8. FAQ Accordion -->
+    <section id="faq" class="section-padding" aria-labelledby="faq-heading">
+      <div class="container">
+        <h2 id="faq-heading" class="section-title">
+          <span class="gradient-text">TEMPLATE_VAR_faqHeading</span>
+        </h2>
+        <div class="faq-list" role="list">
+          <!-- REPEAT:faqItems -->
+          <div class="faq-item" role="listitem">
+            <button class="faq-question" aria-expanded="false">
+              <span>TEMPLATE_VAR_faqQuestion</span>
+            </button>
+            <div class="faq-answer" role="region">
+              <div class="faq-answer-inner">TEMPLATE_VAR_faqAnswer</div>
+            </div>
+          </div>
+          <!-- /REPEAT:faqItems -->
+        </div>
+      </div>
+    </section>
+
+    <!-- 9. Gallery / References -->
+    <section id="gallery" class="section-padding" aria-labelledby="gallery-heading">
+      <div class="container">
+        <h2 id="gallery-heading" class="section-title">
+          <span class="gradient-text">TEMPLATE_VAR_galleryHeading</span>
+        </h2>
+        <div class="gallery-grid">
+          <!-- REPEAT:gallery -->
+          <div class="gallery-item fade-in">
+            <img src="TEMPLATE_VAR_galleryUrl" alt="TEMPLATE_VAR_galleryAlt" loading="lazy">
+          </div>
+          <!-- /REPEAT:gallery -->
+        </div>
+      </div>
+    </section>
+
+    <!-- 10. Google Maps -->
+    <!-- IF:address -->
+    <section class="section-padding map-section" aria-label="Location map">
+      <div class="container fade-in">
+        <h2 class="section-title">
+          <span class="gradient-text">Find Us</span>
+        </h2>
+        <iframe
+          src="https://www.google.com/maps/embed/v1/place?key=TEMPLATE_VAR_googleMapsKey&q=TEMPLATE_VAR_address"
+          allowfullscreen
+          loading="lazy"
+          referrerpolicy="no-referrer-when-downgrade"
+          title="Map showing location of TEMPLATE_VAR_companyName"
+          aria-label="Google Maps showing our location">
+        </iframe>
+      </div>
+    </section>
+    <!-- /IF:address -->
+
+    <!-- 11. Contact Section -->
+    <section id="contact" class="section-padding" aria-labelledby="contact-heading">
+      <div class="container">
+        <h2 id="contact-heading" class="section-title">
+          <span class="gradient-text">TEMPLATE_VAR_contactHeading</span>
+        </h2>
+        <div class="contact-grid fade-in">
+          <div class="contact-info">
+            <h3>Get in Touch</h3>
+
+            <div class="contact-detail">
+              <span class="contact-detail-icon" aria-hidden="true">&#9742;</span>
+              <div>
+                <div style="font-weight:600;margin-bottom:0.25rem;">Phone</div>
+                <a href="tel:TEMPLATE_VAR_phone">TEMPLATE_VAR_phone</a>
+              </div>
+            </div>
+
+            <div class="contact-detail">
+              <span class="contact-detail-icon" aria-hidden="true">&#9993;</span>
+              <div>
+                <div style="font-weight:600;margin-bottom:0.25rem;">Email</div>
+                <a href="mailto:TEMPLATE_VAR_email">TEMPLATE_VAR_email</a>
+              </div>
+            </div>
+
+            <div class="contact-detail">
+              <span class="contact-detail-icon" aria-hidden="true">&#9872;</span>
+              <div>
+                <div style="font-weight:600;margin-bottom:0.25rem;">Address</div>
+                <span>TEMPLATE_VAR_address</span>
+              </div>
+            </div>
+          </div>
+
+          <form class="contact-form glass-card" action="TEMPLATE_VAR_formAction" method="POST" aria-label="Contact form">
+            <div class="form-group">
+              <label for="contact-name">Name</label>
+              <input type="text" id="contact-name" name="name" required placeholder="Your name" autocomplete="name">
+            </div>
+            <div class="form-group">
+              <label for="contact-email">Email</label>
+              <input type="email" id="contact-email" name="email" required placeholder="your@email.com" autocomplete="email">
+            </div>
+            <div class="form-group">
+              <label for="contact-phone">Phone</label>
+              <input type="tel" id="contact-phone" name="phone" placeholder="Your phone number" autocomplete="tel">
+            </div>
+            <div class="form-group">
+              <label for="contact-message">Message</label>
+              <textarea id="contact-message" name="message" required placeholder="How can we help you?"></textarea>
+            </div>
+            <button type="submit" class="btn-primary">Send Message</button>
+          </form>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 12. Footer -->
+  <footer class="footer" role="contentinfo">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <a href="#" aria-label="TEMPLATE_VAR_companyName home">
+            <img src="TEMPLATE_VAR_logoUrl" alt="TEMPLATE_VAR_companyName logo" style="height:36px;">
+          </a>
+          <p>TEMPLATE_VAR_footerDescription</p>
+          <div class="footer-social">
+            <!-- REPEAT:socialLinks -->
+            <a href="TEMPLATE_VAR_socialUrl" target="_blank" rel="noopener noreferrer" aria-label="TEMPLATE_VAR_socialPlatform">
+              TEMPLATE_VAR_socialIcon
+            </a>
+            <!-- /REPEAT:socialLinks -->
+          </div>
+        </div>
+
+        <div class="footer-links">
+          <h4>Company</h4>
+          <ul>
+            <li><a href="#about">About</a></li>
+            <li><a href="#services">Services</a></li>
+            <li><a href="#blog">Blog</a></li>
+            <li><a href="#contact">Contact</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-links">
+          <h4>Resources</h4>
+          <ul>
+            <li><a href="#faq">FAQ</a></li>
+            <li><a href="#gallery">Gallery</a></li>
+            <li><a href="#testimonials">Testimonials</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-links">
+          <h4>Legal</h4>
+          <ul>
+            <li><a href="TEMPLATE_VAR_privacyPolicyUrl">Privacy Policy</a></li>
+            <li><a href="TEMPLATE_VAR_termsUrl">Terms of Service</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <p>&copy; TEMPLATE_VAR_currentYear TEMPLATE_VAR_companyName. All rights reserved.</p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- 13. Cookie Consent Banner -->
+  <div class="cookie-banner" id="cookie-banner" role="dialog" aria-label="Cookie consent" aria-describedby="cookie-text">
+    <div class="cookie-content">
+      <p id="cookie-text">
+        We use cookies to enhance your browsing experience, analyze site traffic, and personalize content.
+        By clicking "Accept", you consent to our use of cookies.
+        Read our <a href="TEMPLATE_VAR_privacyPolicyUrl" style="color:var(--primary-start);text-decoration:underline;">Privacy Policy</a> for more information.
+      </p>
+      <div class="cookie-buttons">
+        <button class="cookie-btn cookie-accept" id="cookie-accept" aria-label="Accept cookies">Accept</button>
+        <button class="cookie-btn cookie-decline" id="cookie-decline" aria-label="Decline cookies">Decline</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 14. Scroll-to-Top Button -->
+  <button class="scroll-to-top" id="scroll-to-top" aria-label="Scroll to top of page" title="Back to top">
+    &#8593;
+  </button>
+
+  <!-- 15. Floating CTA Button -->
+  <a href="tel:TEMPLATE_VAR_phone" class="floating-cta" aria-label="Call TEMPLATE_VAR_companyName at TEMPLATE_VAR_phone" title="Call us">
+    &#9742;
+  </a>
+
+  <!-- JavaScript -->
+  <script>
+    (function () {
+      'use strict';
+
+      /* ========================================
+       * Hamburger Mobile Menu
+       * ======================================== */
+      var hamburger = document.querySelector('.hamburger');
+      var mobileMenu = document.getElementById('mobile-menu');
+
+      if (hamburger && mobileMenu) {
+        hamburger.addEventListener('click', function () {
+          var expanded = hamburger.getAttribute('aria-expanded') === 'true';
+          hamburger.setAttribute('aria-expanded', String(!expanded));
+          mobileMenu.classList.toggle('open');
+        });
+
+        var mobileLinks = mobileMenu.querySelectorAll('a');
+        mobileLinks.forEach(function (link) {
+          link.addEventListener('click', function () {
+            hamburger.setAttribute('aria-expanded', 'false');
+            mobileMenu.classList.remove('open');
+          });
+        });
+      }
+
+      /* ========================================
+       * FAQ Accordion
+       * ======================================== */
+      var faqItems = document.querySelectorAll('.faq-item');
+
+      faqItems.forEach(function (item) {
+        var questionBtn = item.querySelector('.faq-question');
+
+        if (questionBtn) {
+          questionBtn.addEventListener('click', function () {
+            var isActive = item.classList.contains('active');
+
+            /* Close all other items */
+            faqItems.forEach(function (otherItem) {
+              otherItem.classList.remove('active');
+              var otherBtn = otherItem.querySelector('.faq-question');
+              if (otherBtn) {
+                otherBtn.setAttribute('aria-expanded', 'false');
+              }
+            });
+
+            /* Toggle current item */
+            if (!isActive) {
+              item.classList.add('active');
+              questionBtn.setAttribute('aria-expanded', 'true');
+            }
+          });
+        }
+      });
+
+      /* ========================================
+       * Scroll-to-Top Button
+       * ======================================== */
+      var scrollBtn = document.getElementById('scroll-to-top');
+
+      if (scrollBtn) {
+        window.addEventListener('scroll', function () {
+          if (window.scrollY > 300) {
+            scrollBtn.classList.add('visible');
+          } else {
+            scrollBtn.classList.remove('visible');
+          }
+        }, { passive: true });
+
+        scrollBtn.addEventListener('click', function () {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+      }
+
+      /* ========================================
+       * Cookie Consent Banner (GDPR)
+       * ======================================== */
+      var cookieBanner = document.getElementById('cookie-banner');
+      var cookieAccept = document.getElementById('cookie-accept');
+      var cookieDecline = document.getElementById('cookie-decline');
+
+      function hideCookieBanner() {
+        if (cookieBanner) {
+          cookieBanner.classList.remove('show');
+          cookieBanner.setAttribute('aria-hidden', 'true');
+        }
+      }
+
+      function showCookieBanner() {
+        if (cookieBanner) {
+          cookieBanner.classList.add('show');
+          cookieBanner.setAttribute('aria-hidden', 'false');
+        }
+      }
+
+      /* Check localStorage for existing consent */
+      var cookieConsent = localStorage.getItem('cookie-consent');
+      if (!cookieConsent) {
+        showCookieBanner();
+      }
+
+      if (cookieAccept) {
+        cookieAccept.addEventListener('click', function () {
+          localStorage.setItem('cookie-consent', 'accepted');
+          hideCookieBanner();
+        });
+      }
+
+      if (cookieDecline) {
+        cookieDecline.addEventListener('click', function () {
+          localStorage.setItem('cookie-consent', 'declined');
+          hideCookieBanner();
+        });
+      }
+
+      /* ========================================
+       * Fade-in Animations (IntersectionObserver)
+       * ======================================== */
+      var prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      if (!prefersReducedMotion && 'IntersectionObserver' in window) {
+        var fadeElements = document.querySelectorAll('.fade-in');
+
+        var fadeObserver = new IntersectionObserver(function (entries) {
+          entries.forEach(function (entry) {
+            if (entry.isIntersecting) {
+              entry.target.classList.add('visible');
+              fadeObserver.unobserve(entry.target);
+            }
+          });
+        }, {
+          threshold: 0.1,
+          rootMargin: '0px 0px -50px 0px'
+        });
+
+        fadeElements.forEach(function (el) {
+          fadeObserver.observe(el);
+        });
+      } else {
+        /* If reduced motion preferred or no IntersectionObserver, show all elements */
+        var allFadeElements = document.querySelectorAll('.fade-in');
+        allFadeElements.forEach(function (el) {
+          el.classList.add('visible');
+        });
+      }
+
+      /* ========================================
+       * Smooth scroll for anchor links
+       * ======================================== */
+      var anchorLinks = document.querySelectorAll('a[href^="#"]');
+
+      anchorLinks.forEach(function (link) {
+        link.addEventListener('click', function (e) {
+          var targetId = this.getAttribute('href');
+          if (targetId === '#') return;
+
+          var targetEl = document.querySelector(targetId);
+          if (targetEl) {
+            e.preventDefault();
+            targetEl.scrollIntoView({ behavior: 'smooth' });
+            /* Set focus for accessibility */
+            targetEl.setAttribute('tabindex', '-1');
+            targetEl.focus({ preventScroll: true });
+          }
+        });
+      });
+
+      /* ========================================
+       * Navbar scroll shadow effect
+       * ======================================== */
+      var navbar = document.querySelector('.navbar');
+
+      if (navbar) {
+        window.addEventListener('scroll', function () {
+          if (window.scrollY > 10) {
+            navbar.style.boxShadow = '0 4px 30px rgba(0, 0, 0, 0.3)';
+          } else {
+            navbar.style.boxShadow = 'none';
+          }
+        }, { passive: true });
+      }
+
+    })();
+  </script>
+
+</body>
+</html>

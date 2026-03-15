@@ -31,7 +31,7 @@ export interface CrawlOptions {
   onProgress?: (pages: CrawledPage[]) => void;
 }
 
-const CRAWL_PAGE_LIMIT = 5;
+const CRAWL_PAGE_LIMIT = 15;
 
 /**
  * Crawl a website via Cloudflare Browser Rendering /crawl endpoint.
@@ -116,7 +116,7 @@ export async function crawlWebsite(url: string, options?: CrawlOptions): Promise
     }
 
     // Step 2: Poll for results (max ~80s, every 4s)
-    const maxAttempts = 20;
+    const maxAttempts = 25;
     const pollInterval = 4000;
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       await new Promise((r) => setTimeout(r, pollInterval));
