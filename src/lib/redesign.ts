@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import type { DesignVariant, AnalysisRow } from "./supabase";
+import type { DesignVariant, AnalysisRow, ExtractedAssets } from "./supabase";
 
 /**
  * Generate 3 redesign variants using Claude.
@@ -7,7 +7,8 @@ import type { DesignVariant, AnalysisRow } from "./supabase";
  */
 export async function generateVariants(
   analysis: AnalysisRow,
-  crawledContent: string
+  crawledContent: string,
+  assets?: ExtractedAssets | null
 ): Promise<DesignVariant[]> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error("Missing ANTHROPIC_API_KEY");
@@ -16,6 +17,19 @@ export async function generateVariants(
 
   // Truncate content
   const content = crawledContent.slice(0, 10000);
+
+  // Build assets context for better variant generation
+  const assetsContext = assets
+    ? `
+## Extracted Assets from Current Site
+- Company Name: ${assets.companyName || "Unknown"}
+- Logo URL: ${assets.logo || "Not found"}
+- Favicon: ${assets.favicon || "Not found"}
+- Current colors used on site: ${assets.colors.slice(0, 10).join(", ") || "None extracted"}
+- Images found: ${assets.images.length} (${assets.images.slice(0, 5).map((img) => img.alt ? `"${img.alt}"` : img.url.split("/").pop()).join(", ")}${assets.images.length > 5 ? "..." : ""})
+
+IMPORTANT: For the "Brand-Faithful" variant, use the colors extracted from the current site as the base palette.`
+    : "";
 
   const response = await anthropic.messages.create({
     model: "claude-sonnet-4-20250514",
@@ -32,6 +46,7 @@ Current site analysis:
 - UX: ${analysis.score_ux ?? "N/A"}/100
 - Content: ${analysis.score_content ?? "N/A"}/100
 - Overall: ${analysis.score_overall ?? "N/A"}/100
+${assetsContext}
 
 Current site content (first pages):
 ${content}

@@ -52,6 +52,13 @@ export async function GET(
         aiVisibility: analysis.score_ai_visibility,
         overall: analysis.score_overall,
       };
+      // Live findings — show top findings during analysis/generating
+      response.liveFindings = (analysis.findings || []).slice(0, 10);
+      response.liveFindingsTotal = (analysis.findings || []).length;
+    }
+
+    if (analysis.status === "generating") {
+      response.variantProgress = analysis.variant_progress || null;
     }
 
     if (analysis.status === "complete") {

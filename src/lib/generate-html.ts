@@ -1,27 +1,29 @@
 import Anthropic from "@anthropic-ai/sdk";
-import type { DesignVariant, AnalysisRow } from "./supabase";
+import type { DesignVariant, AnalysisRow, ExtractedAssets } from "./supabase";
 
 /**
  * Generate standalone HTML pages for each design variant.
  * Each HTML page is self-contained with inline CSS, Google Fonts, responsive design, and animations.
+ * Uses REAL content from the crawled website — no placeholders.
  */
 export async function generateHtmlVariants(
   analysis: Pick<AnalysisRow, "url" | "score_performance" | "score_seo" | "score_security" | "score_ux" | "score_content" | "score_overall">,
   variants: DesignVariant[],
-  crawledContent: string
+  crawledContent: string,
+  assets?: ExtractedAssets | null
 ): Promise<string[]> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error("Missing ANTHROPIC_API_KEY");
 
   const anthropic = new Anthropic({ apiKey });
 
-  // Truncate content to fit context
-  const content = crawledContent.slice(0, 8000);
+  // Use more content for better results
+  const content = crawledContent.slice(0, 12000);
 
-  // Generate HTML for each variant in parallel
+  // Generate HTML for each variant
   const results = await Promise.allSettled(
     variants.map((variant) =>
-      generateSingleHtml(anthropic, analysis, variant, content)
+      generateSingleHtml(anthropic, analysis, variant, content, assets)
     )
   );
 
@@ -30,7 +32,7 @@ export async function generateHtmlVariants(
       return result.value;
     }
     console.error(`HTML generation failed for variant ${i}:`, result.reason);
-    return buildFallbackHtml(variants[i], analysis.url);
+    return buildFallbackHtml(variants[i], analysis.url, content, assets);
   });
 }
 
@@ -38,17 +40,40 @@ async function generateSingleHtml(
   anthropic: Anthropic,
   analysis: Pick<AnalysisRow, "url" | "score_performance" | "score_seo" | "score_security" | "score_ux" | "score_content" | "score_overall">,
   variant: DesignVariant,
-  crawledContent: string
+  crawledContent: string,
+  assets?: ExtractedAssets | null
 ): Promise<string> {
+  // Build assets section for the prompt
+  const assetsSection = assets
+    ? `
+## REAL Assets from Client's Website (USE THESE — NO PLACEHOLDERS!)
+${assets.logo ? `- Logo URL: ${assets.logo} — Use this as the logo in the navbar` : ""}
+${assets.favicon ? `- Favicon: ${assets.favicon}` : ""}
+${assets.companyName ? `- Company Name: "${assets.companyName}" — Use this as the brand name` : ""}
+
+### REAL Images from the website (use absolute URLs as-is):
+${assets.images.slice(0, 15).map((img) => `- ${img.url}${img.alt ? ` (alt: "${img.alt}")` : ""}`).join("\n")}
+
+### Current site colors: ${assets.colors.slice(0, 10).join(", ")}
+`
+    : "";
+
   const response = await anthropic.messages.create({
     model: "claude-sonnet-4-20250514",
-    max_tokens: 12000,
+    max_tokens: 16000,
     messages: [
       {
         role: "user",
         content: `You are a Design Director at Apple and a Principal Frontend Engineer.
 
 Generate a COMPLETE standalone HTML page — a redesigned landing page for ${analysis.url}.
+
+## CRITICAL RULES
+1. Use ONLY the REAL text content provided below — NEVER invent placeholder text like "Lorem ipsum" or generic marketing copy
+2. Use the REAL image URLs from the client's website (absolute URLs provided below) — NEVER use placeholder.com or picsum or unsplash URLs
+3. Use the REAL company name and logo — NEVER make up brand names
+4. The output must look like a REAL, production-ready website with the CLIENT'S actual content
+${assetsSection}
 
 ## Design Variant: "${variant.name}"
 ${variant.description}
@@ -62,16 +87,14 @@ ${variant.description}
 ## Current Site Scores (what we're fixing)
 - Performance: ${analysis.score_performance ?? "N/A"}/100
 - SEO: ${analysis.score_seo ?? "N/A"}/100
-- Security: ${analysis.score_security ?? "N/A"}/100
 - UX: ${analysis.score_ux ?? "N/A"}/100
 - Content: ${analysis.score_content ?? "N/A"}/100
 - Overall: ${analysis.score_overall ?? "N/A"}/100
 
-## Current Site Content (use this as source for copy)
+## REAL Content from Client's Website (extract and use ALL of this):
 ${crawledContent}
 
-## Requirements
-Generate a SINGLE standalone HTML file with ALL of the following:
+## Requirements — Generate a SINGLE standalone HTML file:
 
 1. **DOCTYPE + HTML structure** with proper meta tags (viewport, charset, description)
 2. **Google Fonts** via <link> tags for "${variant.typography.heading}" and "${variant.typography.body}"
@@ -82,20 +105,20 @@ Generate a SINGLE standalone HTML file with ALL of the following:
    - Smooth hover transitions on buttons and cards
    - Gradient animation on hero background
    - Staggered reveal on feature cards
-6. **Sections** (in order):
-   - Navigation bar (sticky, with glass/blur effect)
-   - Hero with headline, subtitle, CTA button
-   - Features/Benefits (3-6 cards in grid)
-   - How It Works (3 steps)
-   - Pricing or value proposition
-   - FAQ (accordion with JS toggle)
+6. **Sections** (in order, using REAL content from the crawled site):
+   - Navigation bar (sticky, with glass/blur effect) — use real logo image and company name
+   - Hero with REAL headline and subtitle from the site, CTA button
+   - Features/Benefits (3-6 cards) — use REAL feature text from the site
+   - About/How It Works — use REAL descriptions from the site
+   - Pricing or value proposition (if available in content)
+   - FAQ (accordion with JS toggle) — use REAL questions if available
    - Final CTA
-   - Footer
+   - Footer with REAL company info
 7. **Dark/Light**: Match the variant's bg color as base
 8. **Smooth scroll** for anchor links
 9. All JS inline in <script> tags at the bottom
-10. Use the actual content/copy from the crawled site, adapted to fit the new design
-11. Professional quality — this should look like a real production website
+10. Include real images from the site using the absolute URLs provided
+11. Professional quality — this must look like a real production website
 
 ## Output
 Return ONLY the complete HTML file. No markdown, no explanation, no code fences.
@@ -121,22 +144,48 @@ Start with <!DOCTYPE html> and end with </html>.`,
   if (fenceMatch) return fenceMatch[1].trim();
 
   // Fallback if generation didn't produce valid HTML
-  return buildFallbackHtml(variant, analysis.url);
+  return buildFallbackHtml(variant, analysis.url, "", assets);
 }
 
 /**
- * Build a minimal fallback HTML page from variant metadata.
+ * Build a fallback HTML page using real content when possible.
  */
-function buildFallbackHtml(variant: DesignVariant, url: string): string {
+function buildFallbackHtml(
+  variant: DesignVariant,
+  url: string,
+  crawledContent?: string,
+  assets?: ExtractedAssets | null
+): string {
   const headingFont = variant.typography.heading.replace(/ /g, "+");
   const bodyFont = variant.typography.body.replace(/ /g, "+");
+  const companyName = assets?.companyName || new URL(url).hostname;
+  const logoHtml = assets?.logo
+    ? `<img src="${assets.logo}" alt="${companyName}" style="height: 36px; width: auto;" />`
+    : `<span style="font-family: '${variant.typography.heading}', sans-serif; font-weight: 800; font-size: 1.5rem; color: ${variant.palette.primary};">${companyName}</span>`;
+
+  // Extract some real content from markdown
+  const lines = (crawledContent || "").split("\n").filter((l) => l.trim().length > 20);
+  const headings = lines.filter((l) => l.startsWith("#")).slice(0, 5);
+  const paragraphs = lines.filter((l) => !l.startsWith("#") && !l.startsWith("-") && l.length > 40).slice(0, 5);
+  const heroTitle = headings[0]?.replace(/^#+\s*/, "") || `${companyName}`;
+  const heroSubtitle = paragraphs[0] || variant.description;
+
+  // Use real images if available
+  const imageGrid = (assets?.images || [])
+    .slice(0, 6)
+    .map(
+      (img) =>
+        `<img src="${img.url}" alt="${img.alt || ""}" style="width: 100%; height: 200px; object-fit: cover; border-radius: 12px;" loading="lazy" />`
+    )
+    .join("");
 
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${variant.name} — Redesign Preview</title>
+  <title>${companyName} — ${variant.name} Redesign</title>
+  ${assets?.favicon ? `<link rel="icon" href="${assets.favicon}" />` : ""}
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=${headingFont}:wght@400;600;700;800&family=${bodyFont}:wght@300;400;500&display=swap" rel="stylesheet">
@@ -150,6 +199,18 @@ function buildFallbackHtml(variant: DesignVariant, url: string): string {
     }
     h1, h2, h3, h4 {
       font-family: "${variant.typography.heading}", system-ui, sans-serif;
+    }
+    .nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 2rem;
+      backdrop-filter: blur(20px);
+      background: ${variant.palette.bg}cc;
+      border-bottom: 1px solid ${variant.palette.text}15;
     }
     .hero {
       min-height: 80vh;
@@ -243,10 +304,15 @@ function buildFallbackHtml(variant: DesignVariant, url: string): string {
   </style>
 </head>
 <body>
+  <nav class="nav">
+    ${logoHtml}
+    <a href="${url}" class="btn" style="padding: 0.5rem 1.5rem; font-size: 0.9rem;">Visit Site</a>
+  </nav>
+
   <div class="hero">
-    <h1>${variant.name} Redesign</h1>
-    <p>${variant.description}</p>
-    <a href="${url}" class="btn">Visit Original Site &rarr;</a>
+    <h1>${heroTitle}</h1>
+    <p>${heroSubtitle}</p>
+    <a href="${url}" class="btn">Get Started &rarr;</a>
   </div>
 
   <div class="section fade-in">
@@ -257,27 +323,36 @@ function buildFallbackHtml(variant: DesignVariant, url: string): string {
           (feature) => `
       <div class="card">
         <h3>${feature}</h3>
-        <p>This redesign variant addresses this aspect with modern best practices and proven design patterns.</p>
+        <p>This redesign addresses this aspect with modern best practices and proven design patterns.</p>
       </div>`
         )
         .join("")}
     </div>
   </div>
 
+  ${
+    imageGrid
+      ? `
+  <div class="section fade-in">
+    <h2>Gallery</h2>
+    <div class="grid">${imageGrid}</div>
+  </div>`
+      : ""
+  }
+
   <div class="section fade-in" style="text-align: center;">
     <h2>Ready to Transform Your Website?</h2>
     <p style="max-width: 600px; margin: 0 auto 2rem; opacity: 0.8;">
-      This is a preview of the "${variant.name}" redesign direction. The full implementation includes all sections, responsive design, and optimized performance.
+      This is a preview of the "${variant.name}" redesign direction for ${companyName}.
     </p>
     <a href="${url}" class="btn">Get Started &rarr;</a>
   </div>
 
   <div class="footer">
-    <p>Redesign preview generated by Webflip</p>
+    <p>&copy; ${new Date().getFullYear()} ${companyName}. Redesign preview by Webflip.</p>
   </div>
 
   <script>
-    // Intersection Observer for fade-in animations
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
