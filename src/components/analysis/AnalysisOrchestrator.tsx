@@ -20,10 +20,13 @@ import {
   Eye,
 } from "lucide-react";
 
+import { useLocale, useTranslations } from "next-intl";
+
 import ProgressBar from "./ProgressBar";
 import StageCrawling from "./StageCrawling";
 import StageAnalyzing from "./StageAnalyzing";
 import StageGenerating from "./StageGenerating";
+import { translateFindings } from "@/lib/finding-i18n";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -117,6 +120,7 @@ function getScoreBg(score: number) {
 
 function StageConnecting({ url }: { url: string }) {
   const domain = getDomainFromUrl(url);
+  const t = useTranslations("analysis");
   return (
     <motion.div
       key="connecting"
@@ -142,7 +146,7 @@ function StageConnecting({ url }: { url: string }) {
       </div>
       <div className="text-center">
         <h2 className="text-2xl font-bold mb-2" style={{ color: "var(--text-primary)" }}>
-          Připojujeme se k {domain}
+          {t("connectingTo", { domain })}
         </h2>
         <p className="font-mono text-sm" style={{ color: "var(--text-muted)" }}>{url}</p>
         <div className="flex items-center justify-center gap-1.5 mt-4">
@@ -198,12 +202,12 @@ function ScoreGauge({ score }: { score: number }) {
 }
 
 const CATEGORY_CARDS = [
-  { key: "performance", label: "Výkon", icon: BarChart3, color: "text-red-400", gradient: "from-red-500 to-orange-400" },
-  { key: "seo", label: "SEO", icon: Search, color: "text-yellow-400", gradient: "from-yellow-500 to-amber-400" },
-  { key: "security", label: "Bezpečnost", icon: Shield, color: "text-green-400", gradient: "from-green-500 to-emerald-400" },
-  { key: "ux", label: "UX & Design", icon: Monitor, color: "text-orange-400", gradient: "from-orange-500 to-amber-400" },
-  { key: "content", label: "Obsah", icon: FileText, color: "text-blue-400", gradient: "from-blue-500 to-cyan-400" },
-  { key: "aiVisibility", label: "AI Viditelnost", icon: Bot, color: "text-purple-400", gradient: "from-purple-500 to-violet-400" },
+  { key: "performance", labelKey: "performance" as const, icon: BarChart3, color: "text-red-400", gradient: "from-red-500 to-orange-400" },
+  { key: "seo", labelKey: "seo" as const, icon: Search, color: "text-yellow-400", gradient: "from-yellow-500 to-amber-400" },
+  { key: "security", labelKey: "security" as const, icon: Shield, color: "text-green-400", gradient: "from-green-500 to-emerald-400" },
+  { key: "ux", labelKey: "ux" as const, icon: Monitor, color: "text-orange-400", gradient: "from-orange-500 to-amber-400" },
+  { key: "content", labelKey: "content" as const, icon: FileText, color: "text-blue-400", gradient: "from-blue-500 to-cyan-400" },
+  { key: "aiVisibility", labelKey: "aiVisibility" as const, icon: Bot, color: "text-purple-400", gradient: "from-purple-500 to-violet-400" },
 ] as const;
 
 function StageResults({
@@ -211,15 +215,21 @@ function StageResults({
   findings,
   variants,
   token,
+  url,
 }: {
   scores: ApiResponse["scores"];
   findings: Finding[];
   variants: Variant[];
   token: string;
+  url: string;
 }) {
+  const t = useTranslations("analysis");
+  const locale = useLocale();
+  const translatedFindings = translateFindings(findings, locale);
   const overallScore = scores?.overall ?? 0;
-  const criticalCount = findings.filter((f) => f.severity === "critical").length;
-  const displayFindings = findings.slice(0, 12);
+  const criticalCount = translatedFindings.filter((f) => f.severity === "critical").length;
+  const displayFindings = translatedFindings.slice(0, 12);
+  const domain = getDomainFromUrl(url);
 
   return (
     <motion.div
@@ -232,8 +242,8 @@ function StageResults({
       {/* Header + Overall Score */}
       <div className="text-center">
         <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.6 }}>
-          <h2 className="text-2xl font-bold mb-1" style={{ color: "var(--text-primary)" }}>Analýza dokončena</h2>
-          <p className="text-sm mb-6" style={{ color: "var(--text-muted)" }}>Zde jsou výsledky vašeho webu</p>
+          <h2 className="text-2xl font-bold mb-1" style={{ color: "var(--text-primary)" }}>{t("analysisCompleteFor", { domain })}</h2>
+          <p className="text-sm mb-6" style={{ color: "var(--text-muted)" }}>{t("resultsSubtitle")}</p>
           <ScoreGauge score={overallScore} />
           {criticalCount > 0 && (
             <motion.div
@@ -243,7 +253,7 @@ function StageResults({
               className="flex items-center justify-center gap-2 bg-red-400/10 border border-red-400/20 rounded-full px-3 py-1 mt-4 w-fit mx-auto"
             >
               <XCircle className="h-3.5 w-3.5 text-red-400" />
-              <span className="text-xs text-red-400 font-medium">{criticalCount} kritických problémů</span>
+              <span className="text-xs text-red-400 font-medium">{t("criticalIssues", { count: criticalCount })}</span>
             </motion.div>
           )}
         </motion.div>
@@ -264,7 +274,7 @@ function StageResults({
             >
               <div className="flex items-center gap-2 mb-2">
                 <CatIcon className={`h-4 w-4 ${cat.color}`} />
-                <span className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>{cat.label}</span>
+                <span className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>{t(cat.labelKey)}</span>
               </div>
               <div className={`text-2xl font-bold ${getScoreColor(scoreVal)}`}>{scoreVal}</div>
               <div className="w-full h-1.5 rounded-full mt-2" style={{ background: "rgba(255,255,255,0.05)" }}>
@@ -283,7 +293,7 @@ function StageResults({
       {/* Findings List */}
       {displayFindings.length > 0 && (
         <div>
-          <h3 className="text-lg font-bold mb-4" style={{ color: "var(--text-primary)" }}>Zjištění</h3>
+          <h3 className="text-lg font-bold mb-4" style={{ color: "var(--text-primary)" }}>{t("findings")}</h3>
           <div className="flex flex-col gap-2">
             {displayFindings.map((finding, i) => {
               const config = severityConfig[finding.severity];
@@ -313,8 +323,8 @@ function StageResults({
         <div>
           <div className="text-center mb-6">
             <Sparkles className="h-8 w-8 text-purple-400 mx-auto mb-2" />
-            <h3 className="text-xl font-bold mb-1" style={{ color: "var(--text-primary)" }}>Vaše redesign varianty</h3>
-            <p className="text-sm" style={{ color: "var(--text-muted)" }}>Vyberte směr, který odpovídá vaší vizi</p>
+            <h3 className="text-xl font-bold mb-1" style={{ color: "var(--text-primary)" }}>{t("yourRedesignVariants")}</h3>
+            <p className="text-sm" style={{ color: "var(--text-muted)" }}>{t("chooseDirection")}</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {variants.map((variant, i) => (
@@ -335,13 +345,14 @@ function StageEmailGate({
   scores: ApiResponse["scores"];
 }) {
   const [email, setEmail] = useState("");
+  const t = useTranslations("analysis");
   const CATEGORY_CONFIG = [
-    { key: "performance", label: "Performance", color: "text-red-400" },
-    { key: "seo", label: "SEO", color: "text-yellow-400" },
-    { key: "security", label: "Security", color: "text-green-400" },
-    { key: "ux", label: "UX & Design", color: "text-orange-400" },
-    { key: "content", label: "Content", color: "text-blue-400" },
-    { key: "aiVisibility", label: "AI Visibility", color: "text-purple-400" },
+    { key: "performance", labelKey: "performance" as const, color: "text-red-400" },
+    { key: "seo", labelKey: "seo" as const, color: "text-yellow-400" },
+    { key: "security", labelKey: "security" as const, color: "text-green-400" },
+    { key: "ux", labelKey: "ux" as const, color: "text-orange-400" },
+    { key: "content", labelKey: "content" as const, color: "text-blue-400" },
+    { key: "aiVisibility", labelKey: "aiVisibility" as const, color: "text-purple-400" },
   ] as const;
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -367,7 +378,7 @@ function StageEmailGate({
           {categories.map((cat) => (
             <div key={cat.key} className="glass rounded-xl p-5">
               <div className="flex items-center gap-2 mb-2">
-                <span className="text-sm" style={{ color: "var(--text-secondary)" }}>{cat.label}</span>
+                <span className="text-sm" style={{ color: "var(--text-secondary)" }}>{t(cat.labelKey)}</span>
               </div>
               <div className={`text-2xl font-bold ${getScoreColor(cat.score as number)}`}>{cat.score}</div>
               <div className="w-full h-2 rounded-full mt-2" style={{ background: "var(--bar-bg)" }}>
@@ -388,9 +399,9 @@ function StageEmailGate({
             <div className="inline-flex items-center justify-center h-14 w-14 rounded-full bg-blue-500/10 border border-blue-500/20 mb-4">
               <Lock className="h-6 w-6 text-blue-400" />
             </div>
-            <h3 className="text-xl font-bold mb-2" style={{ color: "var(--text-primary)" }}>Odemknout kompletní report</h3>
+            <h3 className="text-xl font-bold mb-2" style={{ color: "var(--text-primary)" }}>{t("unlockFullReport")}</h3>
             <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-              Zadejte email pro přístup ke všem zjištěním, doporučením a variantám redesignu.
+              {t("unlockDescription")}
             </p>
           </div>
           <form onSubmit={handleSubmit} className="flex flex-col gap-3">
@@ -400,7 +411,7 @@ function StageEmailGate({
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="vas@email.cz"
+                placeholder={t("emailPlaceholder")}
                 className="w-full bg-transparent outline-none text-sm"
                 style={{ color: "var(--text-primary)" }}
                 required
@@ -411,11 +422,11 @@ function StageEmailGate({
               className="flex items-center justify-center gap-2 rounded-xl bg-blue-500 px-6 py-3 text-sm font-semibold text-white hover:bg-blue-400 transition-all"
             >
               <Sparkles className="h-4 w-4" />
-              Odemknout výsledky
+              {t("unlockButton")}
             </button>
           </form>
           <p className="text-xs text-center mt-4" style={{ color: "var(--text-faint)" }}>
-            Žádný spam. Pošleme vám report a návrhy redesignu.
+            {t("noSpam")}
           </p>
         </div>
       </motion.div>
@@ -424,6 +435,7 @@ function StageEmailGate({
 }
 
 function VariantCard({ variant, index, token }: { variant: Variant; index: number; token: string }) {
+  const t = useTranslations("analysis");
   return (
     <motion.div
       initial={{ opacity: 0, y: 30 }}
@@ -462,7 +474,7 @@ function VariantCard({ variant, index, token }: { variant: Variant; index: numbe
           className="mt-auto flex items-center justify-center gap-2 rounded-xl bg-blue-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-400 transition-all"
         >
           <Eye className="h-4 w-4" />
-          Zobrazit celý web
+          {t("viewFullSite")}
         </a>
       </div>
     </motion.div>
@@ -474,6 +486,7 @@ function VariantCard({ variant, index, token }: { variant: Variant; index: numbe
 // ---------------------------------------------------------------------------
 
 export default function AnalysisOrchestrator({ url, token }: Props) {
+  const t = useTranslations("analysis");
   const [stage, setStage] = useState<Stage>(0);
   const [data, setData] = useState<ApiResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -481,13 +494,49 @@ export default function AnalysisOrchestrator({ url, token }: Props) {
   const hasStarted = useRef(false);
   const crawlStartTimeRef = useRef<number | null>(null);
 
-  // Start analysis on mount
+  // Start analysis on mount — check for existing record first
   useEffect(() => {
     if (hasStarted.current) return;
     hasStarted.current = true;
 
-    async function startAnalysis() {
+    async function initAnalysis() {
       try {
+        // 1. Check if analysis already exists for this token
+        const checkRes = await fetch(`/api/analyze/${token}`);
+        if (checkRes.ok) {
+          const existing: ApiResponse = await checkRes.json();
+          // Analysis exists — resume from current status
+          setData(existing);
+
+          if (existing.status === "error") {
+            setError(existing.error || "Analysis failed");
+            return;
+          }
+
+          if (existing.status === "complete") {
+            if (existing.emailRequired) {
+              setStage(5);
+            } else {
+              setStage(6);
+            }
+            return;
+          }
+
+          // Still in progress — set appropriate stage and start polling
+          if (existing.status === "crawling" || existing.status === "pending") {
+            setStage(1);
+            crawlStartTimeRef.current = Date.now();
+          } else if (existing.status === "analyzing") {
+            setStage(2);
+          } else if (existing.status === "generating") {
+            setStage(3);
+          }
+
+          startPolling(token);
+          return;
+        }
+
+        // 2. No existing record (404) — create new analysis via POST
         const res = await fetch("/api/analyze", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -506,7 +555,7 @@ export default function AnalysisOrchestrator({ url, token }: Props) {
     }
 
     // Show connecting for 1.5s, then start
-    setTimeout(startAnalysis, 1500);
+    setTimeout(initAnalysis, 1500);
   }, [url, token]);
 
   const startPolling = useCallback((pollToken: string) => {
@@ -527,7 +576,7 @@ export default function AnalysisOrchestrator({ url, token }: Props) {
             setStage(1);
             // Check crawl timeout
             if (crawlStartTimeRef.current && Date.now() - crawlStartTimeRef.current > CRAWL_TIMEOUT_MS) {
-              setError("Analýza trvá příliš dlouho. Server pravděpodobně neodpovídá. Zkuste to prosím znovu.");
+              setError(t("analysisTakingTooLong"));
               if (pollingRef.current) {
                 clearInterval(pollingRef.current);
                 pollingRef.current = null;
@@ -622,13 +671,13 @@ export default function AnalysisOrchestrator({ url, token }: Props) {
             className="text-center"
           >
             <XCircle className="h-12 w-12 text-red-400 mx-auto mb-4" />
-            <h2 className="text-xl font-bold mb-2" style={{ color: "var(--text-primary)" }}>Něco se pokazilo</h2>
+            <h2 className="text-xl font-bold mb-2" style={{ color: "var(--text-primary)" }}>{t("somethingWentWrong")}</h2>
             <p className="text-sm mb-4" style={{ color: "var(--text-muted)" }}>{error}</p>
             <a
               href="/"
               className="inline-flex items-center gap-2 rounded-xl bg-blue-500 px-6 py-3 text-sm font-semibold text-white hover:bg-blue-400 transition-all"
             >
-              Zkusit znovu
+              {t("tryAgain")}
               <ArrowRight className="h-4 w-4" />
             </a>
           </motion.div>
@@ -657,6 +706,7 @@ export default function AnalysisOrchestrator({ url, token }: Props) {
                   findings={data?.findings || data?.findingsPreview || []}
                   variants={[]}
                   token={data?.token || token}
+                  url={url}
                 />
               )}
               {stage === 5 && (
@@ -668,6 +718,7 @@ export default function AnalysisOrchestrator({ url, token }: Props) {
                   findings={data?.findings || data?.findingsPreview || []}
                   variants={data?.variants || []}
                   token={data?.token || token}
+                  url={url}
                 />
               )}
             </AnimatePresence>
