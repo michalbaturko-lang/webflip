@@ -2,8 +2,8 @@ import Anthropic from "@anthropic-ai/sdk";
 import type { DesignVariant, AnalysisRow, ExtractedAssets } from "./supabase";
 
 /**
- * Generate 3 redesign variants using Claude.
- * Each variant has a different design philosophy.
+ * Generate 3 visually DISTINCT redesign variants using Claude.
+ * Each variant has a fundamentally different layout, typography, and visual approach.
  */
 export async function generateVariants(
   analysis: AnalysisRow,
@@ -15,20 +15,21 @@ export async function generateVariants(
 
   const anthropic = new Anthropic({ apiKey });
 
-  // Truncate content
   const content = crawledContent.slice(0, 10000);
 
-  // Build assets context for better variant generation
+  let companyName = assets?.companyName || "Unknown";
+  if (companyName === "Unknown") {
+    try { companyName = new URL(analysis.url).hostname; } catch { /* keep Unknown */ }
+  }
+
   const assetsContext = assets
     ? `
-## Extracted Assets from Current Site
-- Company Name: ${assets.companyName || "Unknown"}
-- Logo URL: ${assets.logo || "Not found"}
-- Favicon: ${assets.favicon || "Not found"}
-- Current colors used on site: ${assets.colors.slice(0, 10).join(", ") || "None extracted"}
-- Images found: ${assets.images.length} (${assets.images.slice(0, 5).map((img) => img.alt ? `"${img.alt}"` : img.url.split("/").pop()).join(", ")}${assets.images.length > 5 ? "..." : ""})
-
-IMPORTANT: For the "Brand-Faithful" variant, use the colors extracted from the current site as the base palette.`
+## Client Brand Assets
+- Company: "${companyName}"
+- Logo: ${assets.logo || "text-based"}
+- Current brand colors: ${assets.colors.slice(0, 10).join(", ") || "not extracted"}
+- ${assets.images.length} images found on site
+`
     : "";
 
   const response = await anthropic.messages.create({
@@ -37,41 +38,51 @@ IMPORTANT: For the "Brand-Faithful" variant, use the colors extracted from the c
     messages: [
       {
         role: "user",
-        content: `You are an expert web designer. Based on the analysis of ${analysis.url}, generate 3 redesign variants.
+        content: `You are a Creative Director designing 3 fundamentally different website redesigns for "${companyName}" (${analysis.url}).
 
-Current site analysis:
-- Performance: ${analysis.score_performance ?? "N/A"}/100
-- SEO: ${analysis.score_seo ?? "N/A"}/100
-- Security: ${analysis.score_security ?? "N/A"}/100
-- UX: ${analysis.score_ux ?? "N/A"}/100
-- Content: ${analysis.score_content ?? "N/A"}/100
-- Overall: ${analysis.score_overall ?? "N/A"}/100
+Current site scores: Performance ${analysis.score_performance ?? "N/A"}/100, SEO ${analysis.score_seo ?? "N/A"}/100, Security ${analysis.score_security ?? "N/A"}/100, UX ${analysis.score_ux ?? "N/A"}/100, Content ${analysis.score_content ?? "N/A"}/100, Overall ${analysis.score_overall ?? "N/A"}/100
 ${assetsContext}
-
-Current site content (first pages):
+Content from site:
 ${content}
 
-## CRITICAL RULES
-- Your descriptions must reference the REAL company/brand name and their actual business
-- NEVER use generic placeholder descriptions — always tailor to this specific client
-- Palette for "Brand-Faithful" MUST be based on the actual colors extracted from the current site
-- All descriptions and keyFeatures must be specific to THIS website, not generic
+## GENERATE 3 VARIANTS — each must be DRASTICALLY different in look and feel:
 
-Generate exactly 3 variants as a JSON array:
+### Variant 1: "Corporate Clean"
+- LAYOUT: Traditional single-column with centered content sections, generous whitespace
+- COLORS: Light background (#f8fafc or #ffffff), professional blue/slate palette derived from the client's brand
+- TYPOGRAPHY: heading = "Inter" (clean sans-serif), body = "Inter"
+- VIBE: Corporate, trustworthy, Fortune 500 feel. Think law firm, bank, enterprise SaaS.
+- Palette bg MUST be light (#f8fafc or #ffffff), text MUST be dark
 
-1. **Brand-Faithful** - Keeps the existing brand colors and feel, but modernizes layout, typography, and fixes all UX issues found.
-2. **Modern Edge** - Bold dark-mode design with vibrant gradients, glassmorphism effects, modern SaaS aesthetic. Premium feel.
-3. **Conversion Max** - Optimized purely for lead generation. Clear hierarchy, prominent CTAs, trust signals, social proof, urgency elements.
+### Variant 2: "Modern Bold"
+- LAYOUT: Asymmetric sections, bento grid elements, full-bleed hero, bold visual breaks
+- COLORS: Dark hero (#0a0a0a to #1a1a2e), vibrant accent gradients, high contrast
+- TYPOGRAPHY: heading = "Plus Jakarta Sans" (bold, modern), body = "Inter"
+- VIBE: Tech startup, SaaS, modern agency. Dark + neon accents. Think Linear, Vercel, Stripe.
+- Palette bg MUST be dark (#030712 or #0a0a0a), text MUST be light
 
-Each variant must have:
-- name: string (the variant name)
-- description: string (2-3 sentences explaining the design approach, referencing the actual company/brand by name)
+### Variant 3: "Elegant Minimal"
+- LAYOUT: Narrow container (max 960px), editorial spacing, generous margins, breathing room
+- COLORS: Warm neutrals — cream/ivory bg (#faf8f5), soft muted accent, no harsh contrasts
+- TYPOGRAPHY: heading = "Playfair Display" (elegant serif), body = "Source Sans 3" (clean sans-serif for readability)
+- VIBE: Luxury boutique, editorial magazine, high-end brand. Think Apple, Aesop, Monocle.
+- Palette bg MUST be warm light (#faf8f5 or #f5f0eb), text MUST be dark warm
+
+## RULES
+- descriptions MUST reference "${companyName}" by name and their actual business/industry
+- keyFeatures must be specific to THIS site's problems (based on the scores and content above)
+- Each palette must be GENUINELY different — not just hue-shifted versions of the same thing
+- layout descriptions must explain the specific layout approach, not just "modern layout"
+
+Return a JSON array with exactly 3 objects, each having:
+- name: string
+- description: string (2-3 sentences, referencing ${companyName})
 - palette: { primary: hex, secondary: hex, accent: hex, bg: hex, text: hex }
-- typography: { heading: font name, body: font name }
-- layout: string (describe the layout approach in 2-3 sentences, specific to this website)
-- keyFeatures: string[] (4-6 specific design features/improvements tailored to findings from this site)
+- typography: { heading: font-name, body: font-name }
+- layout: string (2-3 sentences describing specific layout choices)
+- keyFeatures: string[] (4-6 items specific to this site)
 
-Return ONLY the JSON array, no other text.`,
+Return ONLY the JSON array.`,
       },
     ],
   });
@@ -81,57 +92,62 @@ Return ONLY the JSON array, no other text.`,
 
   try {
     const jsonMatch = text.match(/\[[\s\S]*\]/);
-    if (!jsonMatch) return getDefaultVariants();
-    return JSON.parse(jsonMatch[0]) as DesignVariant[];
+    if (!jsonMatch) return getDefaultVariants(companyName);
+    const parsed = JSON.parse(jsonMatch[0]) as DesignVariant[];
+    if (!Array.isArray(parsed) || parsed.length < 3) return getDefaultVariants(companyName);
+    return parsed;
   } catch {
-    return getDefaultVariants();
+    return getDefaultVariants(companyName);
   }
 }
 
-function getDefaultVariants(): DesignVariant[] {
+function getDefaultVariants(companyName: string): DesignVariant[] {
   return [
     {
-      name: "Brand-Faithful",
+      name: "Corporate Clean",
       description:
-        "Modernized version of your current design. Keeps your brand identity while fixing usability issues and updating the layout.",
-      palette: { primary: "#2563eb", secondary: "#1e40af", accent: "#3b82f6", bg: "#ffffff", text: "#1e293b" },
+        `Profesionální, čistý redesign pro ${companyName}. Zachovává důvěryhodnost značky a přidává moderní layout s dostatkem bílého prostoru a přehlednou strukturou.`,
+      palette: { primary: "#2563eb", secondary: "#475569", accent: "#3b82f6", bg: "#f8fafc", text: "#0f172a" },
       typography: { heading: "Inter", body: "Inter" },
-      layout: "Clean single-column layout with improved spacing, larger touch targets, and better visual hierarchy.",
+      layout: "Tradiční single-column layout s centrovanými sekcemi. Širší whitespace, přehledná navigace, karty služeb v 3-sloupcovém gridu. Hero s jemným gradientem.",
       keyFeatures: [
-        "Preserved brand colors",
-        "Improved mobile responsiveness",
-        "Better CTA placement",
-        "Modernized typography",
+        "Čistý, profesionální design s důrazem na čitelnost",
+        "Vylepšená mobilní responzivita",
+        "Přehledná navigace s smooth scroll",
+        "Kontaktní sekce s formulářem a mapou",
+        "Optimalizovaná struktura pro SEO",
       ],
     },
     {
-      name: "Modern Edge",
+      name: "Modern Bold",
       description:
-        "Bold dark-mode design with premium SaaS aesthetic. Gradient accents, glassmorphism cards, and smooth animations create a cutting-edge feel.",
-      palette: { primary: "#8b5cf6", secondary: "#6366f1", accent: "#a78bfa", bg: "#030712", text: "#f9fafb" },
+        `Odvážný, moderní redesign pro ${companyName} s dark-mode hero sekcí, výraznými gradientovými akcenty a tech-startup estetikou. Vizuálně impaktní a zapamatovatelný.`,
+      palette: { primary: "#8b5cf6", secondary: "#6366f1", accent: "#22d3ee", bg: "#030712", text: "#f1f5f9" },
       typography: { heading: "Plus Jakarta Sans", body: "Inter" },
-      layout: "Bento grid layout with glassmorphism cards, animated gradients, and full-width hero sections.",
+      layout: "Asymetrické sekce s full-bleed hero. Bento grid pro služby, glassmorphism karty s backdrop-blur efektem. Gradient borders a animated hover states.",
       keyFeatures: [
-        "Dark mode with gradient accents",
-        "Glassmorphism UI elements",
-        "Micro-interactions & animations",
-        "Premium SaaS aesthetic",
+        "Dark mode s vibrantními gradient akcenty",
+        "Glassmorphism UI elementy",
+        "Velká typografie s výrazným kontrastem vah",
+        "Geometrické dekorativní prvky v CSS",
+        "Animované hover efekty a micro-interactions",
+        "Moderní tech aesthetic (Linear/Vercel style)",
       ],
     },
     {
-      name: "Conversion Max",
+      name: "Elegant Minimal",
       description:
-        "Designed purely for lead generation. Every element guides visitors toward conversion with clear CTAs, social proof, and trust signals.",
-      palette: { primary: "#16a34a", secondary: "#15803d", accent: "#f59e0b", bg: "#ffffff", text: "#111827" },
-      typography: { heading: "DM Sans", body: "Inter" },
-      layout: "Conversion-focused single page with sticky CTA bar, testimonial carousel, and comparison tables.",
+        `Elegantní, minimalistický redesign pro ${companyName} inspirovaný luxusními značkami. Serifová typografie, teplé neutrální tóny a editoriální spacing vytvářejí sofistikovaný dojem.`,
+      palette: { primary: "#92400e", secondary: "#78716c", accent: "#d97706", bg: "#faf8f5", text: "#1c1917" },
+      typography: { heading: "Playfair Display", body: "Source Sans 3" },
+      layout: "Úzký container (max 960px) s editoriálním spacingem. Velké margin mezi sekcemi, dvousloupcový about layout s plynulým textem. Galerie s tenkými bordery a subtilními hover efekty.",
       keyFeatures: [
-        "Sticky CTA in header",
-        "Testimonial carousel",
-        "Trust badges section",
-        "Urgency/scarcity elements",
-        "FAQ with schema markup",
-        "Exit-intent popup ready",
+        "Elegantní serifová typografie pro nadpisy",
+        "Teplá krémová paleta s jemnými akcenty",
+        "Editoriální spacing — luxusní pocit z prostoru",
+        "Subtilní animace (fade-in, jemné hover)",
+        "Narrow container pro lepší čitelnost",
+        "Vysoká estetická kvalita inspirovaná Apple/Aesop",
       ],
     },
   ];
