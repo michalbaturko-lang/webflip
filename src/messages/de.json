@@ -142,7 +142,8 @@
     "step3Detail": "3 Varianten",
     "step4Title": "Starten & Besitzen",
     "step4Desc": "Erhalten Sie den vollständigen Quellcode. Kein Lock-in, kein Abo. Es gehört Ihnen.",
-    "step4Detail": "100% Ihres"
+    "step4Detail": "100% Ihres",
+    "viewResults": "Ergebnisse anzeigen"
   },
   "analysis": {
     "connectingTo": "Verbinde mit {domain}",

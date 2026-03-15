@@ -142,7 +142,8 @@
     "step3Detail": "3 varianty",
     "step4Title": "Spusťte & vlastněte",
     "step4Desc": "Získejte kompletní zdrojový kód. Žádný lock-in, žádné předplatné. Je to vaše.",
-    "step4Detail": "100% vaše"
+    "step4Detail": "100% vaše",
+    "viewResults": "Zobrazit výsledky"
   },
   "analysis": {
     "connectingTo": "Připojujeme se k {domain}",

@@ -10,6 +10,7 @@ import FAQ from "@/components/landing/FAQ";
 import FinalCTA from "@/components/landing/FinalCTA";
 import Footer from "@/components/landing/Footer";
 import AnalysisOrchestrator from "@/components/analysis/AnalysisOrchestrator";
+import type { AnalysisStatus } from "@/types/stepper";
 
 export default function HomePage() {
   const [analysis, setAnalysis] = useState<{
@@ -17,6 +18,11 @@ export default function HomePage() {
     token: string;
   } | null>(null);
   const analysisRef = useRef<HTMLDivElement>(null);
+
+  // Stepper state driven by orchestrator
+  const [analysisStatus, setAnalysisStatus] = useState<AnalysisStatus | undefined>();
+  const [variantCount, setVariantCount] = useState(0);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
 
   const handleAnalyze = useCallback((url: string) => {
     let normalizedUrl = url.trim();
@@ -28,11 +34,20 @@ export default function HomePage() {
       Date.now().toString(36);
 
     setAnalysis({ url: normalizedUrl, token });
+    setAnalysisStatus("pending");
+    setVariantCount(0);
+    setAnalysisError(null);
 
     // Scroll to analysis results after render
     setTimeout(() => {
       analysisRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 100);
+  }, []);
+
+  const handleStatusChange = useCallback((status: string, variants: number, error: string | null) => {
+    setAnalysisStatus(status as AnalysisStatus);
+    setVariantCount(variants);
+    setAnalysisError(error);
   }, []);
 
   return (
@@ -46,11 +61,16 @@ export default function HomePage() {
           <AnalysisOrchestrator
             url={analysis.url}
             token={analysis.token}
+            onStatusChange={handleStatusChange}
           />
         </div>
       )}
 
-      <ConversionStepper />
+      <ConversionStepper
+        analysisStatus={analysisStatus}
+        variantCount={variantCount}
+        errorMessage={analysisError ?? undefined}
+      />
       <AnalysisDemo />
       <ROICalculator />
       <FAQ />

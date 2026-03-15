@@ -142,7 +142,8 @@
     "step3Detail": "3 variants",
     "step4Title": "Launch & Own",
     "step4Desc": "Get the full source code. No lock-in, no subscriptions. It's yours.",
-    "step4Detail": "100% yours"
+    "step4Detail": "100% yours",
+    "viewResults": "View Results"
   },
   "analysis": {
     "connectingTo": "Connecting to {domain}",
