@@ -481,12 +481,30 @@ export default function AnalysisOrchestrator({ url, token }: Props) {
   const hasStarted = useRef(false);
   const crawlStartTimeRef = useRef<number | null>(null);
 
-  // Start analysis on mount
+  // Start analysis on mount — or resume if token already exists
   useEffect(() => {
     if (hasStarted.current) return;
     hasStarted.current = true;
 
-    async function startAnalysis() {
+    async function init() {
+      // First, check if this token already has an analysis in progress or complete
+      try {
+        const existing = await fetch(`/api/analyze/${token}`);
+        if (existing.ok) {
+          const result: ApiResponse = await existing.json();
+          // If the analysis exists and is not in an initial/unknown state, resume polling
+          if (result.status && result.status !== "error") {
+            setData(result);
+            crawlStartTimeRef.current = Date.now();
+            startPolling(token);
+            return;
+          }
+        }
+      } catch {
+        // Token doesn't exist or fetch failed — start fresh
+      }
+
+      // No existing analysis — start a new one
       try {
         const res = await fetch("/api/analyze", {
           method: "POST",
@@ -506,7 +524,7 @@ export default function AnalysisOrchestrator({ url, token }: Props) {
     }
 
     // Show connecting for 1.5s, then start
-    setTimeout(startAnalysis, 1500);
+    setTimeout(init, 1500);
   }, [url, token]);
 
   const startPolling = useCallback((pollToken: string) => {
