@@ -198,7 +198,7 @@ Return ONLY valid JSON (no markdown fences, no explanation) with this exact stru
     logoUrl: assets?.logo || "",
     faviconUrl: assets?.favicon || "",
     primaryColor: "#1B2A4A",
-    language: (parsed.language as string) || "cs",
+    language: (parsed.language as string) || "en",
     navLinks: Array.isArray(parsed.navLinks) ? parsed.navLinks as TemplateData["navLinks"] : assets?.navLinks || [],
     services: Array.isArray(parsed.services) ? parsed.services as TemplateData["services"] : [],
     aboutText: (parsed.aboutText as string) || "",
@@ -214,6 +214,37 @@ Return ONLY valid JSON (no markdown fences, no explanation) with this exact stru
     email: (parsed.email as string) || assets?.emails?.[0] || "",
     address: (parsed.address as string) || assets?.address || "",
   };
+}
+
+// ── Template i18n Translations ──
+
+const TRANSLATIONS: Record<string, Record<string, string>> = {
+  section_services: { cs: 'Naše služby', sk: 'Naše služby', en: 'Our Services', de: 'Unsere Dienstleistungen' },
+  section_about: { cs: 'O nás', sk: 'O nás', en: 'About Us', de: 'Über uns' },
+  section_blog: { cs: 'Aktuality', sk: 'Aktuality', en: 'Latest Insights', de: 'Neuigkeiten' },
+  section_testimonials: { cs: 'Reference', sk: 'Referencie', en: 'Client Testimonials', de: 'Kundenstimmen' },
+  section_faq: { cs: 'Časté dotazy', sk: 'Časté otázky', en: 'FAQ', de: 'Häufige Fragen' },
+  section_gallery: { cs: 'Galerie', sk: 'Galéria', en: 'Our Gallery', de: 'Galerie' },
+  section_contact: { cs: 'Kontakt', sk: 'Kontakt', en: 'Contact Us', de: 'Kontaktieren Sie uns' },
+  cta_services: { cs: 'Naše služby', sk: 'Naše služby', en: 'Our Services', de: 'Unsere Dienste' },
+  cta_learn_more: { cs: 'Zjistit více', sk: 'Zistiť viac', en: 'Learn More', de: 'Mehr erfahren' },
+  cta_read_more: { cs: 'Číst dále', sk: 'Čítať ďalej', en: 'Read More', de: 'Weiterlesen' },
+  cta_contact: { cs: 'Kontaktujte nás', sk: 'Kontaktujte nás', en: 'Contact Us', de: 'Kontakt' },
+  nav_services: { cs: 'Služby', sk: 'Služby', en: 'Services', de: 'Dienstleistungen' },
+  nav_about: { cs: 'O nás', sk: 'O nás', en: 'About', de: 'Über uns' },
+  nav_blog: { cs: 'Blog', sk: 'Blog', en: 'Blog', de: 'Blog' },
+  nav_testimonials: { cs: 'Reference', sk: 'Referencie', en: 'Testimonials', de: 'Referenzen' },
+  nav_faq: { cs: 'Časté dotazy', sk: 'Časté otázky', en: 'FAQ', de: 'FAQ' },
+  nav_gallery: { cs: 'Galerie', sk: 'Galéria', en: 'Gallery', de: 'Galerie' },
+  nav_contact: { cs: 'Kontakt', sk: 'Kontakt', en: 'Contact', de: 'Kontakt' },
+  label_what_we_do: { cs: 'Co děláme', sk: 'Čo robíme', en: 'What We Do', de: 'Was wir tun' },
+  label_latest_updates: { cs: 'Aktuality', sk: 'Aktuality', en: 'Latest Updates', de: 'Neuigkeiten' },
+  label_contact_info: { cs: 'Kontaktní údaje', sk: 'Kontaktné údaje', en: 'Contact Information', de: 'Kontaktdaten' },
+  subtitle_services: { cs: 'Pečlivě připravená řešení pro váš úspěch', sk: 'Starostlivo pripravené riešenia pre váš úspech', en: 'Carefully crafted solutions for your success', de: 'Sorgfältig erarbeitete Lösungen für Ihren Erfolg' },
+};
+
+function tt(key: string, lang: string): string {
+  return TRANSLATIONS[key]?.[lang] || TRANSLATIONS[key]?.['en'] || key;
 }
 
 // ── Template Filling ──
@@ -296,6 +327,7 @@ function fillTemplate(template: string, data: TemplateData): string {
   }
 
   // 4. Replace scalar template variables
+  const lang = data.language || 'en';
   const scalarReplacements: Record<string, string> = {
     TEMPLATE_VAR_companyName: escapeHtml(data.companyName),
     TEMPLATE_VAR_headline: escapeHtml(data.headline),
@@ -310,6 +342,29 @@ function fillTemplate(template: string, data: TemplateData): string {
     TEMPLATE_VAR_address: escapeHtml(data.address),
     TEMPLATE_VAR_aboutText: escapeHtml(data.aboutText),
     TEMPLATE_VAR_year: String(new Date().getFullYear()),
+    // i18n translations
+    TEMPLATE_VAR_section_services: tt('section_services', lang),
+    TEMPLATE_VAR_section_about: tt('section_about', lang),
+    TEMPLATE_VAR_section_blog: tt('section_blog', lang),
+    TEMPLATE_VAR_section_testimonials: tt('section_testimonials', lang),
+    TEMPLATE_VAR_section_faq: tt('section_faq', lang),
+    TEMPLATE_VAR_section_gallery: tt('section_gallery', lang),
+    TEMPLATE_VAR_section_contact: tt('section_contact', lang),
+    TEMPLATE_VAR_cta_services: tt('cta_services', lang),
+    TEMPLATE_VAR_cta_learn_more: tt('cta_learn_more', lang),
+    TEMPLATE_VAR_cta_read_more: tt('cta_read_more', lang),
+    TEMPLATE_VAR_cta_contact: tt('cta_contact', lang),
+    TEMPLATE_VAR_nav_services: tt('nav_services', lang),
+    TEMPLATE_VAR_nav_about: tt('nav_about', lang),
+    TEMPLATE_VAR_nav_blog: tt('nav_blog', lang),
+    TEMPLATE_VAR_nav_testimonials: tt('nav_testimonials', lang),
+    TEMPLATE_VAR_nav_faq: tt('nav_faq', lang),
+    TEMPLATE_VAR_nav_gallery: tt('nav_gallery', lang),
+    TEMPLATE_VAR_nav_contact: tt('nav_contact', lang),
+    TEMPLATE_VAR_label_what_we_do: tt('label_what_we_do', lang),
+    TEMPLATE_VAR_label_latest_updates: tt('label_latest_updates', lang),
+    TEMPLATE_VAR_label_contact_info: tt('label_contact_info', lang),
+    TEMPLATE_VAR_subtitle_services: tt('subtitle_services', lang),
   };
 
   for (const [key, value] of Object.entries(scalarReplacements)) {
@@ -430,7 +485,7 @@ function buildFallbackTemplateData(
     logoUrl: assets?.logo || "",
     faviconUrl: assets?.favicon || "",
     primaryColor: "#1B2A4A",
-    language: "cs",
+    language: "en",
     navLinks: assets?.navLinks || [],
     services: headings.slice(1, 7).map((title, i) => ({
       title,
@@ -512,7 +567,7 @@ function buildMinimalFallbackHtml(data: TemplateData, variant: DesignVariant): s
       <div>
         <h1>${escapeHtml(data.headline)}</h1>
         ${data.subheadline ? `<p>${escapeHtml(data.subheadline)}</p>` : ""}
-        <a href="#contact" class="btn">Kontakt</a>
+        <a href="#contact" class="btn">${tt('cta_contact', data.language || 'en')}</a>
       </div>
     </section>
   </main>
