@@ -164,7 +164,7 @@ async function runPipeline(url: string, token: string) {
   });
 
   // ─── Stage 3: Generate variants ───
-  let variants;
+  let variants: any[] = [];
   try {
     const currentAnalysis = {
       url,
