@@ -1,4 +1,5 @@
 import AnalysisOrchestrator from "@/components/analysis/AnalysisOrchestrator";
+import { getAnalysis } from "@/lib/supabase";
 
 interface PageProps {
   params: Promise<{ locale: string; token: string }>;
@@ -8,7 +9,12 @@ interface PageProps {
 export default async function AnalyzePage({ params, searchParams }: PageProps) {
   const { token } = await params;
   const { url: rawUrl } = await searchParams;
-  const url = rawUrl || "example.com";
+
+  let url = rawUrl;
+  if (!url) {
+    const analysis = await getAnalysis(token);
+    url = analysis?.url || "";
+  }
 
   return <AnalysisOrchestrator url={url} token={token} />;
 }
