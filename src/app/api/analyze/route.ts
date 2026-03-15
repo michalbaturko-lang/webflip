@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { waitUntil } from "@vercel/functions";
 import { createAnalysis, updateAnalysis } from "@/lib/supabase";
 import { crawlWebsite } from "@/lib/cloudflare";
-import type { ExtractedAssets } from "@/lib/cloudflare";
 import { getPageSpeedData } from "@/lib/pagespeed";
 import { analyzeSEO } from "@/lib/analyzers/seo";
 import { analyzeSecurity } from "@/lib/analyzers/security";
