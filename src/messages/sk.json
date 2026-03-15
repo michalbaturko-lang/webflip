@@ -184,7 +184,11 @@
     "toolbarHistory": "História zmien",
     "fullscreen": "Celá obrazovka",
     "exitFullscreen": "Ukončiť celú obrazovku",
-    "openNewTab": "Otvoriť v novom paneli"
+    "openNewTab": "Otvoriť v novom paneli",
+    "close": "Zavrieť",
+    "send": "Odoslať",
+    "expand": "Rozbaliť",
+    "minimize": "Minimalizovať"
   },
   "analysis": {
     "connectingTo": "Pripájame sa k {domain}",

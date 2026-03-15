@@ -184,7 +184,11 @@
     "toolbarHistory": "Change history",
     "fullscreen": "Fullscreen",
     "exitFullscreen": "Exit fullscreen",
-    "openNewTab": "Open in new tab"
+    "openNewTab": "Open in new tab",
+    "close": "Close",
+    "send": "Send",
+    "expand": "Expand",
+    "minimize": "Minimize"
   },
   "analysis": {
     "connectingTo": "Connecting to {domain}",

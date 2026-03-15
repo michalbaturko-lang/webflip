@@ -32,19 +32,21 @@ export function useUndoStack(initialHtml?: string) {
 
   const pushSnapshot = useCallback(
     (html: string, label: string) => {
-      setSnapshots((prev) => {
-        const trimmed = prev.slice(0, currentIndex + 1);
-        const newSnap: Snapshot = {
-          id: `snap-${Date.now()}`,
-          html,
-          label,
-          timestamp: new Date(),
-        };
-        return [...trimmed, newSnap];
+      setCurrentIndex((prevIndex) => {
+        setSnapshots((prev) => {
+          const trimmed = prev.slice(0, prevIndex + 1);
+          const newSnap: Snapshot = {
+            id: `snap-${Date.now()}`,
+            html,
+            label,
+            timestamp: new Date(),
+          };
+          return [...trimmed, newSnap];
+        });
+        return prevIndex + 1;
       });
-      setCurrentIndex((prev) => prev + 1);
     },
-    [currentIndex]
+    []
   );
 
   const undo = useCallback((): string | null => {
@@ -149,9 +151,10 @@ export default function UndoStackPanel({
         <span className="font-semibold text-sm text-white">{t("historyTitle")}</span>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-3 space-y-1">
+      <div role="list" className="flex-1 overflow-y-auto p-3 space-y-1">
         {snapshots.map((snap, i) => (
           <button
+            role="listitem"
             key={snap.id}
             onClick={() => onRestore(i)}
             aria-label={snap.label}

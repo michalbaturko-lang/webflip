@@ -61,20 +61,21 @@ export default function SmartSuggestions({
   useEffect(() => {
     if (!isVisible || !iframeRef.current) return;
 
+    const iframe = iframeRef.current;
+
     const extractHtml = () => {
       try {
-        const doc = iframeRef.current?.contentDocument;
+        const doc = iframe.contentDocument;
         if (doc?.body) {
           setHtmlContent(doc.documentElement.outerHTML.toLowerCase());
         }
       } catch {
-        const srcdoc = iframeRef.current?.getAttribute("srcdoc");
+        const srcdoc = iframe.getAttribute("srcdoc");
         if (srcdoc) setHtmlContent(srcdoc.toLowerCase());
       }
     };
 
     extractHtml();
-    const iframe = iframeRef.current;
     iframe.addEventListener("load", extractHtml);
     return () => iframe.removeEventListener("load", extractHtml);
   }, [isVisible, iframeRef]);
@@ -185,6 +186,8 @@ export default function SmartSuggestions({
 
   return (
     <div
+      role="region"
+      aria-label={t("suggestionsTitle")}
       className="fixed left-6 bottom-6 z-50 w-[360px] max-h-[450px] rounded-2xl shadow-2xl shadow-black/50 border border-white/10 overflow-hidden flex flex-col"
       style={{
         background:
@@ -206,7 +209,7 @@ export default function SmartSuggestions({
         </div>
         <button
           onClick={onClose}
-          aria-label="Close"
+          aria-label={t("close")}
           className="p-1.5 rounded-lg hover:bg-white/10 transition-colors text-gray-400 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
         >
           <X className="h-4 w-4" />

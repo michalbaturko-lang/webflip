@@ -26,17 +26,20 @@ export default function InlineEditor({
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   // Inject inline editing styles and handlers into iframe
+  // Fix #5: proper cleanup for both initial call and load event
+  // Fix #6: debounce mouseover with requestAnimationFrame
   useEffect(() => {
     if (!enabled || !iframeRef.current) return;
 
     const iframe = iframeRef.current;
+    let initialCleanup: (() => void) | undefined;
+    let loadCleanup: (() => void) | undefined;
 
-    const setupInlineEdit = () => {
+    const setupInlineEdit = (): (() => void) | undefined => {
       try {
         const doc = iframe.contentDocument;
-        if (!doc) return;
+        if (!doc) return undefined;
 
-        // Inject hover styles
         const styleId = "webflip-inline-edit-styles";
         if (!doc.getElementById(styleId)) {
           const style = doc.createElement("style");
@@ -90,16 +93,27 @@ export default function InlineEditor({
           return path.join(" > ");
         };
 
+        // Debounced mouseover with requestAnimationFrame
+        let hoverRafId: number | null = null;
+        let lastHoverTarget: HTMLElement | null = null;
+
         const handleMouseOver = (e: MouseEvent) => {
           const target = e.target as HTMLElement;
-          if (isEditableText(target)) {
-            target.classList.add("webflip-editable-hover");
-            target.style.position = target.style.position || "relative";
-          }
+          if (target === lastHoverTarget) return;
+          lastHoverTarget = target;
+
+          if (hoverRafId !== null) cancelAnimationFrame(hoverRafId);
+          hoverRafId = requestAnimationFrame(() => {
+            if (isEditableText(target)) {
+              target.classList.add("webflip-editable-hover");
+              target.style.position = target.style.position || "relative";
+            }
+          });
         };
 
         const handleMouseOut = (e: MouseEvent) => {
           const target = e.target as HTMLElement;
+          if (target === lastHoverTarget) lastHoverTarget = null;
           target.classList.remove("webflip-editable-hover");
         };
 
@@ -135,21 +149,30 @@ export default function InlineEditor({
         doc.body.addEventListener("click", handleClick, true);
 
         return () => {
+          if (hoverRafId !== null) cancelAnimationFrame(hoverRafId);
           doc.body.removeEventListener("mouseover", handleMouseOver, true);
           doc.body.removeEventListener("mouseout", handleMouseOut, true);
           doc.body.removeEventListener("click", handleClick, true);
         };
       } catch {
-        // Cross-origin fallback
+        return undefined;
       }
     };
 
-    iframe.addEventListener("load", setupInlineEdit);
-    const cleanup = setupInlineEdit();
+    const handleIframeLoad = () => {
+      initialCleanup?.();
+      initialCleanup = undefined;
+      loadCleanup?.();
+      loadCleanup = setupInlineEdit();
+    };
+
+    iframe.addEventListener("load", handleIframeLoad);
+    initialCleanup = setupInlineEdit();
 
     return () => {
-      iframe.removeEventListener("load", setupInlineEdit);
-      cleanup?.();
+      iframe.removeEventListener("load", handleIframeLoad);
+      initialCleanup?.();
+      loadCleanup?.();
     };
   }, [enabled, iframeRef]);
 
@@ -187,29 +210,34 @@ export default function InlineEditor({
     return () => document.removeEventListener("mousedown", handleClick);
   }, [editingElement]);
 
+  // Fix #4 from agent audit: only call onEditApplied if edit actually succeeded
   const handleApply = useCallback(() => {
     if (!editingElement || editValue === editingElement.originalText) {
       setEditingElement(null);
       return;
     }
 
+    let editSucceeded = false;
     try {
       const doc = iframeRef.current?.contentDocument;
       if (doc) {
         const el = doc.querySelector(editingElement.selector);
         if (el) {
           el.textContent = editValue;
+          editSucceeded = true;
         }
       }
     } catch {
       // Ignore cross-origin
     }
 
-    const origShort = editingElement.originalText.substring(0, 40);
-    const newShort = editValue.substring(0, 40);
-    onEditApplied(
-      `Change text "${origShort}${editingElement.originalText.length > 40 ? "..." : ""}" to "${newShort}${editValue.length > 40 ? "..." : ""}"`
-    );
+    if (editSucceeded) {
+      const origShort = editingElement.originalText.substring(0, 40);
+      const newShort = editValue.substring(0, 40);
+      onEditApplied(
+        `Change text "${origShort}${editingElement.originalText.length > 40 ? "..." : ""}" to "${newShort}${editValue.length > 40 ? "..." : ""}"`
+      );
+    }
     setEditingElement(null);
   }, [editingElement, editValue, iframeRef, onEditApplied]);
 
@@ -232,6 +260,7 @@ export default function InlineEditor({
     <div
       ref={popoverRef}
       role="dialog"
+      aria-modal="true"
       aria-label={t("inlineEditTitle")}
       className="fixed z-[9999] w-[320px] rounded-xl shadow-2xl shadow-black/50 border border-white/15 overflow-hidden"
       style={{

@@ -184,7 +184,11 @@
     "toolbarHistory": "Änderungsverlauf",
     "fullscreen": "Vollbild",
     "exitFullscreen": "Vollbild beenden",
-    "openNewTab": "In neuem Tab öffnen"
+    "openNewTab": "In neuem Tab öffnen",
+    "close": "Schließen",
+    "send": "Senden",
+    "expand": "Erweitern",
+    "minimize": "Minimieren"
   },
   "analysis": {
     "connectingTo": "Verbinde mit {domain}",

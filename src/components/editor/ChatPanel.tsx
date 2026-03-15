@@ -42,6 +42,7 @@ export default function ChatPanel({
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesRef = useRef<HTMLDivElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const suggestions = [
     t("suggestion1"),
@@ -52,7 +53,6 @@ export default function ChatPanel({
     t("suggestion6"),
   ];
 
-  // Trim messages to MAX_MESSAGES
   const trimMessages = useCallback(
     (msgs: ChatMessage[]): ChatMessage[] => {
       if (msgs.length > MAX_MESSAGES) {
@@ -63,21 +63,26 @@ export default function ChatPanel({
     []
   );
 
-  // Load persisted history
+  // Load persisted history with AbortController (#5)
   useEffect(() => {
     if (historyLoaded) return;
+    const controller = new AbortController();
+
     async function loadHistory() {
       try {
-        const res = await fetch(`/api/analyze/${token}/edit/${variantIndex}`);
+        const res = await fetch(`/api/analyze/${token}/edit/${variantIndex}`, {
+          signal: controller.signal,
+        });
         if (!res.ok) return;
         const data = await res.json();
         if (data.history?.length > 0) {
           const loaded: ChatMessage[] = [];
-          for (const h of data.history) {
+          const limitedHistory = data.history.slice(-50);
+          for (const h of limitedHistory) {
             loaded.push({
               id: `hist-user-${h.timestamp}`,
               role: "user",
-              content: h.instruction,
+              content: h.instruction || "",
               timestamp: new Date(h.timestamp),
               status: "success",
             });
@@ -91,13 +96,15 @@ export default function ChatPanel({
           }
           setMessages(trimMessages(loaded));
         }
-      } catch {
-        // Silent fail
+      } catch (err) {
+        if (err instanceof DOMException && err.name === "AbortError") return;
+        // Silent fail for other errors
       } finally {
         setHistoryLoaded(true);
       }
     }
     loadHistory();
+    return () => controller.abort();
   }, [token, variantIndex, historyLoaded, setMessages, trimMessages, t]);
 
   // Auto-scroll
@@ -107,10 +114,22 @@ export default function ChatPanel({
     }
   }, [messages]);
 
+  // Cleanup abort controller on unmount
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, []);
+
   const handleSubmit = useCallback(
     async (text?: string) => {
       const inst = text || instruction;
       if (!inst.trim() || isLoading) return;
+
+      // Abort previous in-flight request
+      abortControllerRef.current?.abort();
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
 
       setIsLoading(true);
       setInstruction("");
@@ -138,6 +157,7 @@ export default function ChatPanel({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ instruction: inst.trim() }),
+          signal: controller.signal,
         });
 
         const data: EditApiResponse = await res.json();
@@ -195,7 +215,8 @@ export default function ChatPanel({
           onHtmlUpdate(data.html);
           onEditSuccess(inst.trim(), data.html);
         }
-      } catch {
+      } catch (err) {
+        if (err instanceof DOMException && err.name === "AbortError") return;
         setMessages((m) =>
           trimMessages(
             m.map((msg) =>
@@ -233,7 +254,6 @@ export default function ChatPanel({
     (m) => m.status === "success" && m.role === "user"
   ).length;
 
-  // Closed state - FAB button
   if (!isOpen) {
     return (
       <button
@@ -290,14 +310,14 @@ export default function ChatPanel({
         <div className="flex items-center gap-1">
           <button
             onClick={() => setIsMinimized(!isMinimized)}
-            aria-label={isMinimized ? "Expand" : "Minimize"}
+            aria-label={isMinimized ? t("expand") : t("minimize")}
             className="p-1.5 rounded-lg hover:bg-white/10 transition-colors text-gray-400 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500"
           >
             <Minus className="h-4 w-4" />
           </button>
           <button
             onClick={() => setIsOpen(false)}
-            aria-label="Close"
+            aria-label={t("close")}
             className="p-1.5 rounded-lg hover:bg-white/10 transition-colors text-gray-400 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500"
           >
             <X className="h-4 w-4" />
@@ -413,7 +433,7 @@ export default function ChatPanel({
               <button
                 onClick={() => handleSubmit()}
                 disabled={!instruction.trim() || isLoading}
-                aria-label="Send"
+                aria-label={t("send")}
                 className="absolute right-2 bottom-2.5 p-1.5 rounded-lg transition-all disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500"
                 style={{
                   background:
