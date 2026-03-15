@@ -140,7 +140,8 @@
     .service-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, var(--accent), var(--accent-light)); opacity: 0; transition: opacity var(--transition); }
     .service-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); border-color: transparent; }
     .service-card:hover::before { opacity: 1; }
-    .service-card__icon { display: inline-flex; align-items: center; justify-content: center; width: 64px; height: 64px; background: linear-gradient(135deg, rgba(200,169,110,0.1), rgba(200,169,110,0.05)); border-radius: var(--radius); font-size: 1.75rem; color: var(--accent); margin-bottom: 1.25rem; }
+    .service-card__icon { display: inline-flex; align-items: center; justify-content: center; width: 64px; height: 64px; background: linear-gradient(135deg, rgba(200,169,110,0.1), rgba(200,169,110,0.05)); border-radius: var(--radius); color: var(--accent); margin-bottom: 1.25rem; }
+    .service-card__icon svg { width: 32px; height: 32px; }
     .service-card__title { font-size: 1.25rem; margin-bottom: 0.75rem; }
     .service-card__desc { color: var(--text-light); font-size: 0.9375rem; line-height: 1.7; }
     /* 5. About */

@@ -9,14 +9,13 @@
   <!-- 17. OG Meta Tags -->
   <meta property="og:title" content="TEMPLATE_VAR_companyName — TEMPLATE_VAR_headline">
   <meta property="og:description" content="TEMPLATE_VAR_subheadline">
-  <meta property="og:image" content="TEMPLATE_VAR_ogImageUrl">
-  <meta property="og:url" content="TEMPLATE_VAR_siteUrl">
+  <meta property="og:image" content="TEMPLATE_VAR_logoUrl">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="TEMPLATE_VAR_companyName">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="TEMPLATE_VAR_companyName — TEMPLATE_VAR_headline">
   <meta name="twitter:description" content="TEMPLATE_VAR_subheadline">
-  <meta name="twitter:image" content="TEMPLATE_VAR_ogImageUrl">
+  <meta name="twitter:image" content="TEMPLATE_VAR_logoUrl">
   <!-- 16. Schema.org JSON-LD -->
   <script type="application/ld+json">
   {
@@ -25,7 +24,7 @@
     "name": "TEMPLATE_VAR_companyName",
     "url": "TEMPLATE_VAR_siteUrl",
     "logo": "TEMPLATE_VAR_logoUrl",
-    "image": "TEMPLATE_VAR_ogImageUrl",
+    "image": "TEMPLATE_VAR_logoUrl",
     "telephone": "TEMPLATE_VAR_phone",
     "email": "TEMPLATE_VAR_email",
     "address": { "@type": "PostalAddress", "streetAddress": "TEMPLATE_VAR_address" },
@@ -125,7 +124,8 @@
     .services__grid { display: grid; grid-template-columns: 1fr; gap: 24px; }
     .service-card { padding: var(--card-pad); border: 1px solid var(--border); text-align: center; transition: border-color var(--tr); }
     .service-card:hover { border-color: var(--border-h); }
-    .service-card__icon { font-size: 1.75rem; margin-bottom: 24px; display: block; color: var(--accent, var(--accent-fb)); }
+    .service-card__icon { margin-bottom: 24px; display: flex; align-items: center; justify-content: center; color: var(--accent, var(--accent-fb)); width: 48px; height: 48px; margin-left: auto; margin-right: auto; }
+    .service-card__icon svg { width: 32px; height: 32px; }
     .service-card__title { font-size: clamp(1.0625rem, 0.5vw + 0.9rem, 1.25rem); margin-bottom: 16px; font-weight: 600; }
     .service-card__desc { font-size: 0.9375rem; color: var(--muted); line-height: 1.8; margin-bottom: 0; }
 
@@ -135,7 +135,7 @@
     .about__text h2 { margin-bottom: 24px; text-align: left; }
     .about__text p { font-size: clamp(0.9375rem, 0.5vw + 0.8rem, 1.0625rem); line-height: 1.9; }
     .about__image { overflow: hidden; border: 1px solid var(--border); }
-    .about__image img { width: 100%; height: 360px; object-fit: cover; }
+    .about__image img { width: 100%; height: auto; max-height: 360px; object-fit: cover; aspect-ratio: 4/3; }
 
     /* === 6. BLOG === */
     .blog__grid { display: grid; grid-template-columns: 1fr; gap: 24px; }
@@ -248,7 +248,7 @@
       .hero { min-height: 68vh; padding: 120px 28px 100px; }
       .services__grid { grid-template-columns: repeat(2, 1fr); gap: 28px; }
       .about__grid { grid-template-columns: 1fr 1fr; gap: 56px; }
-      .about__image img { height: 420px; }
+      .about__image img { max-height: 420px; }
       .contact__grid { grid-template-columns: 1fr 1fr; }
       .testimonials__grid { grid-template-columns: repeat(2, 1fr); }
       .gallery__grid { grid-template-columns: repeat(3, 1fr); gap: 12px; }
@@ -272,7 +272,7 @@
     @media (min-width: 1280px) {
       :root { --sec-pad: 140px; }
       .hero { min-height: 70vh; }
-      .about__image img { height: 500px; }
+      .about__image img { max-height: 500px; }
       .map__frame { height: 460px; }
     }
   </style>
@@ -488,7 +488,7 @@
           </div>
           <div class="contact__form fade-in">
             <h3>Send a Message</h3>
-            <form action="TEMPLATE_VAR_formAction" method="POST" aria-label="Contact form">
+            <form action="#" method="POST" aria-label="Contact form">
               <div class="form-group">
                 <label for="contact-name">Name</label>
                 <input type="text" id="contact-name" name="name" placeholder="Your full name" required autocomplete="name">
