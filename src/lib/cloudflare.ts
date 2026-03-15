@@ -142,6 +142,7 @@ function extractAssetsFromHtml(html: string, baseUrl: string): ExtractedAssets {
   }
 
   const resolve = (src: string): string => {
+    if (!src || src.startsWith("data:")) return src;
     try {
       return new URL(src, base).href;
     } catch {
@@ -149,54 +150,137 @@ function extractAssetsFromHtml(html: string, baseUrl: string): ExtractedAssets {
     }
   };
 
-  // Extract logo: first img in header/nav
+  // ---------- Logo extraction (multiple strategies) ----------
   let logo: string | undefined;
+
+  // Strategy 1: img in header/nav with logo-related class/id/alt
   const headerMatch = html.match(/<(?:header|nav)[^>]*>([\s\S]*?)<\/(?:header|nav)>/i);
   if (headerMatch) {
-    const logoImg = headerMatch[1].match(/<img[^>]*src="([^"]*)"[^>]*>/i);
-    if (logoImg) logo = resolve(logoImg[1]);
+    // Prefer images with "logo" in class, id, alt, or src
+    const logoPattern = headerMatch[1].match(/<img[^>]*(?:class|id|alt|src)="[^"]*logo[^"]*"[^>]*src="([^"]*)"[^>]*>/i)
+      || headerMatch[1].match(/<img[^>]*src="([^"]*logo[^"]*)"[^>]*>/i)
+      || headerMatch[1].match(/<img[^>]*src="([^"]*)"[^>]*>/i);
+    if (logoPattern) logo = resolve(logoPattern[1]);
   }
 
-  // Extract favicon
-  let favicon: string | undefined;
-  const faviconMatch = html.match(/<link[^>]*rel="(?:icon|shortcut icon|apple-touch-icon)"[^>]*href="([^"]*)"[^>]*>/i);
-  if (faviconMatch) favicon = resolve(faviconMatch[1]);
+  // Strategy 2: Any img with "logo" in attributes anywhere in page
+  if (!logo) {
+    const logoGlobal = html.match(/<img[^>]*(?:class|id|alt)="[^"]*logo[^"]*"[^>]*src="([^"]*)"[^>]*>/i)
+      || html.match(/<img[^>]*src="([^"]*logo[^"]*)"[^>]*>/i);
+    if (logoGlobal) logo = resolve(logoGlobal[1]);
+  }
 
-  // Extract all images (deduplicated)
+  // Strategy 3: SVG logo in header
+  if (!logo && headerMatch) {
+    const svgLogo = headerMatch[1].match(/<a[^>]*>[^<]*<svg[\s\S]*?<\/svg>/i);
+    if (svgLogo) {
+      // Can't use SVG as URL, but try sibling img
+      const siblingImg = headerMatch[1].match(/<img[^>]*src="([^"]+)"[^>]*>/i);
+      if (siblingImg) logo = resolve(siblingImg[1]);
+    }
+  }
+
+  // ---------- Favicon extraction (multiple link rel types) ----------
+  let favicon: string | undefined;
+  const faviconPatterns = [
+    /<link[^>]*rel="(?:icon|shortcut icon)"[^>]*href="([^"]*)"[^>]*>/i,
+    /<link[^>]*href="([^"]*)"[^>]*rel="(?:icon|shortcut icon)"[^>]*>/i,
+    /<link[^>]*rel="apple-touch-icon"[^>]*href="([^"]*)"[^>]*>/i,
+  ];
+  for (const pattern of faviconPatterns) {
+    const match = html.match(pattern);
+    if (match) {
+      favicon = resolve(match[1]);
+      break;
+    }
+  }
+  // Fallback: /favicon.ico
+  if (!favicon) {
+    favicon = resolve("/favicon.ico");
+  }
+
+  // ---------- All images (deduplicated, absolute URLs) ----------
   const imgRegex = /<img[^>]*\bsrc="([^"]+)"[^>]*>/gi;
+  const srcsetRegex = /\bsrcset="([^"]*)"/i;
   const altRegex = /\balt="([^"]*)"/i;
   const seen = new Set<string>();
   const images: { url: string; alt: string }[] = [];
   let m;
   while ((m = imgRegex.exec(html)) !== null) {
-    const imgUrl = resolve(m[1]);
+    const rawSrc = m[1];
+    // Skip tiny tracking pixels and data URIs
+    if (rawSrc.startsWith("data:") || rawSrc.includes("1x1") || rawSrc.includes("pixel")) continue;
+
+    const imgUrl = resolve(rawSrc);
     if (seen.has(imgUrl)) continue;
     seen.add(imgUrl);
     const altMatch = m[0].match(altRegex);
     images.push({ url: imgUrl, alt: altMatch?.[1] || "" });
+
+    // Also extract highest-res srcset image
+    const srcsetMatch = m[0].match(srcsetRegex);
+    if (srcsetMatch) {
+      const srcsetParts = srcsetMatch[1].split(",").map((s) => s.trim().split(/\s+/));
+      const highRes = srcsetParts.sort((a, b) => {
+        const aW = parseInt(a[1]) || 0;
+        const bW = parseInt(b[1]) || 0;
+        return bW - aW;
+      })[0];
+      if (highRes?.[0]) {
+        const hiUrl = resolve(highRes[0]);
+        if (!seen.has(hiUrl)) {
+          seen.add(hiUrl);
+          images.push({ url: hiUrl, alt: altMatch?.[1] || "" });
+        }
+      }
+    }
+
     if (images.length >= 30) break;
   }
 
-  // Extract colors from inline styles and <style> blocks
+  // ---------- CSS colors extraction ----------
   const colorRegex = /#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{3}\b|rgba?\([^)]+\)/g;
   const styleBlocks = html.match(/<style[^>]*>([\s\S]*?)<\/style>/gi) || [];
   const inlineStyles = html.match(/style="([^"]*)"/gi) || [];
   const colorSet = new Set<string>();
+  // Also extract from CSS custom properties (common in modern sites)
   for (const block of [...styleBlocks, ...inlineStyles]) {
     const matches = block.match(colorRegex) || [];
-    for (const c of matches) colorSet.add(c);
+    for (const c of matches) {
+      // Filter out common non-brand colors (pure white, pure black, transparent)
+      if (c === "#fff" || c === "#000" || c === "#ffffff" || c === "#000000") continue;
+      if (c.includes("rgba(0,0,0,0)") || c.includes("rgba(0, 0, 0, 0)")) continue;
+      colorSet.add(c);
+    }
   }
 
-  // Extract company name from <title> or og:site_name
+  // ---------- Company name extraction (multiple strategies) ----------
   let companyName: string | undefined;
-  const ogSiteName = html.match(/<meta[^>]*property="og:site_name"[^>]*content="([^"]*)"[^>]*>/i);
+
+  // Strategy 1: og:site_name
+  const ogSiteName = html.match(/<meta[^>]*property="og:site_name"[^>]*content="([^"]*)"[^>]*>/i)
+    || html.match(/<meta[^>]*content="([^"]*)"[^>]*property="og:site_name"[^>]*>/i);
   if (ogSiteName) {
     companyName = ogSiteName[1];
-  } else {
+  }
+
+  // Strategy 2: application-name meta
+  if (!companyName) {
+    const appName = html.match(/<meta[^>]*name="application-name"[^>]*content="([^"]*)"[^>]*>/i);
+    if (appName) companyName = appName[1];
+  }
+
+  // Strategy 3: Schema.org organization name
+  if (!companyName) {
+    const schemaName = html.match(/"name"\s*:\s*"([^"]+)"/);
+    if (schemaName && schemaName[1].length < 60) companyName = schemaName[1];
+  }
+
+  // Strategy 4: title tag - first part before separator
+  if (!companyName) {
     const title = extractTitle(html);
     if (title !== "Untitled") {
-      // Use first part before separator
-      companyName = title.split(/[|\-–—]/)[0].trim();
+      companyName = title.split(/[|\-–—:]/)[0].trim();
     }
   }
 

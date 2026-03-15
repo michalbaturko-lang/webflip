@@ -59,6 +59,10 @@ export async function GET(
 
     if (analysis.status === "generating") {
       response.variantProgress = analysis.variant_progress || null;
+      // Also include variants if they're already generated (before HTML step)
+      if (analysis.variants && analysis.variants.length > 0) {
+        response.variantsCount = analysis.variants.length;
+      }
     }
 
     if (analysis.status === "complete") {

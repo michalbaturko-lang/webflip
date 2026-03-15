@@ -192,6 +192,8 @@ async function runPipeline(url: string, token: string) {
       variant_progress: { current: 0, total: 3, message: "Designing variant concepts..." },
     });
     variants = await generateVariants(currentAnalysis as any, allMarkdown, extractedAssets);
+    // Save variants immediately so polling can show them during HTML generation
+    await updateAnalysis(token, { variants }).catch(() => {});
   } catch (err) {
     console.error("Variant generation failed:", err);
     variants = [];
