@@ -171,6 +171,23 @@
       "creatingRemix": "Vytvářím remix...",
       "error": "Nepodařilo se vytvořit remix"
     }
+  "conversionStepper": {
+    "badge": "4 jednoduché kroky",
+    "title": "Jak to funguje",
+    "subtitle": "Od URL k úžasnému redesignu za minuty, ne měsíce.",
+    "step1Title": "Vložte URL",
+    "step1Desc": "Zadejte adresu svého webu. Naše AI začne okamžitě analyzovat.",
+    "step1Detail": "Zabere 5 sekund",
+    "step2Title": "AI hloubková analýza",
+    "step2Desc": "Skenujeme 50+ parametrů výkonu, SEO, bezpečnosti a dalších.",
+    "step2Detail": "50+ parametrů",
+    "step3Title": "Vyberte si design",
+    "step3Desc": "Vybírejte ze 3 unikátních AI redesignů přizpůsobených vaší značce.",
+    "step3Detail": "3 varianty",
+    "step4Title": "Spusťte & vlastněte",
+    "step4Desc": "Získejte kompletní zdrojový kód. Žádný lock-in, žádné předplatné. Je to vaše.",
+    "step4Detail": "100% vaše",
+    "viewResults": "Zobrazit výsledky"
   },
   "analysis": {
     "connectingTo": "Připojujeme se k {domain}",

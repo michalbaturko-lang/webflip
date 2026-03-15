@@ -22,6 +22,22 @@
   --shadow-color: rgba(0, 0, 0, 0.06);
   --overlay-fade: #ffffff;
   --bar-bg: rgba(0, 0, 0, 0.06);
+
+  /* Stepper step colors */
+  --stepper-color-1: #2563eb;
+  --stepper-color-2: #7c3aed;
+  --stepper-color-3: #059669;
+  --stepper-color-4: #d97706;
+  --stepper-glow-1: rgba(37, 99, 235, 0.15);
+  --stepper-glow-2: rgba(124, 58, 237, 0.15);
+  --stepper-glow-3: rgba(5, 150, 105, 0.15);
+  --stepper-glow-4: rgba(217, 119, 6, 0.15);
+  --stepper-border-1: rgba(37, 99, 235, 0.25);
+  --stepper-border-2: rgba(124, 58, 237, 0.25);
+  --stepper-border-3: rgba(5, 150, 105, 0.25);
+  --stepper-border-4: rgba(217, 119, 6, 0.25);
+  --stepper-error: #dc2626;
+  --stepper-error-glow: rgba(220, 38, 38, 0.15);
 }
 
 .dark {
@@ -43,6 +59,22 @@
   --shadow-color: rgba(0, 0, 0, 0.3);
   --overlay-fade: #030712;
   --bar-bg: rgba(255, 255, 255, 0.04);
+
+  /* Stepper step colors */
+  --stepper-color-1: #60a5fa;
+  --stepper-color-2: #a78bfa;
+  --stepper-color-3: #34d399;
+  --stepper-color-4: #fbbf24;
+  --stepper-glow-1: rgba(96, 165, 250, 0.2);
+  --stepper-glow-2: rgba(167, 139, 250, 0.2);
+  --stepper-glow-3: rgba(52, 211, 153, 0.2);
+  --stepper-glow-4: rgba(251, 191, 36, 0.2);
+  --stepper-border-1: rgba(96, 165, 250, 0.3);
+  --stepper-border-2: rgba(167, 139, 250, 0.3);
+  --stepper-border-3: rgba(52, 211, 153, 0.3);
+  --stepper-border-4: rgba(251, 191, 36, 0.3);
+  --stepper-error: #f87171;
+  --stepper-error-glow: rgba(248, 113, 113, 0.2);
 }
 
 @theme inline {
@@ -201,4 +233,32 @@ html {
 
 .light .section-divider {
   background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.08), transparent);
+}
+
+/* ─── Stepper shimmer animation ─── */
+
+@keyframes stepper-shimmer {
+  0% { opacity: 0.5; }
+  50% { opacity: 1; }
+  100% { opacity: 0.5; }
+}
+
+.stepper-shimmer {
+  animation: stepper-shimmer 1.5s ease-in-out infinite;
+}
+
+/* ─── Reduced motion ─── */
+
+@media (prefers-reduced-motion: reduce) {
+  .gradient-blob,
+  .gradient-blob-delay {
+    animation: none;
+  }
+  .pulse-glow {
+    animation: none;
+  }
+  .stepper-shimmer {
+    animation: none;
+    opacity: 1;
+  }
 }

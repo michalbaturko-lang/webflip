@@ -171,6 +171,23 @@
       "creatingRemix": "Creating remix...",
       "error": "Failed to create remix"
     }
+  "conversionStepper": {
+    "badge": "4 Simple Steps",
+    "title": "How It Works",
+    "subtitle": "From URL to stunning redesign in minutes, not months.",
+    "step1Title": "Paste Your URL",
+    "step1Desc": "Enter your website address. Our AI starts analyzing instantly.",
+    "step1Detail": "Takes 5 seconds",
+    "step2Title": "AI Deep Analysis",
+    "step2Desc": "We scan 50+ parameters across performance, SEO, security, and more.",
+    "step2Detail": "50+ parameters",
+    "step3Title": "Pick Your Design",
+    "step3Desc": "Choose from 3 unique AI-generated redesigns tailored to your brand.",
+    "step3Detail": "3 variants",
+    "step4Title": "Launch & Own",
+    "step4Desc": "Get the full source code. No lock-in, no subscriptions. It's yours.",
+    "step4Detail": "100% yours",
+    "viewResults": "View Results"
   },
   "analysis": {
     "connectingTo": "Connecting to {domain}",
