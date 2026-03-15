@@ -66,6 +66,11 @@ export async function GET(
     }
 
     if (analysis.status === "complete") {
+      // Include selected variant if present
+      if (typeof analysis.selected_variant === "number") {
+        response.selectedVariant = analysis.selected_variant;
+      }
+
       // Only show full results if email is provided (email gate)
       if (analysis.email) {
         response.findings = analysis.findings;
