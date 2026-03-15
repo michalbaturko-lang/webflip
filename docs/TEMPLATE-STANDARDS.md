@@ -175,7 +175,37 @@ Zobrazit **JEN** pokud zdrojový web má reálné články nalezené při crawlu
 
 ---
 
-## 10. VIZUÁLNÍ KONZISTENCE
+## 10. NÁZVY SEKCÍ — přizpůsobit oboru klienta
+
+### Problém
+Šablony používaly generické B2B názvy sekcí ("Portfolio", "Selected Work", "Latest Insights", "Client Testimonials"), které nedávají smysl pro restauraci nebo jiný specifický obor.
+
+### Pravidla
+- Názvy sekcí musí odpovídat oboru: restaurace → "Fotogalerie" (ne "Portfolio"), "Novinky" (ne "Latest Insights"), "Co říkají naši hosté" (ne "Client Testimonials")
+- Vytvořit mapování obor → názvy sekcí. Příklady:
+  - **Galerie:** restaurace: "Fotogalerie", kadeřnictví: "Naše práce", stavební firma: "Realizace"
+  - **Blog:** restaurace: "Novinky", tech: "Blog"
+  - **Testimonials:** restaurace: "Co říkají hosté", B2B: "Reference"
+- Haiku prompt musí dostat instrukci generovat názvy sekcí kontextově podle oboru, ne používat defaultní anglické šablonové názvy
+
+---
+
+## 11. NAVIGACE — sticky, funkční, dynamická
+
+### Problém
+Na dlouhé stránce navigace zmizela při scrollu. Některé nav linky (MENU, REZERVACE, ROZVOZ) vedly nikam. Nav obsahovala odkazy na prázdné sekce.
+
+### Pravidla
+- Navigace musí být sticky (fixed/sticky on scroll) na všech šablonách. Při dlouhé single-page stránce je to nutnost
+- Speciální nav položky (MENU, REZERVACE, ROZVOZ, ESHOP): zobrazit JEN pokud existuje cílová URL z crawlu. Pokud zdrojový web má link na Wolt/jídelní lístek/rezervační systém → přidat do nav s externím odkazem. Pokud ne → nezobrazovat
+- Navigace se generuje dynamicky z existujících a naplněných sekcí. Prázdná sekce = žádný nav link
+- Na mobilu: hamburger menu s fullscreen overlay, body scroll lock, Escape key zavírání
+- Aktivní sekce se zvýrazní v nav při scrollu (scroll spy)
+- About sekce: pokud text je delší než 3 věty, rozdělit na odstavce nebo vizuální bloky (timeline, bullet points). Nikdy wall of text bez struktury
+
+---
+
+## 12. VIZUÁLNÍ KONZISTENCE
 
 ### Spacing
 - White space mezi sekcemi: maximálně 80px (`py-20` v Tailwindu)
@@ -207,7 +237,7 @@ Zobrazit **JEN** pokud zdrojový web má reálné články nalezené při crawlu
 
 ---
 
-## 11. TECHNICKÉ MINIMUM
+## 13. TECHNICKÉ MINIMUM
 
 ### HTML
 - `<html lang="...">` atribut podle jazyka stránky (`cs`, `sk`, `en`, `de`)
@@ -246,5 +276,9 @@ Kde v kódu se jednotlivé oblasti fixují:
 | 7. Navigace a footer    | `src/templates/*.html`, `fillTemplate()`   | Dynamické generování nav, podmíněné social ikony         |
 | 8. Kontakt / mapa       | `src/templates/*.html`                     | Iframe embed, `tel:` linky, otevírací doba               |
 | 9. Blog                 | `src/lib/generate-html.ts` → `extractStructuredContent()` | Podmíněné zobrazení, validace reálných dat               |
-| 10. Vizuální konzistence | `src/templates/*.html`, CSS                | Spacing, grid zarovnání, barvy, kontrast                 |
-| 11. Technické minimum   | `src/lib/generate-html.ts` → `postProcessHtml()`, šablony | lang atribut, title, schema, heading hierarchie          |
+| 10. Názvy sekcí dle oboru | `extractStructuredContent()` + `fillTemplate()` | Mapování obor → lokalizované názvy sekcí                 |
+| 11. Sticky navigace     | CSS + JS v šablonách                        | Přidat sticky header, scroll spy, mobilní overlay menu   |
+| 11. Speciální nav linky | `fillTemplate()`                            | Zobrazit MENU/REZERVACE/ROZVOZ jen s reálnou cílovou URL |
+| 11. About struktura     | `extractStructuredContent()`                | Rozdělit dlouhý text na odstavce/bloky                   |
+| 12. Vizuální konzistence | `src/templates/*.html`, CSS                | Spacing, grid zarovnání, barvy, kontrast                 |
+| 13. Technické minimum   | `src/lib/generate-html.ts` → `postProcessHtml()`, šablony | lang atribut, title, schema, heading hierarchie          |
