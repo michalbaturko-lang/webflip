@@ -10,6 +10,9 @@ import { analyzeAIVisibility } from "@/lib/analyzers/ai-visibility";
 import { generateVariants } from "@/lib/redesign";
 import type { Finding } from "@/lib/supabase";
 
+// Vercel Free = 10s, Pro = 60s. Pipeline needs ~45s for crawl+analyze+generate.
+export const maxDuration = 60;
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
