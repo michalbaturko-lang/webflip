@@ -1,16 +1,17 @@
 "use client";
 
-import { useTranslations, useLocale } from "next-intl";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { ArrowRight, Globe } from "lucide-react";
 
-export default function FinalCTA() {
+interface FinalCTAProps {
+  onAnalyze?: (url: string) => void;
+}
+
+export default function FinalCTA({ onAnalyze }: FinalCTAProps) {
   const t = useTranslations("finalCta");
   const tHero = useTranslations("hero");
-  const locale = useLocale();
-  const router = useRouter();
   const [url, setUrl] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -18,12 +19,10 @@ export default function FinalCTA() {
     e.preventDefault();
     if (!url.trim()) return;
     setIsLoading(true);
-    let normalizedUrl = url.trim();
-    if (!/^https?:\/\//i.test(normalizedUrl)) {
-      normalizedUrl = `https://${normalizedUrl}`;
+    if (onAnalyze) {
+      onAnalyze(url);
+      setTimeout(() => setIsLoading(false), 1000);
     }
-    const token = btoa(normalizedUrl).replace(/[/+=]/g, "").slice(0, 12) + Date.now().toString(36);
-    router.push(`/${locale}/analyze/${token}?url=${encodeURIComponent(normalizedUrl)}`);
   };
 
   return (

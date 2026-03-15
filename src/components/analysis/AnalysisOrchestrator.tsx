@@ -718,7 +718,7 @@ export default function AnalysisOrchestrator({ url, token }: Props) {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4 py-16 relative overflow-hidden">
+    <div className="min-h-[60vh] flex flex-col items-center justify-center px-4 py-24 relative overflow-hidden">
       {/* Background effects */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="gradient-blob absolute -top-40 -left-40 h-[500px] w-[500px] rounded-full bg-blue-500/15 blur-[120px]" />

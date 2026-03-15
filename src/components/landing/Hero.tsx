@@ -1,15 +1,16 @@
 "use client";
 
-import { useTranslations, useLocale } from "next-intl";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { ArrowRight, Globe, Shield, Sparkles } from "lucide-react";
 
-export default function Hero() {
+interface HeroProps {
+  onAnalyze?: (url: string) => void;
+}
+
+export default function Hero({ onAnalyze }: HeroProps) {
   const t = useTranslations("hero");
-  const locale = useLocale();
-  const router = useRouter();
   const [url, setUrl] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -17,13 +18,11 @@ export default function Hero() {
     e.preventDefault();
     if (!url.trim()) return;
     setIsLoading(true);
-    // Normalize URL — add https:// if missing
-    let normalizedUrl = url.trim();
-    if (!/^https?:\/\//i.test(normalizedUrl)) {
-      normalizedUrl = `https://${normalizedUrl}`;
+    if (onAnalyze) {
+      onAnalyze(url);
+      // Reset after a short delay so user can submit again
+      setTimeout(() => setIsLoading(false), 1000);
     }
-    const token = btoa(normalizedUrl).replace(/[/+=]/g, "").slice(0, 12) + Date.now().toString(36);
-    router.push(`/${locale}/analyze/${token}?url=${encodeURIComponent(normalizedUrl)}`);
   };
 
   return (
