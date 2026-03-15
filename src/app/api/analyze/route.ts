@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { waitUntil } from "@vercel/functions";
 import { createAnalysis, updateAnalysis } from "@/lib/supabase";
 import { crawlWebsite } from "@/lib/cloudflare";
 import type { ExtractedAssets } from "@/lib/cloudflare";
@@ -43,14 +44,20 @@ export async function POST(request: Request) {
     await createAnalysis(normalizedUrl, token);
     await updateAnalysis(token, { status: "crawling" });
 
-    // Start async pipeline (don't await — return token immediately)
-    runPipeline(normalizedUrl, token).catch((err) => {
-      console.error(`Pipeline error for ${token}:`, err);
-      updateAnalysis(token, {
-        status: "error",
-        error_message: err instanceof Error ? err.message : "Unknown error",
-      }).catch(console.error);
-    });
+    // Start async pipeline — waitUntil keeps the function alive after response is sent
+    waitUntil(
+      runPipeline(normalizedUrl, token).catch(async (err) => {
+        console.error(`Pipeline error for ${token}:`, err);
+        try {
+          await updateAnalysis(token, {
+            status: "error",
+            error_message: err instanceof Error ? err.message : "Unknown error",
+          });
+        } catch {
+          console.error("Failed to update error status");
+        }
+      })
+    );
 
     return NextResponse.json({ token, status: "crawling" });
   } catch (err) {
