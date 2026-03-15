@@ -3,24 +3,13 @@
 import { useState, useCallback } from "react";
 import { X, Loader2, Shuffle, Palette, Type, LayoutGrid } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-
-interface Variant {
-  name: string;
-  palette: {
-    primary: string;
-    secondary: string;
-    accent: string;
-    bg: string;
-    text: string;
-  };
-  typography: { heading: string; body: string };
-  layout: string;
-}
+import { useTranslations } from "next-intl";
+import type { DesignVariant, RemixResponse } from "@/types/design";
 
 interface RemixModalProps {
   isOpen: boolean;
   onClose: () => void;
-  variants: Variant[];
+  variants: DesignVariant[];
   token: string;
   onRemixComplete: (html: string, variantIndex: number) => void;
 }
@@ -33,31 +22,22 @@ interface RemixSelection {
   typography: number | null;
 }
 
-const CATEGORY_CONFIG: {
+const CATEGORY_KEYS: {
   key: RemixCategory;
-  label: string;
+  labelKey: string;
+  descKey: string;
   icon: typeof LayoutGrid;
-  description: string;
 }[] = [
-  {
-    key: "layout",
-    label: "Rozložení",
-    icon: LayoutGrid,
-    description: "Struktura a řazení sekcí",
-  },
-  {
-    key: "colors",
-    label: "Barvy",
-    icon: Palette,
-    description: "Barevná paleta a gradienty",
-  },
-  {
-    key: "typography",
-    label: "Typografie",
-    icon: Type,
-    description: "Fonty a velikosti textu",
-  },
+  { key: "layout", labelKey: "remix.layout", descKey: "remix.layoutDesc", icon: LayoutGrid },
+  { key: "colors", labelKey: "remix.colors", descKey: "remix.colorsDesc", icon: Palette },
+  { key: "typography", labelKey: "remix.typography", descKey: "remix.typographyDesc", icon: Type },
 ];
+
+function isValidRemixResponse(data: unknown): data is RemixResponse {
+  if (typeof data !== "object" || data === null) return false;
+  const d = data as Record<string, unknown>;
+  return typeof d.html === "string" && typeof d.variantIndex === "number";
+}
 
 export default function RemixModal({
   isOpen,
@@ -66,6 +46,7 @@ export default function RemixModal({
   token,
   onRemixComplete,
 }: RemixModalProps) {
+  const t = useTranslations("comparison");
   const [selection, setSelection] = useState<RemixSelection>({
     layout: null,
     colors: null,
@@ -98,27 +79,33 @@ export default function RemixModal({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          layout: selection.layout,
-          colors: selection.colors,
-          typography: selection.typography,
+          layout: selection.layout ?? undefined,
+          colors: selection.colors ?? undefined,
+          typography: selection.typography ?? undefined,
         }),
       });
 
-      const data = await res.json();
+      const data: unknown = await res.json();
 
       if (!res.ok) {
-        setError(data.error || "Nepodařilo se vytvořit remix");
+        const errData = data as { error?: string };
+        setError(errData.error || t("remix.error"));
+        return;
+      }
+
+      if (!isValidRemixResponse(data)) {
+        setError(t("remix.error"));
         return;
       }
 
       onRemixComplete(data.html, data.variantIndex);
       onClose();
     } catch {
-      setError("Chyba sítě. Zkuste to prosím znovu.");
+      setError(t("networkError"));
     } finally {
       setIsLoading(false);
     }
-  }, [isValid, isLoading, token, selection, onRemixComplete, onClose]);
+  }, [isValid, isLoading, token, selection, onRemixComplete, onClose, t]);
 
   return (
     <AnimatePresence>
@@ -157,15 +144,16 @@ export default function RemixModal({
                     className="font-bold text-base"
                     style={{ color: "var(--text-primary)" }}
                   >
-                    Remix variant
+                    {t("remix.title")}
                   </h3>
                   <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-                    Zkombinujte prvky z různých variant
+                    {t("remix.subtitle")}
                   </p>
                 </div>
               </div>
               <button
                 onClick={onClose}
+                aria-label="Close"
                 className="p-1.5 rounded-lg hover:bg-white/10 transition-colors"
                 style={{ color: "var(--text-muted)" }}
               >
@@ -175,7 +163,7 @@ export default function RemixModal({
 
             {/* Body */}
             <div className="px-6 py-5 space-y-5">
-              {CATEGORY_CONFIG.map((cat) => {
+              {CATEGORY_KEYS.map((cat) => {
                 const CatIcon = cat.icon;
                 return (
                   <div key={cat.key}>
@@ -188,22 +176,23 @@ export default function RemixModal({
                         className="text-sm font-medium"
                         style={{ color: "var(--text-secondary)" }}
                       >
-                        {cat.label}
+                        {t(cat.labelKey)}
                       </span>
                       <span
                         className="text-[10px]"
                         style={{ color: "var(--text-faint)" }}
                       >
-                        {cat.description}
+                        {t(cat.descKey)}
                       </span>
                     </div>
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
                       {variants.map((v, i) => {
                         const isSelected = selection[cat.key] === i;
                         return (
                           <button
                             key={i}
                             onClick={() => handleSelect(cat.key, i)}
+                            aria-pressed={isSelected}
                             className={`px-3 py-2.5 rounded-xl text-xs font-medium transition-all border ${
                               isSelected
                                 ? "border-purple-400/50 bg-purple-500/15 text-purple-300"
@@ -258,10 +247,11 @@ export default function RemixModal({
                 onClick={() =>
                   setSelection({ layout: null, colors: null, typography: null })
                 }
+                aria-label={t("remix.resetSelection")}
                 className="text-xs transition-colors hover:text-white"
                 style={{ color: "var(--text-muted)" }}
               >
-                Resetovat výběr
+                {t("remix.resetSelection")}
               </button>
               <button
                 onClick={handleRemix}
@@ -277,12 +267,12 @@ export default function RemixModal({
                 {isLoading ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Vytvářím remix...
+                    {t("remix.creatingRemix")}
                   </>
                 ) : (
                   <>
                     <Shuffle className="h-4 w-4" />
-                    Vytvořit remix
+                    {t("remix.createRemix")}
                   </>
                 )}
               </button>

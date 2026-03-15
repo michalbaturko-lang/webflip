@@ -17,7 +17,6 @@ import {
   Monitor,
   FileText,
   Bot,
-  Eye,
 } from "lucide-react";
 
 import { useLocale, useTranslations } from "next-intl";
@@ -26,6 +25,7 @@ import ProgressBar from "./ProgressBar";
 import StageCrawling from "./StageCrawling";
 import StageAnalyzing from "./StageAnalyzing";
 import StageGenerating from "./StageGenerating";
+import VariantComparison from "@/components/comparison/VariantComparison";
 import { translateFindings } from "@/lib/finding-i18n";
 
 // ---------------------------------------------------------------------------
@@ -318,20 +318,9 @@ function StageResults({
         </div>
       )}
 
-      {/* Redesign Variants Section */}
+      {/* Redesign Variants Section — powered by VariantComparison */}
       {variants.length > 0 && (
-        <div>
-          <div className="text-center mb-6">
-            <Sparkles className="h-8 w-8 text-purple-400 mx-auto mb-2" />
-            <h3 className="text-xl font-bold mb-1" style={{ color: "var(--text-primary)" }}>{t("yourRedesignVariants")}</h3>
-            <p className="text-sm" style={{ color: "var(--text-muted)" }}>{t("chooseDirection")}</p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {variants.map((variant, i) => (
-              <VariantCard key={variant.name} variant={variant} index={i} token={token} />
-            ))}
-          </div>
-        </div>
+        <VariantComparison variants={variants} token={token} />
       )}
     </motion.div>
   );
@@ -430,53 +419,6 @@ function StageEmailGate({
           </p>
         </div>
       </motion.div>
-    </motion.div>
-  );
-}
-
-function VariantCard({ variant, index, token }: { variant: Variant; index: number; token: string }) {
-  const t = useTranslations("analysis");
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 30 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay: index * 0.2 }}
-      className="glass rounded-2xl overflow-hidden flex flex-col hover:border-white/20 transition-all group"
-    >
-      {/* Iframe Preview */}
-      <div className="relative w-full overflow-hidden bg-gray-900/50" style={{ height: "280px" }}>
-        <iframe
-          src={`/api/analyze/${token}/preview/${index}`}
-          title={variant.name}
-          className="absolute top-0 left-0 border-0"
-          style={{
-            width: "1280px",
-            height: "960px",
-            transform: "scale(0.3)",
-            transformOrigin: "top left",
-            pointerEvents: "none",
-          }}
-          loading="lazy"
-          sandbox="allow-same-origin"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-      </div>
-      {/* Card body */}
-      <div className="p-4 flex flex-col gap-3 flex-1">
-        <div>
-          <h3 className="font-bold text-base mb-1" style={{ color: "var(--text-primary)" }}>{variant.name}</h3>
-          <p className="text-xs leading-relaxed" style={{ color: "var(--text-muted)" }}>{variant.description}</p>
-        </div>
-        <a
-          href={`/preview/${token}/${index}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-auto flex items-center justify-center gap-2 rounded-xl bg-blue-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-400 transition-all"
-        >
-          <Eye className="h-4 w-4" />
-          {t("viewFullSite")}
-        </a>
-      </div>
     </motion.div>
   );
 }

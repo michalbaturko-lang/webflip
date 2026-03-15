@@ -2,37 +2,17 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion } from "framer-motion";
-import { Shuffle, ChevronLeft, ChevronRight } from "lucide-react";
+import { Shuffle, ChevronLeft, ChevronRight, Loader2, AlertCircle } from "lucide-react";
+import { useTranslations } from "next-intl";
 import VariantCard from "./VariantCard";
 import RemixModal from "./RemixModal";
 import type { RecommendBadgeProps } from "./RecommendBadge";
-
-interface Variant {
-  name: string;
-  description: string;
-  palette: {
-    primary: string;
-    secondary: string;
-    accent: string;
-    bg: string;
-    text: string;
-  };
-  typography: { heading: string; body: string };
-  layout: string;
-  keyFeatures: string[];
-}
+import type { DesignVariant, RecommendationResponse } from "@/types/design";
 
 interface VariantComparisonProps {
-  variants: Variant[];
+  variants: DesignVariant[];
   token: string;
   onSelectVariant?: (index: number) => void;
-}
-
-interface RecommendationResponse {
-  recommendedIndex: number;
-  templateName: string;
-  reason: string;
-  confidence: number;
 }
 
 export default function VariantComparison({
@@ -40,43 +20,91 @@ export default function VariantComparison({
   token,
   onSelectVariant,
 }: VariantComparisonProps) {
+  const t = useTranslations("comparison");
   const [recommendation, setRecommendation] =
     useState<RecommendationResponse | null>(null);
+  const [recommendLoading, setRecommendLoading] = useState(true);
   const [isRemixOpen, setIsRemixOpen] = useState(false);
   const [mobileIndex, setMobileIndex] = useState(0);
+  const [selectedVariant, setSelectedVariant] = useState<number | null>(null);
+  const [selectError, setSelectError] = useState<string | null>(null);
   const touchStartX = useRef<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Načtení AI doporučení
+  // Reset mobileIndex when variants change
   useEffect(() => {
+    setMobileIndex(0);
+  }, [variants]);
+
+  // Fetch AI recommendation
+  useEffect(() => {
+    let cancelled = false;
     async function fetchRecommendation() {
+      setRecommendLoading(true);
       try {
         const res = await fetch(`/api/analyze/${token}/recommend`);
-        if (res.ok) {
+        if (res.ok && !cancelled) {
           const data: RecommendationResponse = await res.json();
           setRecommendation(data);
         }
       } catch {
-        // Tiché selhání — doporučení je nepovinné
+        // Silent — recommendation is optional
+      } finally {
+        if (!cancelled) setRecommendLoading(false);
       }
     }
     fetchRecommendation();
+    return () => { cancelled = true; };
+  }, [token]);
+
+  // Fetch existing selection
+  useEffect(() => {
+    async function fetchSelection() {
+      try {
+        const res = await fetch(`/api/analyze/${token}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (typeof data.selectedVariant === "number") {
+            setSelectedVariant(data.selectedVariant);
+          }
+        }
+      } catch {
+        // Silent
+      }
+    }
+    fetchSelection();
   }, [token]);
 
   const handleSelectVariant = useCallback(
-    (index: number) => {
+    async (index: number) => {
+      setSelectError(null);
+
       if (onSelectVariant) {
         onSelectVariant(index);
-      } else {
-        window.open(`/preview/${token}/${index}`, "_blank");
+        return;
       }
+
+      // Persist selection
+      try {
+        const res = await fetch(`/api/analyze/${token}/select`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ variantIndex: index }),
+        });
+        if (res.ok) {
+          setSelectedVariant(index);
+        }
+      } catch {
+        // Selection persistence failed — still open preview
+      }
+
+      window.open(`/preview/${token}/${index}`, "_blank");
     },
     [token, onSelectVariant]
   );
 
   const handleRemixComplete = useCallback(
     (html: string, variantIndex: number) => {
-      // Otevře remix v novém okně přes blob URL
       const blob = new Blob([html], { type: "text/html" });
       const url = URL.createObjectURL(blob);
       const win = window.open(url, "_blank");
@@ -106,11 +134,24 @@ export default function VariantComparison({
     touchStartX.current = null;
   };
 
+  // Keyboard navigation
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "ArrowLeft" && mobileIndex > 0) {
+        setMobileIndex((prev) => prev - 1);
+      } else if (e.key === "ArrowRight" && mobileIndex < variants.length - 1) {
+        setMobileIndex((prev) => prev + 1);
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [mobileIndex, variants.length]);
+
   const getRecommendBadge = (index: number): RecommendBadgeProps | null => {
     if (!recommendation || recommendation.recommendedIndex !== index) return null;
     return {
       templateName: recommendation.templateName,
-      reason: recommendation.reason,
+      reasonKey: recommendation.reasonKey,
       confidence: recommendation.confidence,
     };
   };
@@ -127,17 +168,41 @@ export default function VariantComparison({
           className="text-xl font-bold mb-2"
           style={{ color: "var(--text-primary)" }}
         >
-          Porovnání variant
+          {t("title")}
         </h2>
         <p className="text-sm mb-4" style={{ color: "var(--text-muted)" }}>
-          Porovnejte všechny varianty vedle sebe a vyberte tu nejlepší
+          {t("subtitle")}
         </p>
+
+        {recommendLoading && (
+          <div className="flex items-center justify-center gap-2 mb-3">
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-purple-400" />
+            <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+              {t("loadingRecommendation")}
+            </span>
+          </div>
+        )}
+
+        {selectError && (
+          <div className="flex items-center justify-center gap-2 mb-3 text-xs text-red-400">
+            <AlertCircle className="h-3.5 w-3.5" />
+            <span>{selectError}</span>
+            <button
+              onClick={() => setSelectError(null)}
+              className="underline hover:no-underline"
+            >
+              {t("retry")}
+            </button>
+          </div>
+        )}
+
         <button
           onClick={() => setIsRemixOpen(true)}
+          aria-label={t("remixButton")}
           className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all hover:scale-105 border border-purple-400/30 bg-purple-500/10 text-purple-300 hover:bg-purple-500/20"
         >
           <Shuffle className="h-4 w-4" />
-          Remix variant
+          {t("remixButton")}
         </button>
       </motion.div>
 
@@ -150,6 +215,7 @@ export default function VariantComparison({
             index={i}
             token={token}
             recommendation={getRecommendBadge(i)}
+            isSelected={selectedVariant === i}
             onSelect={handleSelectVariant}
           />
         ))}
@@ -159,6 +225,8 @@ export default function VariantComparison({
       <div
         ref={containerRef}
         className="md:hidden relative overflow-hidden"
+        role="tablist"
+        aria-label={t("variantCarousel")}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
@@ -174,6 +242,7 @@ export default function VariantComparison({
                 index={i}
                 token={token}
                 recommendation={getRecommendBadge(i)}
+                isSelected={selectedVariant === i}
                 onSelect={handleSelectVariant}
               />
             </div>
@@ -185,6 +254,7 @@ export default function VariantComparison({
           <button
             onClick={() => setMobileIndex((prev) => Math.max(0, prev - 1))}
             disabled={mobileIndex === 0}
+            aria-label={t("prevVariant")}
             className="p-2 rounded-full glass disabled:opacity-30 transition-opacity"
             style={{ color: "var(--text-muted)" }}
           >
@@ -196,6 +266,8 @@ export default function VariantComparison({
               <button
                 key={i}
                 onClick={() => setMobileIndex(i)}
+                aria-label={t("goToVariant", { num: i + 1 })}
+                aria-pressed={i === mobileIndex}
                 className={`h-2 rounded-full transition-all ${
                   i === mobileIndex
                     ? "w-6 bg-blue-400"
@@ -212,6 +284,7 @@ export default function VariantComparison({
               )
             }
             disabled={mobileIndex === variants.length - 1}
+            aria-label={t("nextVariant")}
             className="p-2 rounded-full glass disabled:opacity-30 transition-opacity"
             style={{ color: "var(--text-muted)" }}
           >
