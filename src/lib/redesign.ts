@@ -32,15 +32,27 @@ export async function generateVariants(
 `
     : "";
 
+  // Identify weak areas to guide variant keyFeatures
+  const weakAreas: string[] = [];
+  if ((analysis.score_performance ?? 50) < 60) weakAreas.push("performance (slow loading)");
+  if ((analysis.score_seo ?? 50) < 60) weakAreas.push("SEO (poor discoverability)");
+  if ((analysis.score_ux ?? 50) < 60) weakAreas.push("UX (poor mobile experience, accessibility)");
+  if ((analysis.score_content ?? 50) < 60) weakAreas.push("content quality");
+  if ((analysis.score_security ?? 50) < 60) weakAreas.push("security headers");
+  const weakAreasStr = weakAreas.length > 0
+    ? `\nWEAK AREAS to address in keyFeatures: ${weakAreas.join(", ")}`
+    : "";
+
   const response = await anthropic.messages.create({
     model: "claude-sonnet-4-20250514",
-    max_tokens: 4000,
+    max_tokens: 5000,
     messages: [
       {
         role: "user",
-        content: `You are a Creative Director designing 3 fundamentally different website redesigns for "${companyName}" (${analysis.url}).
+        content: `You are a Creative Director at a top design agency (Pentagram/IDEO caliber). Design 3 fundamentally different website redesigns for "${companyName}" (${analysis.url}).
 
 Current site scores: Performance ${analysis.score_performance ?? "N/A"}/100, SEO ${analysis.score_seo ?? "N/A"}/100, Security ${analysis.score_security ?? "N/A"}/100, UX ${analysis.score_ux ?? "N/A"}/100, Content ${analysis.score_content ?? "N/A"}/100, Overall ${analysis.score_overall ?? "N/A"}/100
+${weakAreasStr}
 ${assetsContext}
 Content from site:
 ${content}
@@ -48,41 +60,48 @@ ${content}
 ## GENERATE 3 VARIANTS — each must be DRASTICALLY different in look and feel:
 
 ### Variant 1: "Corporate Clean"
-- LAYOUT: Traditional single-column with centered content sections, generous whitespace
-- COLORS: Light background (#f8fafc or #ffffff), professional blue/slate palette derived from the client's brand
-- TYPOGRAPHY: heading = "Inter" (clean sans-serif), body = "Inter"
+- LAYOUT: Traditional single-column with centered content sections, generous whitespace, clear content hierarchy
+- COLORS: Light background (#f8fafc or #ffffff), professional blue/slate palette. If client has brand colors, derive professional variants from them.
+- TYPOGRAPHY: heading = "Inter" (clean sans-serif, weight 700), body = "Inter" (weight 400)
 - VIBE: Corporate, trustworthy, Fortune 500 feel. Think law firm, bank, enterprise SaaS.
-- Palette bg MUST be light (#f8fafc or #ffffff), text MUST be dark
+- Palette bg MUST be light (#f8fafc or #ffffff), text MUST be dark (#0f172a or similar)
+- Shadow system: subtle rgba(0,0,0,0.04) to rgba(0,0,0,0.08) — no flashy effects
+- Cards: white bg, thin borders, professional hover states
 
 ### Variant 2: "Modern Bold"
-- LAYOUT: Asymmetric sections, bento grid elements, full-bleed hero, bold visual breaks
-- COLORS: Dark hero (#0a0a0a to #1a1a2e), vibrant accent gradients, high contrast
-- TYPOGRAPHY: heading = "Plus Jakarta Sans" (bold, modern), body = "Inter"
-- VIBE: Tech startup, SaaS, modern agency. Dark + neon accents. Think Linear, Vercel, Stripe.
-- Palette bg MUST be dark (#030712 or #0a0a0a), text MUST be light
+- LAYOUT: Asymmetric sections, bento grid elements, full-bleed hero, bold visual breaks between sections
+- COLORS: Dark hero (#0a0a0a to #1a1a2e), vibrant accent gradients (primary→accent), high contrast
+- TYPOGRAPHY: heading = "Plus Jakarta Sans" (bold 800-900, modern), body = "Inter" (light 300-400)
+- VIBE: Tech startup, SaaS, modern agency. Dark + neon/vibrant accents. Think Linear, Vercel, Stripe.
+- Palette bg MUST be dark (#030712 or #0a0a0a), text MUST be light (#f1f5f9)
+- Glassmorphism cards: semi-transparent bg, border rgba(255,255,255,0.08), backdrop-blur
+- Glow effects on key elements, gradient text on hero heading
 
 ### Variant 3: "Elegant Minimal"
-- LAYOUT: Narrow container (max 960px), editorial spacing, generous margins, breathing room
-- COLORS: Warm neutrals — cream/ivory bg (#faf8f5), soft muted accent, no harsh contrasts
-- TYPOGRAPHY: heading = "Playfair Display" (elegant serif), body = "Source Sans 3" (clean sans-serif for readability)
+- LAYOUT: Narrow container (max 960px), editorial spacing, generous margins (120px+ between sections)
+- COLORS: Warm neutrals — cream/ivory bg (#faf8f5 or #f5f0eb), soft muted accent (warm browns, soft gold), NO harsh contrasts
+- TYPOGRAPHY: heading = "Playfair Display" (elegant serif, weight 600-700), body = "Source Sans 3" (clean sans for readability)
 - VIBE: Luxury boutique, editorial magazine, high-end brand. Think Apple, Aesop, Monocle.
-- Palette bg MUST be warm light (#faf8f5 or #f5f0eb), text MUST be dark warm
+- Palette bg MUST be warm (#faf8f5 or #f5f0eb), text MUST be warm dark (#1c1917)
+- No shadows on cards — use thin borders and whitespace for hierarchy
+- Subtle decorative elements: thin horizontal rules, generous letter-spacing on labels
 
 ## RULES
 - descriptions MUST reference "${companyName}" by name and their actual business/industry
-- keyFeatures must be specific to THIS site's problems (based on the scores and content above)
-- Each palette must be GENUINELY different — not just hue-shifted versions of the same thing
-- layout descriptions must explain the specific layout approach, not just "modern layout"
+- keyFeatures MUST be specific to THIS site's problems (based on scores above) — mention concrete improvements
+- Each palette must be GENUINELY different — Corporate is cool/blue, Bold is dark/vibrant, Elegant is warm/muted
+- layout descriptions must be specific: mention grid columns, container widths, section arrangements
+- primary colors should relate to the client's industry and brand when possible
 
 Return a JSON array with exactly 3 objects, each having:
-- name: string
-- description: string (2-3 sentences, referencing ${companyName})
+- name: string (include the style name: "Corporate Clean", "Modern Bold", "Elegant Minimal")
+- description: string (2-3 sentences, referencing ${companyName} and their industry)
 - palette: { primary: hex, secondary: hex, accent: hex, bg: hex, text: hex }
 - typography: { heading: font-name, body: font-name }
-- layout: string (2-3 sentences describing specific layout choices)
-- keyFeatures: string[] (4-6 items specific to this site)
+- layout: string (2-3 sentences describing specific layout choices with concrete details)
+- keyFeatures: string[] (5-6 items, at least 2 must address the site's weak areas)
 
-Return ONLY the JSON array.`,
+Return ONLY the JSON array. No markdown, no explanation.`,
       },
     ],
   });
