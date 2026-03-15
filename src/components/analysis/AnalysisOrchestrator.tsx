@@ -452,6 +452,7 @@ export default function AnalysisOrchestrator({ url, token }: Props) {
   const [error, setError] = useState<string | null>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const hasStarted = useRef(false);
+  const crawlStartTimeRef = useRef<number | null>(null);
 
   // Start analysis on mount
   useEffect(() => {
@@ -470,6 +471,7 @@ export default function AnalysisOrchestrator({ url, token }: Props) {
           setError(result.error || "Failed to start analysis");
           return;
         }
+        crawlStartTimeRef.current = Date.now();
         startPolling(result.token || token);
       } catch {
         setError("Failed to connect. Please try again.");
@@ -483,6 +485,8 @@ export default function AnalysisOrchestrator({ url, token }: Props) {
   const startPolling = useCallback((pollToken: string) => {
     if (pollingRef.current) clearInterval(pollingRef.current);
 
+    const CRAWL_TIMEOUT_MS = 3 * 60 * 1000; // 3 minutes
+
     const poll = async () => {
       try {
         const res = await fetch(`/api/analyze/${pollToken}`);
@@ -494,9 +498,18 @@ export default function AnalysisOrchestrator({ url, token }: Props) {
           case "pending":
           case "crawling":
             setStage(1);
+            // Check crawl timeout
+            if (crawlStartTimeRef.current && Date.now() - crawlStartTimeRef.current > CRAWL_TIMEOUT_MS) {
+              setError("Analýza trvá příliš dlouho. Server pravděpodobně neodpovídá. Zkuste to prosím znovu.");
+              if (pollingRef.current) {
+                clearInterval(pollingRef.current);
+                pollingRef.current = null;
+              }
+            }
             break;
           case "analyzing":
             setStage(2);
+            crawlStartTimeRef.current = null; // Reset — crawl is done
             break;
           case "generating":
             setStage(3);

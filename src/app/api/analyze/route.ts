@@ -66,10 +66,12 @@ export async function POST(request: Request) {
  * Full analysis pipeline — runs async after returning the token.
  */
 async function runPipeline(url: string, token: string) {
+  try {
   // ─── Stage 1: Crawl ───
+  console.log(`[pipeline:${token}] Stage 1: Starting crawl for ${url}`);
   const crawlResult = await crawlWebsite(url, {
     onProgress: (partialPages) => {
-      // Save crawled pages progressively so the frontend can show them
+      console.log(`[pipeline:${token}] Crawl progress: ${partialPages.length} pages so far`);
       const truncated = partialPages.map((p) => ({
         url: p.url,
         title: p.title,
@@ -79,11 +81,16 @@ async function runPipeline(url: string, token: string) {
       updateAnalysis(token, {
         crawled_pages: truncated,
         page_count: truncated.length,
-      }).catch(() => {}); // best-effort, don't block the crawl
+      }).catch(() => {});
     },
   });
+  console.log(`[pipeline:${token}] Crawl result: success=${crawlResult.success}, pages=${crawlResult.pages.length}, error=${crawlResult.error || 'none'}`);
+
   if (!crawlResult.success || crawlResult.pages.length === 0) {
-    throw new Error(crawlResult.error || "Crawl returned no pages");
+    const errMsg = crawlResult.error || "Crawl returned no pages";
+    console.error(`[pipeline:${token}] Crawl failed: ${errMsg}`);
+    await updateAnalysis(token, { status: "error", error_message: errMsg }).catch(console.error);
+    return;
   }
 
   // Store crawled pages (truncate HTML to save space)
@@ -97,6 +104,7 @@ async function runPipeline(url: string, token: string) {
   // Store extracted assets (logo, images, colors) for variant generation
   const extractedAssets = crawlResult.assets || null;
 
+  console.log(`[pipeline:${token}] Stage 2: Updating status to analyzing, ${crawledPages.length} pages crawled`);
   await updateAnalysis(token, {
     status: "analyzing",
     crawled_pages: crawledPages,
@@ -130,6 +138,7 @@ async function runPipeline(url: string, token: string) {
     await updateAnalysis(token, update as any).catch(() => {});
   };
 
+  console.log(`[pipeline:${token}] Running 6 analyzers in parallel...`);
   // Run analyzers in parallel, but update DB as each completes
   await Promise.allSettled([
     getPageSpeedData(url).then(
@@ -168,6 +177,8 @@ async function runPipeline(url: string, token: string) {
       (scores.aiVisibility ?? 50) * 0.1
   );
 
+  console.log(`[pipeline:${token}] Analyzers done. Scores:`, scores, `Overall: ${overall}`);
+  console.log(`[pipeline:${token}] Stage 3: Updating status to generating`);
   await updateAnalysis(token, {
     status: "generating",
     score_performance: scores.performance ?? 50,
@@ -190,6 +201,7 @@ async function runPipeline(url: string, token: string) {
   });
 
   // ─── Stage 3: Generate variants (with progress) ───
+  console.log(`[pipeline:${token}] Stage 3: Generating variant concepts...`);
   let variants: any[] = [];
   try {
     const currentAnalysis = {
@@ -206,14 +218,15 @@ async function runPipeline(url: string, token: string) {
       variant_progress: { current: 0, total: 3, message: "Designing variant concepts..." },
     });
     variants = await generateVariants(currentAnalysis as any, allMarkdown, extractedAssets);
-    // Save variants immediately so polling can show them during HTML generation
+    console.log(`[pipeline:${token}] Generated ${variants.length} variant concepts`);
     await updateAnalysis(token, { variants }).catch(() => {});
   } catch (err) {
-    console.error("Variant generation failed:", err);
+    console.error(`[pipeline:${token}] Variant generation failed:`, err);
     variants = [];
   }
 
   // ─── Stage 4: Generate HTML previews (sequential with progress) ───
+  console.log(`[pipeline:${token}] Stage 4: Generating HTML previews for ${variants.length} variants...`);
   const htmlVariants: string[] = [];
   if (variants.length > 0) {
     for (let i = 0; i < variants.length; i++) {
@@ -247,6 +260,7 @@ async function runPipeline(url: string, token: string) {
     }
   }
 
+  console.log(`[pipeline:${token}] Stage 5: Marking as complete. HTML variants: ${htmlVariants.length}`);
   await updateAnalysis(token, {
     status: "complete",
     variants,
@@ -254,6 +268,15 @@ async function runPipeline(url: string, token: string) {
     variant_progress: null,
     completed_at: new Date().toISOString(),
   });
+  console.log(`[pipeline:${token}] Pipeline completed successfully!`);
+
+  } catch (err) {
+    console.error(`[pipeline:${token}] FATAL pipeline error:`, err);
+    await updateAnalysis(token, {
+      status: "error",
+      error_message: err instanceof Error ? err.message : "Pipeline failed unexpectedly",
+    }).catch(console.error);
+  }
 }
 
 /**
