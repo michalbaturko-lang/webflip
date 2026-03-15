@@ -8,6 +8,7 @@ import { analyzeUX } from "@/lib/analyzers/ux";
 import { analyzeContent } from "@/lib/analyzers/content";
 import { analyzeAIVisibility } from "@/lib/analyzers/ai-visibility";
 import { generateVariants } from "@/lib/redesign";
+import { generateHtmlVariants } from "@/lib/generate-html";
 import type { Finding } from "@/lib/supabase";
 
 // Vercel Free = 10s, Pro = 60s. Pipeline needs ~45s for crawl+analyze+generate.
@@ -185,9 +186,33 @@ async function runPipeline(url: string, token: string) {
     variants = [];
   }
 
+  // ─── Stage 4: Generate HTML previews ───
+  let htmlVariants: string[] = [];
+  try {
+    if (variants.length > 0) {
+      htmlVariants = await generateHtmlVariants(
+        {
+          url,
+          score_performance: performance.score,
+          score_seo: seo.score,
+          score_security: security.score,
+          score_ux: ux.score,
+          score_content: content.score,
+          score_overall: overall,
+        },
+        variants,
+        allMarkdown
+      );
+    }
+  } catch (err) {
+    console.error("HTML variant generation failed:", err);
+    htmlVariants = [];
+  }
+
   await updateAnalysis(token, {
     status: "complete",
     variants,
+    html_variants: htmlVariants,
     completed_at: new Date().toISOString(),
   });
 }

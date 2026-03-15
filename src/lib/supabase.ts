@@ -39,6 +39,7 @@ export interface AnalysisRow {
   analysis_results: Record<string, CategoryScore> | null;
   findings: Finding[];
   variants: DesignVariant[];
+  html_variants: string[];
   created_at: string;
   updated_at: string;
   completed_at: string | null;

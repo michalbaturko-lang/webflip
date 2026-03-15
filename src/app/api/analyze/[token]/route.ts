@@ -59,12 +59,14 @@ export async function GET(
       if (analysis.email) {
         response.findings = analysis.findings;
         response.variants = analysis.variants;
+        response.htmlVariantsCount = (analysis.html_variants || []).length;
         response.completedAt = analysis.completed_at;
       } else {
         // Show scores but blur/limit findings
         response.findingsPreview = (analysis.findings || []).slice(0, 3);
         response.findingsTotal = (analysis.findings || []).length;
         response.variantsCount = (analysis.variants || []).length;
+        response.htmlVariantsCount = (analysis.html_variants || []).length;
         response.emailRequired = true;
       }
     }
