@@ -1,11 +1,52 @@
 import Anthropic from "@anthropic-ai/sdk";
+import fs from "fs";
+import path from "path";
 import type { DesignVariant, AnalysisRow, ExtractedAssets } from "./supabase";
 
-/**
- * Generate standalone HTML pages for each design variant.
- * Each HTML page is a premium-quality, self-contained website with inline CSS,
- * Google Fonts, responsive design, animations, and REAL client content.
- */
+// ── Template Data Interface ──
+
+interface TemplateData {
+  companyName: string;
+  headline: string;
+  subheadline: string;
+  metaDescription: string;
+  logoUrl: string;
+  faviconUrl: string;
+  primaryColor: string;
+  language: string;
+  navLinks: { text: string; href: string }[];
+  services: { title: string; description: string; icon: string }[];
+  aboutText: string;
+  stats: { number: string; label: string }[];
+  testimonials: { quote: string; author: string; role: string }[];
+  faqItems: { question: string; answer: string }[];
+  blogPosts: { title: string; excerpt: string; date: string }[];
+  gallery: { url: string; alt: string }[];
+  socialLinks: string[];
+  phone: string;
+  email: string;
+  address: string;
+}
+
+// ── Variant → Template File Mapping ──
+
+function getTemplateFile(variantName: string): string {
+  const name = variantName.toLowerCase();
+  if (name.includes("corporate") || name.includes("clean") || name.includes("brand") || name.includes("faithful")) {
+    return "corporate-clean.html";
+  }
+  if (name.includes("modern") || name.includes("bold") || name.includes("edge") || name.includes("dark")) {
+    return "modern-bold.html";
+  }
+  if (name.includes("elegant") || name.includes("minimal") || name.includes("luxury")) {
+    return "elegant-minimal.html";
+  }
+  // Default fallback
+  return "corporate-clean.html";
+}
+
+// ── Main Export ──
+
 export async function generateHtmlVariants(
   analysis: Pick<AnalysisRow, "url" | "score_performance" | "score_seo" | "score_security" | "score_ux" | "score_content" | "score_overall">,
   variants: DesignVariant[],
@@ -16,474 +57,271 @@ export async function generateHtmlVariants(
   if (!apiKey) throw new Error("Missing ANTHROPIC_API_KEY");
 
   const anthropic = new Anthropic({ apiKey });
-
-  // Use generous content for better results
   const content = crawledContent.slice(0, 20000);
 
-  const results = await Promise.allSettled(
-    variants.map((variant) =>
-      generateSingleHtml(anthropic, analysis, variant, content, assets)
-    )
-  );
+  // Extract structured content once using Haiku (shared across all variants)
+  let templateData: TemplateData;
+  try {
+    templateData = await extractStructuredContent(anthropic, analysis.url, content, assets);
+  } catch (err) {
+    console.error("[generate-html] Content extraction failed:", err);
+    templateData = buildFallbackTemplateData(analysis.url, content, assets);
+  }
 
-  return results.map((result, i) => {
-    if (result.status === "fulfilled") {
-      return postProcessHtml(result.value, variants[i]);
+  // Fill each variant's template
+  const results = variants.map((variant) => {
+    try {
+      const templateFile = getTemplateFile(variant.name);
+      const templatePath = path.join(process.cwd(), "src/templates", templateFile);
+      const template = fs.readFileSync(templatePath, "utf-8");
+
+      // Override primaryColor with variant's palette
+      const variantData: TemplateData = {
+        ...templateData,
+        primaryColor: variant.palette.primary,
+      };
+
+      let html = fillTemplate(template, variantData);
+      html = postProcessHtml(html, variant);
+      return validateHtml(html, variantData.companyName);
+    } catch (err) {
+      console.error(`[generate-html] Template fill failed for ${variant.name}:`, err);
+      return buildFallbackHtml(variant, analysis.url, content, assets);
     }
-    console.error(`HTML generation failed for variant ${i}:`, result.reason);
-    return buildFallbackHtml(variants[i], analysis.url, content, assets);
   });
+
+  return results;
 }
 
-async function generateSingleHtml(
+// ── Content Extraction via Haiku ──
+
+async function extractStructuredContent(
   anthropic: Anthropic,
-  analysis: Pick<AnalysisRow, "url" | "score_performance" | "score_seo" | "score_security" | "score_ux" | "score_content" | "score_overall">,
-  variant: DesignVariant,
+  url: string,
   crawledContent: string,
   assets?: ExtractedAssets | null
-): Promise<string> {
-  const companyName = assets?.companyName || (() => { try { return new URL(analysis.url).hostname; } catch { return "Company"; } })();
-
-  const assetsSection = assets
-    ? `
-## CLIENT ASSETS — USE THESE EXACT URLs (no placeholders ever!)
-- Company Name: "${assets.companyName || companyName}"
-${assets.logo ? `- Logo: ${assets.logo} (use in navbar AND footer)` : "- No logo found — use company name as text logo"}
-${assets.favicon ? `- Favicon: ${assets.favicon}` : ""}
-${assets.metaDescription ? `- Site Description: "${assets.metaDescription}"` : ""}
-
-### Client Images (use these absolute URLs for hero backgrounds, about sections, galleries):
-${assets.images.slice(0, 15).map((img, i) => `${i + 1}. ${img.url}${img.alt ? ` — "${img.alt}"` : ""}`).join("\n")}
-
-### Brand Colors from current site: ${assets.colors.slice(0, 10).join(", ")}
-${assets.socialLinks.length > 0 ? `\n### Social Media Links (link these in the footer):\n${assets.socialLinks.map((l) => `- ${l}`).join("\n")}` : ""}
-${assets.phoneNumbers.length > 0 ? `\n### Phone Numbers: ${assets.phoneNumbers.join(", ")}` : ""}
-${assets.emails.length > 0 ? `\n### Email Addresses: ${assets.emails.join(", ")}` : ""}
-${assets.address ? `\n### Address: ${assets.address}` : ""}
-`
-    : "";
-
-  // Determine variant-specific design instructions
-  const variantInstructions = getVariantInstructions(variant);
+): Promise<TemplateData> {
+  let siteHost: string;
+  try { siteHost = new URL(url).hostname; } catch { siteHost = url; }
+  const companyName = assets?.companyName || siteHost;
 
   const response = await anthropic.messages.create({
-    model: "claude-sonnet-4-20250514",
-    max_tokens: 32000,
+    model: "claude-haiku-4-5-20251001",
+    max_tokens: 8000,
     messages: [
       {
         role: "user",
-        content: `You are a Principal Frontend Engineer and Design Director at a top agency (Vercel/Stripe caliber). Generate a COMPLETE, PREMIUM standalone HTML landing page redesign for "${companyName}" (${analysis.url}).
+        content: `You are a content extraction specialist. Analyze this crawled website content and extract structured data for a website redesign.
 
-This must look like a $10,000+ custom website — not a template or prototype. Every detail matters.
+COMPANY: "${companyName}" (${url})
 
-${assetsSection}
-
-## VARIANT: "${variant.name}"
-${variant.description}
-
-## DESIGN SYSTEM (apply rigorously)
-- Primary: ${variant.palette.primary}
-- Secondary: ${variant.palette.secondary}
-- Accent: ${variant.palette.accent}
-- Background: ${variant.palette.bg}
-- Text: ${variant.palette.text}
-- Heading font: "${variant.typography.heading}" (from Google Fonts)
-- Body font: "${variant.typography.body}" (from Google Fonts)
-- Layout: ${variant.layout}
-
-### Typography Scale (use consistently):
-- Display (hero): clamp(2.5rem, 6vw, 4.5rem), weight 800, letter-spacing -0.03em
-- H2 (section): clamp(1.75rem, 4vw, 2.75rem), weight 700, letter-spacing -0.02em
-- H3 (card): clamp(1.1rem, 2vw, 1.35rem), weight 600
-- Body: 1rem (16px), weight 400, line-height 1.7
-- Small/caption: 0.875rem, weight 400, line-height 1.5
-
-### Spacing System (8px grid):
-- Section padding: 96px vertical (mobile: 64px)
-- Container: max-width 1200px, padding 0 clamp(16px, 4vw, 48px)
-- Card padding: 32px (mobile: 24px)
-- Component gaps: 24px (grids), 16px (within cards)
-
-### Border Radius Tokens:
-- Small (buttons, inputs): 10px
-- Medium (cards): 16px
-- Large (sections, hero overlays): 24px
-
-${variantInstructions}
-
-## MANDATORY SECTIONS (in this exact order):
-
-### 1. NAVIGATION (sticky/fixed)
-- Logo (real image or company name) left-aligned
-- Menu links right-aligned: Služby, O nás, Reference, Kontakt
-- Hamburger menu on mobile (<768px) with JS toggle (slide-in overlay with backdrop)
-- Glass/blur backdrop effect (backdrop-filter: blur(20px))
-- Smooth scroll to section anchors
-- Shrink effect on scroll: padding reduces from 20px to 12px, subtle shadow appears
-- aria-label on nav, hamburger button gets aria-expanded + aria-controls
-
-### 2. HERO (min-height: 70vh)
-- Full-width with gradient overlay over the client's first/best image
-- Large heading with "${companyName}" or their main headline from crawled content
-- Subtitle paragraph from real site content
-- Prominent CTA button with hover animation (translateY + shadow glow)
-- Page load animation sequence:
-  * Heading: slide up 20px + fade in, 600ms ease-out
-  * Subtitle: slide up 15px + fade in, 500ms, 200ms delay
-  * CTA: scale 0.95→1 + fade in, 400ms, 400ms delay
-
-### 3. STATS / TRUST BAR (optional but strongly recommended)
-- Horizontal row of 3-4 key numbers/stats from the crawled content
-- Examples: years of experience, clients served, projects completed, satisfaction rate
-- Each stat: large animated number (count-up on scroll), short label below
-- Use IntersectionObserver to trigger count-up animation
-- Centered layout, evenly spaced, with subtle separator lines or cards
-- Extract real numbers from crawled content — if none found, SKIP this section
-
-### 4. SERVICES / PRODUCTS
-- 3-column grid on desktop, 2 on tablet (768-1024px), 1 on mobile
-- Each card: decorative SVG icon, heading, description paragraph
-- Content from the crawled site's service/product sections
-- Cards with hover: translateY(-6px) + enhanced shadow, 300ms ease
-- Staggered fade-in on scroll: each card delays 0.08s × index
-- Cards must have equal height (use grid, not flexbox)
-
-### 5. ABOUT / O NÁS
-- Two-column layout: text content left (55%), image right (45%)
-- Stack vertically on mobile with image on top
-- Real description text from the crawled content
-- Optional stats/numbers row with count-up animation if data available
-- Image with border-radius: 16px and subtle shadow
-
-### 6. TESTIMONIALS / REVIEWS (include if testimonial content found in crawled data)
-- Elegant card layout: 2-3 testimonial cards with quote marks
-- Each card: quote text, customer name, optional role/company
-- Use real testimonials from the crawled content — if none found, SKIP entirely
-- Decorative large quote SVG icon (") in primary color at 10-15% opacity
-- Cards with subtle border and generous padding (40px+)
-- Fade-in animation on scroll
-
-### 7. GALLERY / REFERENCES
-- Grid of real client images (use absolute URLs from assets)
-- 3 columns desktop, 2 tablet, 1 mobile
-- Images: border-radius 12px, object-fit cover, height 260px
-- Hover: scale(1.03) + brightness(1.05), 400ms ease
-- Only include if images are available — otherwise skip entirely
-
-### 8. FAQ (include if Q&A content found in crawled data)
-- Accordion-style FAQ section with expandable questions
-- Each item: question as clickable header, answer revealed on click
-- Use real FAQ content from crawled data — if none found, SKIP
-- JavaScript: toggle visibility with smooth max-height transition
-- Chevron/arrow SVG icon that rotates 180° on toggle
-- Maximum 6 items, accessible with Enter/Space keyboard triggers
-
-### 9. CONTACT
-- Two-column: contact info left, visual form right
-- Show real phone, email, address from crawled content (if found)
-- Form fields: Jméno, Email, Zpráva, submit button (visual only)
-- Styled inputs: focus ring uses primary color with 3px spread
-- Labels must use <label> with for attribute (accessibility)
-- Submit button matches CTA style from hero
-- Include Google Maps embed or location visual if address is available
-
-### 10. FOOTER
-- Company logo + name
-- Navigation links repeated
-- Contact info (phone, email, address)
-- © ${new Date().getFullYear()} ${companyName}
-- Social media SVG icons — use REAL social links if provided in assets, otherwise use clean generic SVGs
-- If social media URLs were provided, link to the actual profiles
-
-## ANIMATION & INTERACTION SPEC (Apple-quality motion design)
-
-### Page Load Sequence:
-- Navbar: fade in, 300ms, ease-out
-- Hero elements: staggered slide-up + fade (described in Hero section above)
-
-### Scroll Behaviors:
-- Navbar: shrink padding + add box-shadow when scrollY > 50
-- Section elements with .fade-in class: slide up 24px + fade, triggered at threshold 0.15
-- Cards: stagger reveal, 0.08s between each
-
-### Hover States:
-- Buttons: translateY(-2px), shadow increase, 200ms ease
-- Cards: translateY(-6px), shadow glow using primary color at 15% opacity, 300ms ease
-- Links: color transition + subtle underline effect, 200ms
-- Images: scale(1.03), 400ms ease
-
-### Performance Rules:
-- Use transform and opacity ONLY for animations (GPU-accelerated)
-- Add will-change: transform on cards/animated elements
-- @media (prefers-reduced-motion: reduce) — disable all transitions and animations
-- IntersectionObserver with rootMargin "-40px" and threshold 0.15
-
-## ACCESSIBILITY (WCAG 2.2 AA)
-- Color contrast: ≥ 4.5:1 for normal text, ≥ 3:1 for large text (verify against palette)
-- All images MUST have meaningful alt text (from assets or crawled content)
-- Semantic HTML: <header>, <nav>, <main>, <section>, <article>, <footer>
-- aria-label on interactive elements without visible text
-- Keyboard navigation: visible focus indicators (outline: 2px solid ${variant.palette.primary}, outline-offset: 2px)
-- Skip-to-content link as first focusable element (visually hidden, visible on focus)
-- Touch targets: minimum 44x44px on all buttons and links
-- @media (prefers-reduced-motion: reduce) support
-
-## RESPONSIVE BREAKPOINTS
-Design mobile-first, then enhance:
-| Element | Mobile (375px) | Tablet (768px) | Desktop (1280px+) |
-|---------|---------------|----------------|-------------------|
-| Navbar | Hamburger, logo left | Same | Horizontal links |
-| Hero | min-h 50vh, smaller text | 60vh | 70vh, full effect |
-| Stats | 2×2 grid | 4 columns | 4 columns, larger text |
-| Services | 1 column | 2 columns | 3 columns |
-| About | Stack vertical | Same | 2-column 55/45 |
-| Testimonials | 1 column | 2 columns | 3 columns |
-| Gallery | 1 column | 2 columns | 3 columns |
-| FAQ | Full width | max-w 800px | max-w 800px centered |
-| Contact | Stack vertical | Same | 2-column |
-| Footer | Stack 1 col | 2 col | Horizontal flex |
-
-## TECHNICAL REQUIREMENTS
-1. <!DOCTYPE html> with charset, viewport, theme-color, and description meta tags
-2. <html lang="cs"> — proper language attribute
-3. Google Fonts via <link rel="preconnect"> + <link> with display=swap for heading + body fonts
-4. ALL CSS in a single <style> tag — zero external CSS files
-5. Mobile-first CSS: base styles for mobile, then @media (min-width: 768px) and @media (min-width: 1280px)
-6. CSS custom properties (--color-primary, --color-bg, etc.) for the palette
-7. @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }
-8. @media (prefers-color-scheme: dark/light) — NOT needed, the variant has its own fixed scheme
-9. All JS inline in <script> at bottom — hamburger toggle, smooth scroll, IntersectionObserver with stagger, navbar scroll handler
-10. Total HTML under 120KB — be efficient with CSS, use custom properties to avoid repetition
-11. 100% standalone — opens in any browser and looks complete and professional
-
-## ABSOLUTE RULES
-- NEVER use placeholder text: no "Lorem ipsum", no "Your Company", no "Acme", no "example.com"
-- NEVER use placeholder images: no placeholder.com, picsum.photos, unsplash.com, via.placeholder.com, placehold.co
-- If you don't have real content for a section, SKIP IT — an empty section is better than fake content
-- Every text, heading, and image URL must come from the crawled content or assets provided below
-- Use the client's REAL company name "${companyName}" everywhere
-- Do NOT include any HTML comments explaining the code
-- Do NOT wrap output in code fences or markdown
-
-## CRAWLED CONTENT FROM ${analysis.url}:
+CRAWLED CONTENT:
 ${crawledContent}
 
-## OUTPUT
-Return ONLY the complete HTML. Start with <!DOCTYPE html>, end with </html>.`,
+AVAILABLE ASSETS:
+- Logo: ${assets?.logo || "none"}
+- Favicon: ${assets?.favicon || "none"}
+- Images: ${(assets?.images || []).slice(0, 15).map(img => img.url).join(", ") || "none"}
+- Phone: ${assets?.phoneNumbers?.join(", ") || "none"}
+- Email: ${assets?.emails?.join(", ") || "none"}
+- Address: ${assets?.address || "none"}
+- Social Links: ${assets?.socialLinks?.join(", ") || "none"}
+- Nav Links: ${(assets?.navLinks || []).map(l => `${l.text}: ${l.href}`).join(", ") || "none"}
+
+INSTRUCTIONS:
+1. Extract ALL real content from the crawled data — NEVER invent placeholder text
+2. Detect the website language (cs/en/de/sk) — ALL output text MUST be in that same language
+3. Generate 3 Blog/Aktuality posts relevant to the detected industry, written in the detected language
+4. Generate 5-8 FAQ items relevant to the company's services, in the detected language
+5. Extract real stats/numbers if present (years, clients, projects, satisfaction)
+6. Extract real testimonials if present
+7. Use real service/product names and descriptions from the crawled content
+8. For service icons, use one of: briefcase, chart, shield, globe, users, code, heart, star, lightbulb, target
+
+Return ONLY valid JSON (no markdown fences, no explanation) with this exact structure:
+{
+  "companyName": "string",
+  "headline": "string - main heading from site or company tagline",
+  "subheadline": "string - subtitle or company description",
+  "metaDescription": "string - SEO meta description",
+  "language": "cs|en|de|sk",
+  "navLinks": [{"text": "string", "href": "#section-id"}],
+  "services": [{"title": "string", "description": "string", "icon": "string"}],
+  "aboutText": "string - about company paragraph",
+  "stats": [{"number": "string like 15+ or 98%", "label": "string"}],
+  "testimonials": [{"quote": "string", "author": "string", "role": "string"}],
+  "faqItems": [{"question": "string", "answer": "string"}],
+  "blogPosts": [{"title": "string", "excerpt": "string", "date": "string like 2024-01-15"}],
+  "gallery": [{"url": "string absolute URL", "alt": "string"}],
+  "socialLinks": ["url strings"],
+  "phone": "string",
+  "email": "string",
+  "address": "string"
+}`,
       },
     ],
   });
 
-  const text =
-    response.content[0].type === "text" ? response.content[0].text : "";
+  const text = response.content[0].type === "text" ? response.content[0].text : "";
 
-  // Extract HTML — Claude might wrap it in code fences despite instructions
-  const htmlMatch = text.match(/<!DOCTYPE html>[\s\S]*<\/html>/i);
-  if (htmlMatch) return htmlMatch[0];
+  // Parse JSON response — handle potential code fences
+  let jsonStr = text.trim();
+  const fenceMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (fenceMatch) jsonStr = fenceMatch[1].trim();
 
-  if (text.trim().startsWith("<!") || text.trim().startsWith("<html")) {
-    return text.trim();
+  let parsed: Record<string, unknown>;
+  try {
+    parsed = JSON.parse(jsonStr);
+  } catch {
+    console.error("[generate-html] Failed to parse Haiku response as JSON, using fallback");
+    return buildFallbackTemplateData(url, "", assets);
   }
 
-  const fenceMatch = text.match(/```(?:html)?\s*([\s\S]*?)```/);
-  if (fenceMatch) return fenceMatch[1].trim();
-
-  return buildFallbackHtml(variant, analysis.url, crawledContent, assets);
+  // Build TemplateData from parsed response, with fallbacks
+  return {
+    companyName: (parsed.companyName as string) || companyName,
+    headline: (parsed.headline as string) || companyName,
+    subheadline: (parsed.subheadline as string) || "",
+    metaDescription: (parsed.metaDescription as string) || assets?.metaDescription || "",
+    logoUrl: assets?.logo || "",
+    faviconUrl: assets?.favicon || "",
+    primaryColor: "#1B2A4A",
+    language: (parsed.language as string) || "cs",
+    navLinks: Array.isArray(parsed.navLinks) ? parsed.navLinks as TemplateData["navLinks"] : assets?.navLinks || [],
+    services: Array.isArray(parsed.services) ? parsed.services as TemplateData["services"] : [],
+    aboutText: (parsed.aboutText as string) || "",
+    stats: Array.isArray(parsed.stats) ? parsed.stats as TemplateData["stats"] : [],
+    testimonials: Array.isArray(parsed.testimonials) ? parsed.testimonials as TemplateData["testimonials"] : [],
+    faqItems: Array.isArray(parsed.faqItems) ? parsed.faqItems as TemplateData["faqItems"] : [],
+    blogPosts: Array.isArray(parsed.blogPosts) ? parsed.blogPosts as TemplateData["blogPosts"] : [],
+    gallery: Array.isArray(parsed.gallery)
+      ? parsed.gallery as TemplateData["gallery"]
+      : (assets?.images || []).slice(0, 8).map(img => ({ url: img.url, alt: img.alt || companyName })),
+    socialLinks: Array.isArray(parsed.socialLinks) ? parsed.socialLinks as string[] : assets?.socialLinks || [],
+    phone: (parsed.phone as string) || assets?.phoneNumbers?.[0] || "",
+    email: (parsed.email as string) || assets?.emails?.[0] || "",
+    address: (parsed.address as string) || assets?.address || "",
+  };
 }
 
-/**
- * Returns variant-specific design instructions for the prompt.
- * Each variant has deeply differentiated visual language, CSS techniques, and layout patterns.
- */
-function getVariantInstructions(variant: DesignVariant): string {
-  const name = variant.name.toLowerCase();
+// ── Template Filling ──
 
-  if (name.includes("corporate") || name.includes("clean") || name.includes("brand") || name.includes("faithful")) {
-    return `## VARIANT STYLE: Corporate Clean — Fortune 500 Aesthetic
+function fillTemplate(template: string, data: TemplateData): string {
+  let html = template;
 
-### Visual Language:
-- Light background (#f8fafc or white), professional blue/gray palette
-- Clean, crisp edges — no glow effects, no gradients on surfaces
-- Subtle shadows using rgba(0,0,0,0.04) to rgba(0,0,0,0.08)
-- Thin 1px borders in rgba(0,0,0,0.06) — barely visible, just enough structure
-- Generous whitespace — 96px+ between sections, 32px+ card padding
+  // 1. Set html lang attribute
+  html = html.replace(/lang="TEMPLATE_VAR_language"/g, `lang="${escapeAttr(data.language)}"`);
 
-### Typography Treatment:
-- Sans-serif only (Inter or similar), clean weights
-- Headings: weight 700, NOT 800/900 — confident but not aggressive
-- Body: weight 400, line-height 1.8 for readability
-- Letter-spacing: -0.01em on headings, normal on body
-- Text colors: primary text #0f172a, secondary #475569, muted #94a3b8
-
-### Card Style:
-- Background: white or #f8fafc with 1px border rgba(0,0,0,0.06)
-- Shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.03)
-- Hover: shadow increases to 0 8px 30px rgba(0,0,0,0.08), translateY(-4px)
-- Border-radius: 12px (not too rounded)
-- NO glassmorphism, NO backdrop-blur on cards
-
-### Hero:
-- Light gradient overlay (white/light to transparent) over hero image
-- Professional, calm feel — NOT dramatic
-- CTA: solid primary color, rounded-lg, padding 16px 32px
-- Optional subtle geometric pattern or grid-dot overlay at 3% opacity
-
-### Navigation:
-- Clean white background with subtle bottom border
-- Logo in primary brand color, nav links in #475569
-- Active/hover state: primary color, no underline animation — simple color change
-
-### Section Backgrounds:
-- Alternate between white and #f8fafc sections
-- Use subtle top/bottom borders between sections instead of hard color changes
-
-### Unique CSS Technique:
-- CSS custom properties for a complete color token system
-- Use outline-style focus indicators matching brand
-- Subtle CSS grid with named areas for hero layout`;
+  // 2. Handle conditional sections — <!-- IF:name -->...<!-- /IF:name -->
+  const conditionalFields: Record<string, string> = {
+    address: data.address,
+  };
+  for (const [field, value] of Object.entries(conditionalFields)) {
+    const ifRegex = new RegExp(`<!-- IF:${field} -->([\\s\\S]*?)<!-- /IF:${field} -->`, "g");
+    if (value && value.trim()) {
+      // Keep the content, remove markers
+      html = html.replace(ifRegex, "$1");
+    } else {
+      // Remove the entire conditional block
+      html = html.replace(ifRegex, "");
+    }
   }
 
-  if (name.includes("modern") || name.includes("bold") || name.includes("edge") || name.includes("dark")) {
-    return `## VARIANT STYLE: Modern Bold — Dark SaaS / Tech Startup Aesthetic
+  // 3. Handle repeating sections — <!-- REPEAT:name -->...<!-- /REPEAT:name -->
+  const repeatSections: Record<string, Record<string, string>[]> = {
+    stats: data.stats.map(s => ({
+      TEMPLATE_VAR_statNumber: escapeHtml(s.number),
+      TEMPLATE_VAR_statLabel: escapeHtml(s.label),
+    })),
+    services: data.services.map(s => ({
+      TEMPLATE_VAR_serviceTitle: escapeHtml(s.title),
+      TEMPLATE_VAR_serviceDescription: escapeHtml(s.description),
+      TEMPLATE_VAR_serviceIcon: getServiceIconSvg(s.icon),
+    })),
+    testimonials: data.testimonials.map(t => ({
+      TEMPLATE_VAR_testimonialQuote: escapeHtml(t.quote),
+      TEMPLATE_VAR_testimonialAuthor: escapeHtml(t.author),
+      TEMPLATE_VAR_testimonialRole: escapeHtml(t.role),
+    })),
+    faqItems: data.faqItems.map(f => ({
+      TEMPLATE_VAR_faqQuestion: escapeHtml(f.question),
+      TEMPLATE_VAR_faqAnswer: escapeHtml(f.answer),
+    })),
+    blogPosts: data.blogPosts.map(b => ({
+      TEMPLATE_VAR_blogTitle: escapeHtml(b.title),
+      TEMPLATE_VAR_blogExcerpt: escapeHtml(b.excerpt),
+      TEMPLATE_VAR_blogDate: escapeHtml(b.date),
+    })),
+    gallery: data.gallery.map(g => ({
+      TEMPLATE_VAR_galleryUrl: g.url,
+      TEMPLATE_VAR_galleryAlt: escapeHtml(g.alt),
+    })),
+    socialLinks: data.socialLinks.map(url => ({
+      TEMPLATE_VAR_socialUrl: url,
+    })),
+    navLinks: data.navLinks.map(l => ({
+      TEMPLATE_VAR_navText: escapeHtml(l.text),
+      TEMPLATE_VAR_navHref: escapeAttr(l.href),
+    })),
+  };
 
-### Visual Language:
-- Near-black background (#0a0a0f or #030712), NEVER pure #000000
-- Vibrant gradient accents: primary→accent (e.g., blue→cyan or purple→pink)
-- Glow effects: colored box-shadow using primary at 20-30% opacity behind key elements
-- Surface hierarchy: bg → rgba(255,255,255,0.03) → rgba(255,255,255,0.06)
-- Borders: 1px solid rgba(255,255,255,0.08)
+  for (const [sectionName, items] of Object.entries(repeatSections)) {
+    const repeatRegex = new RegExp(
+      `<!-- REPEAT:${sectionName} -->([\\s\\S]*?)<!-- /REPEAT:${sectionName} -->`,
+      "g"
+    );
 
-### Typography Treatment:
-- BOLD weight contrast: headings at 800-900, body at 300-400
-- Headings: letter-spacing -0.03em, large size (bigger than other variants)
-- Consider gradient text on hero heading: background-clip: text with linear-gradient
-- Text colors: primary #ffffff, secondary #9ca3af (gray-400), muted #6b7280 (gray-500)
-
-### Card Style — Glassmorphism:
-- Background: rgba(255,255,255,0.03)
-- Border: 1px solid rgba(255,255,255,0.08)
-- backdrop-filter: blur(12px)
-- Hover: border brightens to rgba(255,255,255,0.15), glow shadow using primary color
-- Optional: animated gradient border on hover (using background-image on pseudo-element)
-
-### Hero:
-- Full-bleed, dramatic feel — min-height 80vh
-- Dark gradient overlay (multiple stops for depth)
-- Hero heading potentially with gradient text effect
-- Glow behind CTA button: box-shadow 0 0 40px primary-color at 30%
-- Optional: subtle dot/grid pattern overlay at 3-5% opacity using repeating-linear-gradient
-
-### Navigation:
-- Transparent initially → dark glass on scroll
-- Logo in white, nav links in gray-400 → white on hover
-- CTA button in nav: small accent-colored pill button
-
-### Section Backgrounds:
-- Alternate between base dark and slightly lighter surfaces
-- Use gradient fade lines (thin 1px gradient border) between sections instead of hard borders
-- Occasional full-width gradient accent strip (primary→transparent)
-
-### Unique CSS Techniques:
-- Gradient text: background: linear-gradient(); -webkit-background-clip: text; color: transparent
-- Animated gradient borders: pseudo-element with conic-gradient, rotating on hover
-- Glow effects: multiple layered box-shadows with brand colors
-- Subtle radial gradient "spotlight" behind hero content
-- Grid/dot pattern: background-image with repeating-linear-gradient at 2% opacity`;
+    html = html.replace(repeatRegex, (_match, itemTemplate: string) => {
+      if (items.length === 0) return "";
+      return items.map((item) => {
+        let itemHtml = itemTemplate;
+        for (const [key, value] of Object.entries(item)) {
+          itemHtml = itemHtml.replace(new RegExp(key, "g"), value);
+        }
+        return itemHtml;
+      }).join("\n");
+    });
   }
 
-  if (name.includes("elegant") || name.includes("minimal") || name.includes("luxury")) {
-    return `## VARIANT STYLE: Elegant Minimal — Luxury Editorial Aesthetic
+  // 4. Replace scalar template variables
+  const scalarReplacements: Record<string, string> = {
+    TEMPLATE_VAR_companyName: escapeHtml(data.companyName),
+    TEMPLATE_VAR_headline: escapeHtml(data.headline),
+    TEMPLATE_VAR_subheadline: escapeHtml(data.subheadline),
+    TEMPLATE_VAR_metaDescription: escapeAttr(data.metaDescription),
+    TEMPLATE_VAR_logoUrl: data.logoUrl,
+    TEMPLATE_VAR_faviconUrl: data.faviconUrl,
+    TEMPLATE_VAR_primaryColor: data.primaryColor,
+    TEMPLATE_VAR_language: data.language,
+    TEMPLATE_VAR_phone: escapeHtml(data.phone),
+    TEMPLATE_VAR_email: escapeHtml(data.email),
+    TEMPLATE_VAR_address: escapeHtml(data.address),
+    TEMPLATE_VAR_aboutText: escapeHtml(data.aboutText),
+    TEMPLATE_VAR_year: String(new Date().getFullYear()),
+  };
 
-### Visual Language:
-- Warm backgrounds: cream #faf8f5 or ivory #f5f0eb — NEVER pure white
-- Muted, desaturated accent colors — earth tones, soft golds, warm browns
-- Abundant whitespace — 120px+ between sections, 48px+ card padding
-- Thin hairline borders (1px solid rgba(0,0,0,0.08)) instead of shadows
-- NO box-shadows on cards — use borders and whitespace for hierarchy
-
-### Typography Treatment:
-- SERIF headings (Playfair Display, Cormorant Garamond, or similar) — weight 600-700
-- Sans-serif body (Source Sans 3 or similar) — weight 400, line-height 1.8
-- Headings: letter-spacing -0.02em, sometimes with subtle text-transform: uppercase for h3/labels
-- Optional: thin horizontal rule (48px wide, centered) above section titles
-- Text colors: warm dark #1c1917 for primary, #78716c for secondary
-
-### Card/Content Style:
-- NO card backgrounds — use whitespace and typography for separation
-- If cards needed: thin 1px border only, no fill, generous padding (40px+)
-- Hover: subtle border color change (darker), NO translateY or shadows
-- Content container: max-width 960px (narrower than other variants)
-
-### Hero:
-- Centered text, clean composition, minimal overlay
-- Large serif heading with generous letter-spacing
-- Subtitle in sans-serif, lighter weight, wider tracking
-- CTA: ghost/outline button (thin border, no fill) or thin solid with subtle hover fill
-- Hero height: shorter feel, 60vh, with ample top/bottom padding
-- Background: subtle warm gradient or muted photo with heavy cream overlay
-
-### Navigation:
-- Ultra-clean: thin bottom border, generous spacing
-- Logo: serif text in brand color, understated
-- Nav links: small, uppercase, letter-spacing 0.1em, weight 500
-- Hover: subtle color change, no effects
-
-### Section Layout:
-- Narrow container max-width 960px for text sections
-- Full-width for gallery (but images still tastefully constrained)
-- Two-column layouts: 50/50 split with generous gap (64px+)
-- Asymmetric touches: offset images or pull-quotes
-
-### Unique CSS Techniques:
-- CSS custom properties for warm color palette
-- Thin decorative lines: 48px horizontal rules, 1px, centered
-- Subtle letter-spacing on labels and small text (0.05em to 0.15em)
-- Image treatments: subtle warm overlay (sepia 5%), or thin border with 8px padding
-- NO animations beyond gentle fade-in — restraint is the aesthetic
-- Transitions: 400ms ease (slower, more deliberate than other variants)`;
+  for (const [key, value] of Object.entries(scalarReplacements)) {
+    html = html.replace(new RegExp(key, "g"), value);
   }
 
-  // Default conversion-focused
-  return `## VARIANT STYLE: Conversion Focused — High-Performance Landing Page
+  // 5. Handle logo display — show image or text fallback
+  if (data.logoUrl) {
+    // Remove text logo fallback markers if image logo exists
+    html = html.replace(/<!-- LOGO_TEXT_ONLY -->([\s\S]*?)<!-- \/LOGO_TEXT_ONLY -->/g, "");
+    html = html.replace(/<!-- LOGO_IMAGE -->/g, "");
+    html = html.replace(/<!-- \/LOGO_IMAGE -->/g, "");
+  } else {
+    // Remove image logo markers if no image
+    html = html.replace(/<!-- LOGO_IMAGE -->([\s\S]*?)<!-- \/LOGO_IMAGE -->/g, "");
+    html = html.replace(/<!-- LOGO_TEXT_ONLY -->/g, "");
+    html = html.replace(/<!-- \/LOGO_TEXT_ONLY -->/g, "");
+  }
 
-### Visual Language:
-- Clear visual hierarchy with strong contrast — guide the eye to CTAs
-- Light or neutral background with high-contrast accent sections
-- Strategic use of color: most of page is neutral, CTAs pop with accent color
-- Trust signals: badges, stats, testimonial-style quotes from content
-
-### Typography Treatment:
-- Bold headings (700-800), clear body text (400)
-- Headings benefit-driven and short
-- Social proof numbers: extra large (3rem+) with bold weight
-
-### Card Style:
-- Moderate shadows for depth: 0 4px 20px rgba(0,0,0,0.06)
-- Hover: stronger shadow + translateY(-4px)
-- Accent-colored top border or left border on key cards
-
-### Hero:
-- High-contrast with clear value proposition
-- Large, bold headline focused on benefits
-- Prominent CTA: large, accent-colored, with hover glow effect
-- Optional: secondary ghost CTA button beside primary
-
-### Unique Elements:
-- Social proof row if available: stats or trust indicators
-- FAQ section (accordion style) if content available in crawled data
-- Sticky bottom CTA bar on mobile (position: fixed, bottom: 0)
-- Subtle urgency elements if appropriate (not spammy)
-- Cards with accent-colored left border for visual interest`;
+  return html;
 }
 
-/**
- * Post-process generated HTML to ensure quality standards:
- * - Injects prefers-reduced-motion if missing
- * - Ensures proper lang attribute
- * - Adds skip-to-content link if missing
- * - Ensures viewport meta tag
- * - Adds theme-color meta tag
- */
+// ── Post-Processing ──
+
 function postProcessHtml(html: string, variant: DesignVariant): string {
   let result = html;
 
@@ -498,16 +336,7 @@ function postProcessHtml(html: string, variant: DesignVariant): string {
         scroll-behavior: auto !important;
       }
     }`;
-    // Inject before closing </style> tag
     result = result.replace("</style>", `${reducedMotionCSS}\n  </style>`);
-  }
-
-  // Ensure lang="cs" on html tag
-  if (result.includes("<html>") || result.includes("<html ")) {
-    result = result.replace(/<html(?:\s[^>]*)?>/, (match) => {
-      if (match.includes("lang=")) return match;
-      return match.replace("<html", '<html lang="cs"');
-    });
   }
 
   // Ensure viewport meta tag exists
@@ -526,655 +355,180 @@ function postProcessHtml(html: string, variant: DesignVariant): string {
     );
   }
 
-  // Add skip-to-content link if missing
-  if (!result.includes("skip") && result.includes("<body>")) {
-    const skipLink = `<a href="#main-content" class="skip-link" style="position:absolute;top:-40px;left:0;background:${variant.palette.primary};color:#fff;padding:8px 16px;z-index:10000;font-size:14px;transition:top 0.2s;">Přeskočit na obsah</a>`;
-    const skipFocus = `.skip-link:focus{top:0;}`;
-    result = result.replace("<body>", `<body>\n  ${skipLink}`);
-    if (result.includes("</style>")) {
-      result = result.replace("</style>", `  ${skipFocus}\n  </style>`);
+  return result;
+}
+
+// ── Validation ──
+
+function validateHtml(html: string, companyName: string): string {
+  let result = html;
+
+  // Check for unfilled template variables
+  const unfilledVars = result.match(/TEMPLATE_VAR_\w+/g);
+  if (unfilledVars) {
+    console.warn("[validate] Unfilled template variables found:", [...new Set(unfilledVars)]);
+    // Remove unfilled variables rather than leaving them visible
+    for (const v of new Set(unfilledVars)) {
+      result = result.replace(new RegExp(v, "g"), "");
     }
   }
 
-  // Ensure main landmark exists — wrap content sections if missing
-  if (!result.includes("<main")) {
-    // Add id="main-content" to the first section after nav for skip-link target
-    result = result.replace(
-      /(<\/nav>[\s\S]*?)(<section)/,
-      '$1<main id="main-content">\n  $2'
-    );
-    if (result.includes('<main id="main-content">')) {
-      result = result.replace(
-        /(<\/section>[\s\S]*?)(<footer)/,
-        "$1</main>\n  $2"
-      );
+  // Check for placeholder text
+  const placeholders = ["Lorem ipsum", "Example Domain", "Acme Corp", "Your Company", "placeholder.com", "example.com"];
+  for (const ph of placeholders) {
+    if (result.toLowerCase().includes(ph.toLowerCase())) {
+      console.warn(`[validate] Placeholder text found: "${ph}"`);
     }
   }
+
+  // Ensure company name is present
+  if (companyName && !result.includes(companyName)) {
+    console.warn("[validate] Company name not found in output HTML");
+  }
+
+  // Ensure all img src URLs are absolute
+  result = result.replace(/src="(\/[^"]+)"/g, (match, path) => {
+    // Relative paths starting with / are acceptable in templates
+    return match;
+  });
 
   return result;
 }
 
-/**
- * Premium fallback HTML builder — generates a complete, professional page
- * when Claude API fails. Uses real client data.
- */
+// ── Fallback Template Data (no API call) ──
+
+function buildFallbackTemplateData(
+  url: string,
+  crawledContent: string,
+  assets?: ExtractedAssets | null
+): TemplateData {
+  let siteHost: string;
+  try { siteHost = new URL(url).hostname; } catch { siteHost = url; }
+  const companyName = assets?.companyName || siteHost;
+
+  const lines = (crawledContent || "").split("\n").filter(l => l.trim().length > 10);
+  const headings = lines.filter(l => l.startsWith("#")).map(l => l.replace(/^#+\s*/, "").trim());
+  const paragraphs = lines.filter(l => !l.startsWith("#") && !l.startsWith("-") && !l.startsWith("!") && l.trim().length > 40);
+
+  return {
+    companyName,
+    headline: headings[0] || companyName,
+    subheadline: paragraphs[0] || "",
+    metaDescription: assets?.metaDescription || paragraphs[0]?.slice(0, 160) || "",
+    logoUrl: assets?.logo || "",
+    faviconUrl: assets?.favicon || "",
+    primaryColor: "#1B2A4A",
+    language: "cs",
+    navLinks: assets?.navLinks || [],
+    services: headings.slice(1, 7).map((title, i) => ({
+      title,
+      description: paragraphs[i + 1] || "",
+      icon: ["briefcase", "chart", "shield", "globe", "users", "code"][i % 6],
+    })),
+    aboutText: paragraphs.slice(1, 4).join(" "),
+    stats: extractStats(crawledContent || "").map(s => ({ number: String(s.number), label: s.label })),
+    testimonials: extractTestimonials(crawledContent || "").map(t => ({
+      quote: t.text,
+      author: t.author,
+      role: t.role || "",
+    })),
+    faqItems: extractFaqItems(crawledContent || ""),
+    blogPosts: [],
+    gallery: (assets?.images || []).slice(0, 8).map(img => ({ url: img.url, alt: img.alt || companyName })),
+    socialLinks: assets?.socialLinks || [],
+    phone: assets?.phoneNumbers?.[0] || "",
+    email: assets?.emails?.[0] || "",
+    address: assets?.address || "",
+  };
+}
+
+// ── Fallback HTML Builder (template-based) ──
+
 function buildFallbackHtml(
   variant: DesignVariant,
   url: string,
   crawledContent?: string,
   assets?: ExtractedAssets | null
 ): string {
-  let siteHost: string;
-  try { siteHost = new URL(url).hostname; } catch { siteHost = url; }
-  const companyName = assets?.companyName || siteHost;
-  const headingFont = variant.typography.heading.replace(/ /g, "+");
-  const bodyFont = variant.typography.body.replace(/ /g, "+");
+  const templateData = buildFallbackTemplateData(url, crawledContent || "", assets);
+  templateData.primaryColor = variant.palette.primary;
+
+  try {
+    const templateFile = getTemplateFile(variant.name);
+    const templatePath = path.join(process.cwd(), "src/templates", templateFile);
+    const template = fs.readFileSync(templatePath, "utf-8");
+    let html = fillTemplate(template, templateData);
+    html = postProcessHtml(html, variant);
+    return validateHtml(html, templateData.companyName);
+  } catch (err) {
+    console.error("[generate-html] Fallback template read failed:", err);
+    return buildMinimalFallbackHtml(templateData, variant);
+  }
+}
+
+// ── Minimal Inline Fallback (if templates can't be read) ──
+
+function buildMinimalFallbackHtml(data: TemplateData, variant: DesignVariant): string {
   const p = variant.palette;
   const year = new Date().getFullYear();
-
-  // Parse crawled content
-  const lines = (crawledContent || "").split("\n").filter((l) => l.trim().length > 10);
-  const headings = lines.filter((l) => l.startsWith("#")).map((l) => l.replace(/^#+\s*/, "").trim());
-  const paragraphs = lines.filter((l) => !l.startsWith("#") && !l.startsWith("-") && !l.startsWith("!") && l.trim().length > 40);
-  const listItems = lines.filter((l) => l.startsWith("- ")).map((l) => l.replace(/^-\s*/, "").trim()).filter((l) => l.length > 10);
-
-  const heroTitle = headings[0] || companyName;
-  const heroSubtitle = paragraphs[0] || "";
-  const aboutText = paragraphs.slice(1, 4).join(" ") || "";
-
-  // Services from headings or list items
-  const serviceItems = headings.slice(1, 7).length >= 3
-    ? headings.slice(1, 7)
-    : listItems.slice(0, 6);
-  const serviceDescriptions = paragraphs.slice(1, 7);
-
-  // Images
-  const images = assets?.images || [];
-  const heroImage = images[0]?.url || "";
-  const aboutImage = images[1]?.url || images[0]?.url || "";
-  const galleryImages = images.slice(0, 6);
-
-  // Contact info — prefer extracted assets, fall back to regex
-  const phone = assets?.phoneNumbers?.[0] || (() => {
-    const allText = crawledContent || "";
-    const phoneMatch = allText.match(/(?:\+420|00420)?\s*\d{3}\s*\d{3}\s*\d{3}/) || allText.match(/\d{3}[-.\s]?\d{3}[-.\s]?\d{3,4}/);
-    return phoneMatch?.[0] || "";
-  })();
-  const email = assets?.emails?.[0] || (() => {
-    const allText = crawledContent || "";
-    const emailMatch = allText.match(/[\w.-]+@[\w.-]+\.\w{2,}/);
-    return emailMatch?.[0] || "";
-  })();
-  const address = assets?.address || "";
-
-  // Logo HTML
-  const logoHtml = assets?.logo
-    ? `<img src="${assets.logo}" alt="${companyName}" class="logo-img" />`
-    : `<span class="logo-text">${companyName}</span>`;
-
-  // Determine if dark variant
-  const isDark = isColorDark(p.bg);
-  const cardBg = isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.02)";
-  const cardBorder = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)";
-  const inputBg = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.03)";
-  const navBg = isDark ? `${p.bg}e6` : `${p.bg}e6`;
-
-  // Build services HTML
-  const servicesHtml = serviceItems.length >= 2
-    ? serviceItems.slice(0, 6).map((title, i) => {
-        const desc = serviceDescriptions[i] || "";
-        const iconSvg = getServiceIcon(i, p.primary);
-        return `
-        <div class="card fade-in">
-          <div class="card-icon">${iconSvg}</div>
-          <h3>${escapeHtml(title)}</h3>
-          ${desc ? `<p>${escapeHtml(desc.slice(0, 200))}</p>` : ""}
-        </div>`;
-      }).join("")
-    : "";
-
-  // Build gallery HTML
-  const galleryHtml = galleryImages.length >= 2
-    ? galleryImages.map((img) => `
-        <div class="gallery-item fade-in">
-          <img src="${img.url}" alt="${escapeHtml(img.alt || companyName)}" loading="lazy" />
-        </div>`).join("")
-    : "";
-
-  // Extract stats/numbers from content for stats bar
-  const allText = crawledContent || "";
-  const statNumbers = extractStats(allText);
-  const statsHtml = statNumbers.length >= 3
-    ? statNumbers.slice(0, 4).map((stat) => `
-        <div class="stat-item fade-in">
-          <span class="stat-number" data-target="${stat.number}">${stat.number}</span>
-          <span class="stat-label">${escapeHtml(stat.label)}</span>
-        </div>`).join("")
-    : "";
-
-  // Extract testimonials from content
-  const testimonials = extractTestimonials(allText);
-  const testimonialsHtml = testimonials.length >= 1
-    ? testimonials.slice(0, 3).map((t) => `
-        <div class="testimonial-card fade-in">
-          <div class="quote-icon">
-            <svg viewBox="0 0 32 32" fill="${p.primary}" opacity="0.15"><path d="M10 8c-3.3 0-6 2.7-6 6v10h10V14H8c0-1.1.9-2 2-2V8zm14 0c-3.3 0-6 2.7-6 6v10h10V14h-6c0-1.1.9-2 2-2V8z"/></svg>
-          </div>
-          <p class="testimonial-text">${escapeHtml(t.text)}</p>
-          <div class="testimonial-author">
-            <strong>${escapeHtml(t.author)}</strong>
-            ${t.role ? `<span>${escapeHtml(t.role)}</span>` : ""}
-          </div>
-        </div>`).join("")
-    : "";
-
-  // Extract FAQ items from content
-  const faqItems = extractFaqItems(allText);
-  const faqHtml = faqItems.length >= 2
-    ? faqItems.slice(0, 6).map((item, i) => `
-        <div class="faq-item fade-in">
-          <button class="faq-question" aria-expanded="false" aria-controls="faq-answer-${i}" onclick="toggleFaq(this)">
-            <span>${escapeHtml(item.question)}</span>
-            <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
-          </button>
-          <div class="faq-answer" id="faq-answer-${i}" role="region">
-            <p>${escapeHtml(item.answer)}</p>
-          </div>
-        </div>`).join("")
-    : "";
-
-  // Social links HTML
-  const socialLinksHtml = (assets?.socialLinks || []).map((link) => {
-    const domain = (() => { try { return new URL(link).hostname; } catch { return ""; } })();
-    const iconName = domain.includes("facebook") ? "Facebook" : domain.includes("instagram") ? "Instagram" : domain.includes("linkedin") ? "LinkedIn" : domain.includes("twitter") || domain.includes("x.com") ? "X" : domain.includes("youtube") ? "YouTube" : "Link";
-    return `<a href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer" aria-label="${iconName}" class="social-link">${getSocialIcon(iconName, p.text)}</a>`;
-  }).join("");
-
   return `<!DOCTYPE html>
-<html lang="cs">
+<html lang="${escapeAttr(data.language)}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="${escapeHtml(heroSubtitle.slice(0, 160))}">
+  <meta name="description" content="${escapeAttr(data.metaDescription)}">
   <meta name="theme-color" content="${p.primary}">
-  <title>${escapeHtml(companyName)} — ${variant.name}</title>
-  ${assets?.favicon ? `<link rel="icon" href="${assets.favicon}" />` : ""}
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=${headingFont}:wght@400;600;700;800;900&family=${bodyFont}:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <title>${escapeHtml(data.companyName)}</title>
+  ${data.faviconUrl ? `<link rel="icon" href="${data.faviconUrl}" />` : ""}
   <style>
-    :root {
-      --color-primary: ${p.primary};
-      --color-secondary: ${p.secondary};
-      --color-accent: ${p.accent};
-      --color-bg: ${p.bg};
-      --color-text: ${p.text};
-      --card-bg: ${cardBg};
-      --card-border: ${cardBorder};
-      --input-bg: ${inputBg};
-      --nav-bg: ${navBg};
-      --font-heading: "${variant.typography.heading}", system-ui, sans-serif;
-      --font-body: "${variant.typography.body}", system-ui, -apple-system, sans-serif;
-      --radius-sm: 10px;
-      --radius-md: 16px;
-      --radius-lg: 24px;
-    }
-
-    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-    html { scroll-behavior: smooth; }
-    body {
-      font-family: var(--font-body);
-      background: var(--color-bg);
-      color: var(--color-text);
-      line-height: 1.7;
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
-    }
-    h1, h2, h3, h4 { font-family: var(--font-heading); line-height: 1.2; }
-    .container { max-width: 1200px; margin: 0 auto; padding: 0 clamp(16px, 4vw, 48px); }
-
-    /* ── Skip Link (Accessibility) ── */
-    .skip-link {
-      position: absolute; top: -40px; left: 0; z-index: 10000;
-      background: var(--color-primary); color: #fff;
-      padding: 8px 16px; font-size: 0.875rem; text-decoration: none;
-      transition: top 0.2s;
-    }
-    .skip-link:focus { top: 0; }
-
-    /* ── Focus Indicators (Accessibility) ── */
-    :focus-visible {
-      outline: 2px solid var(--color-primary);
-      outline-offset: 2px;
-    }
-
-    /* ── Navigation ── */
-    .nav {
-      position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
-      padding: 20px 24px;
-      background: var(--nav-bg);
-      backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-      border-bottom: 1px solid var(--card-border);
-      transition: padding 0.3s ease, box-shadow 0.3s ease;
-    }
-    .nav.scrolled { padding: 12px 24px; box-shadow: 0 4px 30px rgba(0,0,0,0.1); }
-    .nav-inner { max-width: 1200px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; }
-    .logo-img { height: 40px; width: auto; object-fit: contain; }
-    .logo-text { font-family: var(--font-heading); font-weight: 800; font-size: 1.5rem; color: var(--color-primary); text-decoration: none; }
-    .nav-links { display: flex; gap: 32px; align-items: center; }
-    .nav-links a { color: var(--color-text); text-decoration: none; font-size: 0.9rem; font-weight: 500; opacity: 0.8; transition: opacity 0.2s, color 0.2s; }
-    .nav-links a:hover { opacity: 1; color: var(--color-primary); }
-    .hamburger { display: none; flex-direction: column; gap: 5px; cursor: pointer; background: none; border: none; padding: 8px; min-width: 44px; min-height: 44px; align-items: center; justify-content: center; }
-    .hamburger span { width: 24px; height: 2px; background: var(--color-text); border-radius: 2px; transition: transform 0.3s, opacity 0.3s; }
-    .mobile-menu {
-      display: none; position: fixed; inset: 0; z-index: 999;
-      background: ${p.bg}f5; backdrop-filter: blur(24px);
-      flex-direction: column; align-items: center; justify-content: center; gap: 32px;
-    }
-    .mobile-menu.open { display: flex; }
-    .mobile-menu a { color: var(--color-text); text-decoration: none; font-size: 1.5rem; font-weight: 600; min-height: 44px; display: flex; align-items: center; }
-    .mobile-close { position: absolute; top: 24px; right: 24px; background: none; border: none; color: var(--color-text); font-size: 2rem; cursor: pointer; min-width: 44px; min-height: 44px; }
-    @media (max-width: 768px) {
-      .nav-links { display: none; }
-      .hamburger { display: flex; }
-    }
-
-    /* ── Hero ── */
-    .hero {
-      min-height: 70vh; display: flex; align-items: center; justify-content: center;
-      position: relative; overflow: hidden; padding: 120px 24px 80px;
-    }
-    @media (max-width: 768px) { .hero { min-height: 50vh; padding: 100px 16px 60px; } }
-    .hero-bg {
-      position: absolute; inset: 0; z-index: 0;
-      ${heroImage ? `background: url('${heroImage}') center/cover no-repeat;` : `background: linear-gradient(135deg, ${p.primary}15, ${p.secondary}15);`}
-    }
-    .hero-overlay {
-      position: absolute; inset: 0; z-index: 1;
-      background: linear-gradient(135deg, ${p.bg}dd 0%, ${p.bg}99 50%, ${p.primary}33 100%);
-    }
-    .hero-content { position: relative; z-index: 2; max-width: 720px; text-align: center; }
-    .hero h1 { font-size: clamp(2.25rem, 6vw, 4.5rem); font-weight: 800; margin-bottom: 24px; letter-spacing: -0.03em; }
-    .hero p { font-size: clamp(1rem, 2vw, 1.25rem); opacity: 0.8; margin-bottom: 40px; max-width: 560px; margin-left: auto; margin-right: auto; line-height: 1.7; }
-    .btn {
-      display: inline-flex; align-items: center; gap: 8px;
-      padding: 16px 40px; background: var(--color-primary); color: #fff;
-      border: none; border-radius: var(--radius-sm); font-size: 1.05rem; font-weight: 600;
-      cursor: pointer; text-decoration: none;
-      transition: transform 0.25s ease, box-shadow 0.25s ease;
-      min-height: 52px;
-    }
-    .btn:hover { transform: translateY(-2px); box-shadow: 0 12px 40px ${p.primary}40; }
-    .btn:active { transform: translateY(0); }
-    .btn-outline {
-      background: transparent; color: var(--color-primary); border: 2px solid var(--color-primary);
-    }
-    .btn-outline:hover { background: var(--color-primary); color: #fff; }
-
-    /* ── Section base ── */
-    .section { padding: 96px 24px; }
-    @media (max-width: 768px) { .section { padding: 64px 16px; } }
-    .section-title { font-size: clamp(1.75rem, 4vw, 2.75rem); font-weight: 700; text-align: center; margin-bottom: 16px; letter-spacing: -0.02em; }
-    .section-subtitle { text-align: center; opacity: 0.7; max-width: 560px; margin: 0 auto 56px; font-size: 1.05rem; }
-
-    /* ── Services Grid ── */
-    .services-grid {
-      display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; max-width: 1200px; margin: 0 auto;
-    }
-    @media (max-width: 1024px) { .services-grid { grid-template-columns: repeat(2, 1fr); } }
-    @media (max-width: 640px) { .services-grid { grid-template-columns: 1fr; } }
-    .card {
-      padding: 32px; border-radius: var(--radius-md);
-      background: var(--card-bg); border: 1px solid var(--card-border);
-      transition: transform 0.3s ease, box-shadow 0.3s ease;
-      will-change: transform;
-    }
-    .card:hover { transform: translateY(-6px); box-shadow: 0 20px 60px ${p.primary}15; }
-    .card-icon { width: 48px; height: 48px; margin-bottom: 20px; }
-    .card-icon svg { width: 48px; height: 48px; }
-    .card h3 { font-size: 1.2rem; font-weight: 700; margin-bottom: 12px; color: var(--color-primary); }
-    .card p { font-size: 0.95rem; opacity: 0.75; line-height: 1.6; }
-
-    /* ── About ── */
-    .about-grid { display: grid; grid-template-columns: 55fr 45fr; gap: 56px; align-items: center; max-width: 1200px; margin: 0 auto; }
-    @media (max-width: 768px) { .about-grid { grid-template-columns: 1fr; gap: 32px; } }
-    .about-text h2 { font-size: clamp(1.5rem, 3vw, 2.25rem); font-weight: 700; margin-bottom: 24px; text-align: left; }
-    .about-text p { opacity: 0.8; font-size: 1rem; margin-bottom: 16px; line-height: 1.8; }
-    .about-image img { width: 100%; height: auto; border-radius: var(--radius-md); object-fit: cover; max-height: 420px; }
-
-    /* ── Stats Bar ── */
-    .stats-bar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 32px; max-width: 1000px; margin: 0 auto; text-align: center; }
-    @media (max-width: 768px) { .stats-bar { grid-template-columns: repeat(2, 1fr); gap: 24px; } }
-    .stat-item { padding: 24px 16px; }
-    .stat-number { display: block; font-family: var(--font-heading); font-size: clamp(2rem, 5vw, 3rem); font-weight: 800; color: var(--color-primary); line-height: 1.1; letter-spacing: -0.02em; }
-    .stat-label { display: block; font-size: 0.875rem; opacity: 0.6; margin-top: 8px; text-transform: uppercase; letter-spacing: 0.05em; }
-
-    /* ── Testimonials ── */
-    .testimonials-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; max-width: 1200px; margin: 0 auto; }
-    @media (max-width: 1024px) { .testimonials-grid { grid-template-columns: repeat(2, 1fr); } }
-    @media (max-width: 640px) { .testimonials-grid { grid-template-columns: 1fr; } }
-    .testimonial-card { padding: 40px; border: 1px solid var(--card-border); border-radius: var(--radius-md); background: var(--card-bg); position: relative; }
-    .quote-icon { width: 40px; height: 40px; margin-bottom: 16px; }
-    .quote-icon svg { width: 40px; height: 40px; }
-    .testimonial-text { font-size: 1rem; line-height: 1.7; opacity: 0.85; margin-bottom: 20px; font-style: italic; }
-    .testimonial-author strong { display: block; font-size: 0.95rem; }
-    .testimonial-author span { font-size: 0.8rem; opacity: 0.6; }
-
-    /* ── FAQ ── */
-    .faq-container { max-width: 800px; margin: 0 auto; }
-    .faq-item { border-bottom: 1px solid var(--card-border); }
-    .faq-question { width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 20px 0; background: none; border: none; color: var(--color-text); font-family: var(--font-heading); font-size: 1.05rem; font-weight: 600; cursor: pointer; text-align: left; gap: 16px; min-height: 44px; }
-    .faq-chevron { width: 20px; height: 20px; flex-shrink: 0; transition: transform 0.3s ease; }
-    .faq-question[aria-expanded="true"] .faq-chevron { transform: rotate(180deg); }
-    .faq-answer { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
-    .faq-answer p { padding: 0 0 20px; opacity: 0.75; line-height: 1.7; font-size: 0.95rem; }
-
-    /* ── Gallery ── */
-    .gallery-grid {
-      display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; max-width: 1200px; margin: 0 auto;
-    }
-    @media (max-width: 1024px) { .gallery-grid { grid-template-columns: repeat(2, 1fr); } }
-    @media (max-width: 640px) { .gallery-grid { grid-template-columns: 1fr; } }
-    .gallery-item { overflow: hidden; border-radius: var(--radius-sm); }
-    .gallery-item img { width: 100%; height: 260px; object-fit: cover; transition: transform 0.4s ease, filter 0.4s ease; display: block; }
-    .gallery-item:hover img { transform: scale(1.03); filter: brightness(1.05); }
-
-    /* ── Contact ── */
-    .contact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; max-width: 1000px; margin: 0 auto; }
-    @media (max-width: 768px) { .contact-grid { grid-template-columns: 1fr; } }
-    .contact-info h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 8px; }
-    .contact-info p { opacity: 0.75; margin-bottom: 20px; font-size: 0.95rem; }
-    .contact-info a { color: var(--color-primary); text-decoration: none; }
-    .contact-form { display: flex; flex-direction: column; gap: 16px; }
-    .contact-form label { font-size: 0.875rem; font-weight: 500; margin-bottom: 4px; }
-    .contact-form input, .contact-form textarea {
-      width: 100%; padding: 14px 18px;
-      background: var(--input-bg); border: 1px solid var(--card-border);
-      border-radius: var(--radius-sm); color: var(--color-text); font-family: inherit; font-size: 0.95rem;
-      transition: border-color 0.2s, box-shadow 0.2s; outline: none;
-    }
-    .contact-form input:focus, .contact-form textarea:focus { border-color: var(--color-primary); box-shadow: 0 0 0 3px ${p.primary}20; }
-    .contact-form textarea { min-height: 120px; resize: vertical; }
-
-    /* ── Footer ── */
-    .footer {
-      padding: 48px 24px; border-top: 1px solid var(--card-border);
-    }
-    .footer-inner { max-width: 1200px; margin: 0 auto; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 24px; }
-    @media (max-width: 640px) { .footer-inner { flex-direction: column; text-align: center; } }
-    .footer-logo { display: flex; align-items: center; gap: 12px; }
-    .footer-logo .logo-img { height: 32px; }
-    .footer-logo .logo-text { font-size: 1.2rem; }
-    .footer-links { display: flex; gap: 24px; flex-wrap: wrap; }
-    .footer-links a { color: var(--color-text); opacity: 0.6; text-decoration: none; font-size: 0.85rem; transition: opacity 0.2s; min-height: 44px; display: flex; align-items: center; }
-    .footer-links a:hover { opacity: 1; }
-    .footer-copy { width: 100%; text-align: center; opacity: 0.4; font-size: 0.8rem; padding-top: 24px; border-top: 1px solid var(--card-border); margin-top: 8px; }
-    .footer-social { display: flex; gap: 16px; align-items: center; }
-    .social-link { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--card-border); transition: border-color 0.2s, opacity 0.2s; opacity: 0.6; }
-    .social-link:hover { opacity: 1; border-color: var(--color-primary); }
-    .social-link svg { width: 18px; height: 18px; }
-
-    /* ── Animations ── */
-    .fade-in { opacity: 0; transform: translateY(24px); transition: opacity 0.7s ease, transform 0.7s ease; }
-    .fade-in.visible { opacity: 1; transform: translateY(0); }
-
-    @keyframes hero-gradient { 0%,100% { opacity: 0.9; } 50% { opacity: 1; } }
-    .hero-overlay { animation: hero-gradient 8s ease-in-out infinite; }
-
-    /* ── Reduced Motion (Accessibility) ── */
-    @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after {
-        animation-duration: 0.01ms !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: 0.01ms !important;
-        scroll-behavior: auto !important;
-      }
-      .fade-in { opacity: 1; transform: none; }
-    }
+    :root { --primary: ${p.primary}; --bg: ${p.bg}; --text: ${p.text}; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.7; }
+    .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+    .hero { min-height: 70vh; display: flex; align-items: center; justify-content: center; text-align: center; padding: 80px 24px; }
+    .hero h1 { font-size: clamp(2rem, 5vw, 4rem); margin-bottom: 16px; }
+    .hero p { font-size: 1.1rem; opacity: 0.8; max-width: 600px; margin: 0 auto 32px; }
+    .btn { display: inline-block; padding: 14px 32px; background: var(--primary); color: #fff; border-radius: 8px; text-decoration: none; font-weight: 600; }
+    .section { padding: 80px 24px; }
+    .footer { padding: 40px 24px; text-align: center; opacity: 0.6; font-size: 0.85rem; }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }
   </style>
 </head>
 <body>
-  <a href="#main-content" class="skip-link">Přeskočit na obsah</a>
-
-  <header>
-    <nav class="nav" id="navbar" aria-label="Hlavní navigace">
-      <div class="nav-inner">
-        <a href="#" class="logo-link">${logoHtml}</a>
-        <div class="nav-links">
-          ${servicesHtml ? '<a href="#services">Služby</a>' : ""}
-          ${aboutText ? '<a href="#about">O nás</a>' : ""}
-          ${galleryHtml ? '<a href="#gallery">Reference</a>' : ""}
-          <a href="#contact">Kontakt</a>
-        </div>
-        <button class="hamburger" id="hamburgerBtn" aria-label="Otevřít menu" aria-expanded="false" aria-controls="mobileMenu">
-          <span></span><span></span><span></span>
-        </button>
-      </div>
-    </nav>
-  </header>
-
-  <div class="mobile-menu" id="mobileMenu" role="dialog" aria-label="Mobilní menu">
-    <button class="mobile-close" id="mobileClose" aria-label="Zavřít menu">&times;</button>
-    ${servicesHtml ? '<a href="#services" class="mobile-link">Služby</a>' : ""}
-    ${aboutText ? '<a href="#about" class="mobile-link">O nás</a>' : ""}
-    ${galleryHtml ? '<a href="#gallery" class="mobile-link">Reference</a>' : ""}
-    <a href="#contact" class="mobile-link">Kontakt</a>
-  </div>
-
-  <main id="main-content">
-    <section class="hero" id="hero">
-      <div class="hero-bg" role="presentation"></div>
-      <div class="hero-overlay" role="presentation"></div>
-      <div class="hero-content fade-in">
-        <h1>${escapeHtml(heroTitle)}</h1>
-        ${heroSubtitle ? `<p>${escapeHtml(heroSubtitle.slice(0, 250))}</p>` : ""}
-        <a href="#contact" class="btn">Kontaktujte nás &rarr;</a>
-      </div>
-    </section>
-
-    ${statsHtml ? `
-    <section class="section" id="stats">
-      <div class="container">
-        <div class="stats-bar">${statsHtml}</div>
-      </div>
-    </section>
-    ` : ""}
-
-    ${servicesHtml ? `
-    <section class="section" id="services">
-      <div class="container">
-        <h2 class="section-title fade-in">Naše služby</h2>
-        <div class="services-grid">${servicesHtml}</div>
-      </div>
-    </section>
-    ` : ""}
-
-    ${aboutText ? `
-    <section class="section" id="about" style="background: var(--card-bg);">
-      <div class="container">
-        <div class="about-grid">
-          <div class="about-text fade-in">
-            <h2>O ${escapeHtml(companyName)}</h2>
-            <p>${escapeHtml(aboutText.slice(0, 500))}</p>
-            <a href="#contact" class="btn" style="margin-top: 24px;">Zjistit více</a>
-          </div>
-          ${aboutImage ? `<div class="about-image fade-in"><img src="${aboutImage}" alt="O společnosti ${escapeHtml(companyName)}" loading="lazy" /></div>` : ""}
-        </div>
-      </div>
-    </section>
-    ` : ""}
-
-    ${testimonialsHtml ? `
-    <section class="section" id="testimonials">
-      <div class="container">
-        <h2 class="section-title fade-in">Co o nás říkají</h2>
-        <div class="testimonials-grid">${testimonialsHtml}</div>
-      </div>
-    </section>
-    ` : ""}
-
-    ${galleryHtml ? `
-    <section class="section" id="gallery">
-      <div class="container">
-        <h2 class="section-title fade-in">Reference</h2>
-        <div class="gallery-grid">${galleryHtml}</div>
-      </div>
-    </section>
-    ` : ""}
-
-    ${faqHtml ? `
-    <section class="section" id="faq" style="background: var(--card-bg);">
-      <div class="container">
-        <h2 class="section-title fade-in">Často kladené otázky</h2>
-        <div class="faq-container">${faqHtml}</div>
-      </div>
-    </section>
-    ` : ""}
-
-    <section class="section" id="contact">
-      <div class="container">
-        <h2 class="section-title fade-in">Kontakt</h2>
-        <div class="contact-grid">
-          <div class="contact-info fade-in">
-            <h3>${escapeHtml(companyName)}</h3>
-            ${phone ? `<p>Tel: <a href="tel:${phone.replace(/\s/g, "")}">${escapeHtml(phone)}</a></p>` : ""}
-            ${email ? `<p>Email: <a href="mailto:${email}">${escapeHtml(email)}</a></p>` : ""}
-            ${address ? `<p>${escapeHtml(address)}</p>` : ""}
-            <p><a href="${url}" target="_blank" rel="noopener noreferrer">${siteHost}</a></p>
-          </div>
-          <form class="contact-form fade-in" onsubmit="event.preventDefault();">
-            <div>
-              <label for="contact-name">Jméno</label>
-              <input type="text" id="contact-name" name="name" autocomplete="name" required />
-            </div>
-            <div>
-              <label for="contact-email">Email</label>
-              <input type="email" id="contact-email" name="email" autocomplete="email" required />
-            </div>
-            <div>
-              <label for="contact-message">Vaše zpráva</label>
-              <textarea id="contact-message" name="message"></textarea>
-            </div>
-            <button type="submit" class="btn" style="width: 100%; justify-content: center;">Odeslat zprávu</button>
-          </form>
-        </div>
+  <main>
+    <section class="hero">
+      <div>
+        <h1>${escapeHtml(data.headline)}</h1>
+        ${data.subheadline ? `<p>${escapeHtml(data.subheadline)}</p>` : ""}
+        <a href="#contact" class="btn">Kontakt</a>
       </div>
     </section>
   </main>
-
-  <footer class="footer">
-    <div class="footer-inner">
-      <div class="footer-logo">${logoHtml}</div>
-      <nav class="footer-links" aria-label="Patička">
-        ${servicesHtml ? '<a href="#services">Služby</a>' : ""}
-        ${aboutText ? '<a href="#about">O nás</a>' : ""}
-        <a href="#contact">Kontakt</a>
-      </nav>
-      ${socialLinksHtml ? `<div class="footer-social">${socialLinksHtml}</div>` : ""}
-      <div class="footer-copy">&copy; ${year} ${escapeHtml(companyName)}. Redesign preview by Webflip.</div>
-    </div>
-  </footer>
-
-  <script>
-    // Navbar scroll effect — shrink + shadow
-    window.addEventListener('scroll', function() {
-      document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 50);
-    });
-
-    // Hamburger menu with accessibility
-    var hamburger = document.getElementById('hamburgerBtn');
-    var mobileMenu = document.getElementById('mobileMenu');
-    var mobileClose = document.getElementById('mobileClose');
-    hamburger.addEventListener('click', function() {
-      mobileMenu.classList.add('open');
-      hamburger.setAttribute('aria-expanded', 'true');
-      mobileClose.focus();
-    });
-    function closeMenu() {
-      mobileMenu.classList.remove('open');
-      hamburger.setAttribute('aria-expanded', 'false');
-      hamburger.focus();
-    }
-    mobileClose.addEventListener('click', closeMenu);
-    document.querySelectorAll('.mobile-link').forEach(function(link) {
-      link.addEventListener('click', closeMenu);
-    });
-    // Close menu on Escape
-    document.addEventListener('keydown', function(e) {
-      if (e.key === 'Escape' && mobileMenu.classList.contains('open')) closeMenu();
-    });
-
-    // Smooth scroll
-    document.querySelectorAll('a[href^="#"]').forEach(function(a) {
-      a.addEventListener('click', function(e) {
-        var target = document.querySelector(this.getAttribute('href'));
-        if (target) { e.preventDefault(); target.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
-      });
-    });
-
-    // Scroll-triggered fade-in with stagger (respects reduced-motion)
-    var prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (!prefersReducedMotion) {
-      var observer = new IntersectionObserver(function(entries) {
-        entries.forEach(function(entry) {
-          if (entry.isIntersecting) {
-            entry.target.classList.add('visible');
-            observer.unobserve(entry.target);
-          }
-        });
-      }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
-      document.querySelectorAll('.fade-in').forEach(function(el, i) {
-        el.style.transitionDelay = (i % 6) * 0.08 + 's';
-        observer.observe(el);
-      });
-    } else {
-      // Show all elements immediately when reduced motion is preferred
-      document.querySelectorAll('.fade-in').forEach(function(el) {
-        el.classList.add('visible');
-      });
-    }
-
-    // FAQ accordion toggle
-    function toggleFaq(btn) {
-      var expanded = btn.getAttribute('aria-expanded') === 'true';
-      btn.setAttribute('aria-expanded', !expanded);
-      var answer = btn.nextElementSibling;
-      if (!expanded) {
-        answer.style.maxHeight = answer.scrollHeight + 'px';
-      } else {
-        answer.style.maxHeight = '0';
-      }
-    }
-
-    // Stats count-up animation
-    var statsObserver = new IntersectionObserver(function(entries) {
-      entries.forEach(function(entry) {
-        if (entry.isIntersecting) {
-          var el = entry.target;
-          var target = parseInt(el.getAttribute('data-target'));
-          if (isNaN(target)) return;
-          var duration = 1500;
-          var start = 0;
-          var startTime = null;
-          function animate(timestamp) {
-            if (!startTime) startTime = timestamp;
-            var progress = Math.min((timestamp - startTime) / duration, 1);
-            var eased = 1 - Math.pow(1 - progress, 3);
-            el.textContent = Math.round(start + (target - start) * eased) + (el.textContent.includes('+') ? '+' : el.textContent.includes('%') ? '%' : '');
-            if (progress < 1) requestAnimationFrame(animate);
-          }
-          requestAnimationFrame(animate);
-          statsObserver.unobserve(el);
-        }
-      });
-    }, { threshold: 0.5 });
-    document.querySelectorAll('.stat-number').forEach(function(el) {
-      statsObserver.observe(el);
-    });
-  </script>
+  <footer class="footer">&copy; ${year} ${escapeHtml(data.companyName)}</footer>
 </body>
 </html>`;
 }
+
+// ── Service Icon SVG Generator ──
+
+function getServiceIconSvg(iconName: string): string {
+  const color = "currentColor";
+  const icons: Record<string, string> = {
+    briefcase: `<svg viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg>`,
+    chart: `<svg viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>`,
+    shield: `<svg viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`,
+    globe: `<svg viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>`,
+    users: `<svg viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>`,
+    code: `<svg viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>`,
+    heart: `<svg viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>`,
+    star: `<svg viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`,
+    lightbulb: `<svg viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 22h4M12 2a7 7 0 00-4 12.7V17h8v-2.3A7 7 0 0012 2z"/></svg>`,
+    target: `<svg viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>`,
+  };
+  return icons[iconName] || icons.briefcase;
+}
+
+// ── Helper Functions ──
 
 function escapeHtml(str: string): string {
   return str
@@ -1184,36 +538,21 @@ function escapeHtml(str: string): string {
     .replace(/"/g, "&quot;");
 }
 
-function isColorDark(hex: string): boolean {
-  const c = hex.replace("#", "");
-  if (c.length < 6) return false;
-  const r = parseInt(c.substring(0, 2), 16);
-  const g = parseInt(c.substring(2, 4), 16);
-  const b = parseInt(c.substring(4, 6), 16);
-  return (r * 299 + g * 587 + b * 114) / 1000 < 128;
-}
-
-function getServiceIcon(index: number, color: string): string {
-  const icons = [
-    `<svg viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="20" stroke="${color}" stroke-width="2" opacity="0.2"/><path d="M16 24l6 6 10-12" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
-    `<svg viewBox="0 0 48 48" fill="none"><rect x="8" y="8" width="32" height="32" rx="8" stroke="${color}" stroke-width="2" opacity="0.2"/><circle cx="24" cy="24" r="8" stroke="${color}" stroke-width="2.5"/></svg>`,
-    `<svg viewBox="0 0 48 48" fill="none"><path d="M24 8l16 28H8L24 8z" stroke="${color}" stroke-width="2" opacity="0.2"/><circle cx="24" cy="28" r="4" fill="${color}"/></svg>`,
-    `<svg viewBox="0 0 48 48" fill="none"><rect x="4" y="14" width="40" height="20" rx="10" stroke="${color}" stroke-width="2" opacity="0.2"/><circle cx="34" cy="24" r="6" fill="${color}" opacity="0.5"/></svg>`,
-    `<svg viewBox="0 0 48 48" fill="none"><path d="M12 12h24v24H12z" stroke="${color}" stroke-width="2" opacity="0.2" rx="4"/><path d="M18 24h12M24 18v12" stroke="${color}" stroke-width="2.5" stroke-linecap="round"/></svg>`,
-    `<svg viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="18" stroke="${color}" stroke-width="2" opacity="0.2"/><path d="M24 14v10l7 7" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
-  ];
-  return icons[index % icons.length];
+function escapeAttr(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
 }
 
 /**
  * Extract stats/numbers from crawled content for the stats bar.
- * Looks for patterns like "15+ years", "500 clients", "98% satisfaction".
  */
 function extractStats(content: string): { number: number; label: string }[] {
   const stats: { number: number; label: string }[] = [];
   const seen = new Set<number>();
 
-  // Pattern: number followed by descriptive text (e.g., "150+ projects", "25 let zkušeností")
   const patterns = [
     /(\d{1,6})\+?\s*(let|years?|roků|roku)\s*(zkušeností|experience|praxe|na trhu)?/gi,
     /(\d{1,6})\+?\s*(klientů|clients?|zákazníků|customers?|spokojených)/gi,
@@ -1245,17 +584,12 @@ function extractStats(content: string): { number: number; label: string }[] {
 }
 
 /**
- * Extract testimonials/reviews from crawled content.
- * Looks for quoted text near names or review patterns.
+ * Extract testimonials from crawled content.
  */
 function extractTestimonials(content: string): { text: string; author: string; role?: string }[] {
   const testimonials: { text: string; author: string; role?: string }[] = [];
-
-  // Look for quoted text (either with actual quote marks or in testimonial-like blocks)
   const quotePatterns = [
-    // "Quote text" — Author Name
     /"([^"]{30,300})"\s*[-—–]\s*([A-ZÁ-Ž][a-zá-ž]+ [A-ZÁ-Ž][a-zá-ž]+)(?:\s*,\s*(.+?))?(?:\n|$)/g,
-    // „Quote text" — Author Name (Czech quotes)
     /„([^"]{30,300})"\s*[-—–]\s*([A-ZÁ-Ž][a-zá-ž]+ [A-ZÁ-Ž][a-zá-ž]+)(?:\s*,\s*(.+?))?(?:\n|$)/g,
   ];
 
@@ -1275,42 +609,24 @@ function extractTestimonials(content: string): { text: string; author: string; r
 
 /**
  * Extract FAQ items from crawled content.
- * Looks for question-answer patterns.
  */
 function extractFaqItems(content: string): { question: string; answer: string }[] {
   const items: { question: string; answer: string }[] = [];
-  const lines = content.split("\n").map((l) => l.trim()).filter(Boolean);
+  const lines = content.split("\n").map(l => l.trim()).filter(Boolean);
 
   for (let i = 0; i < lines.length - 1 && items.length < 6; i++) {
     const line = lines[i];
-    // Look for lines ending with ? that are likely questions
     if (line.endsWith("?") && line.length > 15 && line.length < 200) {
-      // Next non-empty line is the answer
       const answer = lines[i + 1];
       if (answer && !answer.endsWith("?") && answer.length > 20) {
         items.push({
           question: line.replace(/^#+\s*/, "").replace(/^\*\*/, "").replace(/\*\*$/, ""),
           answer: answer.slice(0, 300),
         });
-        i++; // Skip the answer line
+        i++;
       }
     }
   }
 
   return items;
-}
-
-/**
- * Get a social media SVG icon by platform name.
- */
-function getSocialIcon(platform: string, color: string): string {
-  const icons: Record<string, string> = {
-    Facebook: `<svg viewBox="0 0 24 24" fill="${color}"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>`,
-    Instagram: `<svg viewBox="0 0 24 24" fill="${color}"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>`,
-    LinkedIn: `<svg viewBox="0 0 24 24" fill="${color}"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>`,
-    X: `<svg viewBox="0 0 24 24" fill="${color}"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>`,
-    YouTube: `<svg viewBox="0 0 24 24" fill="${color}"><path d="M23.498 6.186a3.016 3.016 0 00-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 00.502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 002.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 002.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>`,
-    Link: `<svg viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>`,
-  };
-  return icons[platform] || icons.Link;
 }

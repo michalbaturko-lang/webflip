@@ -87,6 +87,7 @@ ${content}
 - Subtle decorative elements: thin horizontal rules, generous letter-spacing on labels
 
 ## RULES
+- DETECT the language of the crawled content (Czech, English, German, Slovak, etc.) — ALL descriptions, layout text, and keyFeatures MUST be written in that SAME language
 - descriptions MUST reference "${companyName}" by name and their actual business/industry
 - keyFeatures MUST be specific to THIS site's problems (based on scores above) — mention concrete improvements
 - Each palette must be GENUINELY different — Corporate is cool/blue, Bold is dark/vibrant, Elegant is warm/muted

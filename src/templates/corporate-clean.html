@@ -1,0 +1,1638 @@
+<!DOCTYPE html>
+<html lang="TEMPLATE_VAR_language">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="TEMPLATE_VAR_metaDescription">
+  <title>TEMPLATE_VAR_companyName</title>
+  <link rel="icon" href="TEMPLATE_VAR_faviconUrl" type="image/x-icon">
+
+  <!-- OG Meta Tags -->
+  <meta property="og:title" content="TEMPLATE_VAR_companyName">
+  <meta property="og:description" content="TEMPLATE_VAR_metaDescription">
+  <meta property="og:url" content="TEMPLATE_VAR_siteUrl">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="TEMPLATE_VAR_ogImage">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="TEMPLATE_VAR_companyName">
+  <meta name="twitter:description" content="TEMPLATE_VAR_metaDescription">
+
+  <!-- Schema.org JSON-LD -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": ["Organization", "LocalBusiness"],
+    "name": "TEMPLATE_VAR_companyName",
+    "url": "TEMPLATE_VAR_siteUrl",
+    "logo": "TEMPLATE_VAR_logoUrl",
+    "description": "TEMPLATE_VAR_metaDescription",
+    "telephone": "TEMPLATE_VAR_phone",
+    "email": "TEMPLATE_VAR_email",
+    "address": {
+      "@type": "PostalAddress",
+      "streetAddress": "TEMPLATE_VAR_address"
+    }
+  }
+  </script>
+
+  <style>
+    /* ===== CSS Custom Properties ===== */
+    :root {
+      --color-primary: TEMPLATE_VAR_primaryColor;
+      --color-navy: #1B2A4A;
+      --color-gold: #C8A96E;
+      --color-white: #ffffff;
+      --color-light: #f8f9fa;
+      --color-text: #333333;
+      --color-text-light: #666666;
+      --color-border: #e0e0e0;
+      --font-heading: Georgia, 'Times New Roman', Times, serif;
+      --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+      --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+      --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+      --radius: 4px;
+      --transition: 0.3s ease;
+      --max-width: 1200px;
+    }
+
+    /* ===== Reset & Base ===== */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+      font-size: 16px;
+    }
+
+    body {
+      font-family: var(--font-body);
+      color: var(--color-text);
+      line-height: 1.6;
+      background-color: var(--color-white);
+      overflow-x: hidden;
+    }
+
+    img {
+      max-width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    a {
+      color: var(--color-navy);
+      text-decoration: none;
+      transition: color var(--transition);
+    }
+
+    a:hover {
+      color: var(--color-gold);
+    }
+
+    a:focus-visible,
+    button:focus-visible,
+    input:focus-visible,
+    textarea:focus-visible,
+    select:focus-visible {
+      outline: 2px solid var(--color-gold);
+      outline-offset: 2px;
+    }
+
+    h1, h2, h3, h4, h5, h6 {
+      font-family: var(--font-heading);
+      color: var(--color-navy);
+      line-height: 1.3;
+    }
+
+    /* ===== Skip to Content ===== */
+    .skip-link {
+      position: absolute;
+      top: -100%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--color-navy);
+      color: var(--color-white);
+      padding: 0.75rem 1.5rem;
+      z-index: 10000;
+      border-radius: var(--radius);
+      font-weight: 600;
+    }
+
+    .skip-link:focus {
+      top: 1rem;
+      color: var(--color-white);
+    }
+
+    /* ===== Container ===== */
+    .container {
+      width: 100%;
+      max-width: var(--max-width);
+      margin: 0 auto;
+      padding: 0 1rem;
+    }
+
+    /* ===== Section Base ===== */
+    .section {
+      padding: 3rem 0;
+    }
+
+    .section--alt {
+      background-color: var(--color-light);
+    }
+
+    .section-title {
+      font-size: 1.75rem;
+      text-align: center;
+      margin-bottom: 0.75rem;
+      position: relative;
+    }
+
+    .section-subtitle {
+      text-align: center;
+      color: var(--color-text-light);
+      max-width: 600px;
+      margin: 0 auto 2.5rem;
+      font-size: 1rem;
+    }
+
+    .section-title::after {
+      content: '';
+      display: block;
+      width: 60px;
+      height: 3px;
+      background: var(--color-gold);
+      margin: 0.75rem auto 0;
+    }
+
+    /* ===== Fade-in Animation ===== */
+    .fade-in {
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+
+    .fade-in.is-visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .fade-in {
+        opacity: 1;
+        transform: none;
+        transition: none;
+      }
+    }
+
+    /* ===== 1. Navigation ===== */
+    .navbar {
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      background: var(--color-white);
+      border-bottom: 1px solid var(--color-border);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .navbar__inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 70px;
+    }
+
+    .navbar__logo img {
+      height: 40px;
+      width: auto;
+    }
+
+    .navbar__links {
+      display: none;
+      list-style: none;
+      gap: 1.5rem;
+    }
+
+    .navbar__links a {
+      font-size: 0.9rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 0.25rem 0;
+      border-bottom: 2px solid transparent;
+      transition: border-color var(--transition), color var(--transition);
+    }
+
+    .navbar__links a:hover,
+    .navbar__links a:focus-visible {
+      border-bottom-color: var(--color-gold);
+      color: var(--color-navy);
+    }
+
+    .navbar__hamburger {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0.5rem;
+    }
+
+    .navbar__hamburger span {
+      width: 24px;
+      height: 2px;
+      background: var(--color-navy);
+      transition: transform var(--transition), opacity var(--transition);
+    }
+
+    .navbar__hamburger[aria-expanded="true"] span:nth-child(1) {
+      transform: rotate(45deg) translate(5px, 5px);
+    }
+
+    .navbar__hamburger[aria-expanded="true"] span:nth-child(2) {
+      opacity: 0;
+    }
+
+    .navbar__hamburger[aria-expanded="true"] span:nth-child(3) {
+      transform: rotate(-45deg) translate(5px, -5px);
+    }
+
+    .navbar__mobile {
+      display: none;
+      position: absolute;
+      top: 70px;
+      left: 0;
+      right: 0;
+      background: var(--color-white);
+      border-bottom: 1px solid var(--color-border);
+      box-shadow: var(--shadow-md);
+      padding: 1rem 0;
+    }
+
+    .navbar__mobile.is-open {
+      display: block;
+    }
+
+    .navbar__mobile a {
+      display: block;
+      padding: 0.75rem 1.5rem;
+      font-weight: 500;
+      border-left: 3px solid transparent;
+    }
+
+    .navbar__mobile a:hover {
+      background: var(--color-light);
+      border-left-color: var(--color-gold);
+    }
+
+    /* ===== 2. Hero ===== */
+    .hero {
+      min-height: 70vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      background: linear-gradient(135deg, var(--color-navy) 0%, #2c3e6b 100%);
+      color: var(--color-white);
+      padding: 3rem 1rem;
+      position: relative;
+    }
+
+    .hero__overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(27, 42, 74, 0.75);
+      z-index: 1;
+    }
+
+    .hero__content {
+      position: relative;
+      z-index: 2;
+      max-width: 800px;
+    }
+
+    .hero__headline {
+      font-size: 2rem;
+      color: var(--color-white);
+      margin-bottom: 1rem;
+      line-height: 1.2;
+    }
+
+    .hero__subheadline {
+      font-size: 1.1rem;
+      color: rgba(255, 255, 255, 0.85);
+      margin-bottom: 2rem;
+      font-family: var(--font-body);
+    }
+
+    .btn {
+      display: inline-block;
+      padding: 0.85rem 2rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+      border: none;
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: background var(--transition), transform var(--transition), box-shadow var(--transition);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .btn--primary {
+      background: var(--color-gold);
+      color: var(--color-navy);
+    }
+
+    .btn--primary:hover {
+      background: #b8994f;
+      color: var(--color-navy);
+    }
+
+    .btn--outline {
+      background: transparent;
+      color: var(--color-navy);
+      border: 2px solid var(--color-navy);
+    }
+
+    .btn--outline:hover {
+      background: var(--color-navy);
+      color: var(--color-white);
+    }
+
+    /* ===== 3. Stats / Trust Bar ===== */
+    .stats {
+      background: var(--color-navy);
+      padding: 2.5rem 0;
+    }
+
+    .stats__grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+      text-align: center;
+    }
+
+    .stat-item {
+      color: var(--color-white);
+    }
+
+    .stat-number {
+      display: block;
+      font-family: var(--font-heading);
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: var(--color-gold);
+      line-height: 1.2;
+    }
+
+    .stat-label {
+      display: block;
+      font-size: 0.9rem;
+      color: rgba(255, 255, 255, 0.8);
+      margin-top: 0.25rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    /* ===== 4. Services ===== */
+    .services__grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+    }
+
+    .service-card {
+      background: var(--color-white);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      padding: 2rem 1.5rem;
+      text-align: center;
+      transition: box-shadow var(--transition), transform var(--transition);
+    }
+
+    .service-card:hover {
+      box-shadow: var(--shadow-md);
+      transform: translateY(-2px);
+    }
+
+    .service-card__icon {
+      font-size: 2.5rem;
+      color: var(--color-gold);
+      margin-bottom: 1rem;
+    }
+
+    .service-card__title {
+      font-size: 1.2rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .service-card__desc {
+      color: var(--color-text-light);
+      font-size: 0.95rem;
+    }
+
+    /* ===== 5. About ===== */
+    .about__grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 2rem;
+      align-items: center;
+    }
+
+    .about__image img {
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-md);
+      width: 100%;
+    }
+
+    .about__text h3 {
+      font-size: 1.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .about__text p {
+      color: var(--color-text-light);
+      margin-bottom: 1rem;
+    }
+
+    /* ===== 6. Blog / Aktuality ===== */
+    .blog__grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+    }
+
+    .blog-card {
+      background: var(--color-white);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      transition: box-shadow var(--transition);
+    }
+
+    .blog-card:hover {
+      box-shadow: var(--shadow-md);
+    }
+
+    .blog-card__body {
+      padding: 1.5rem;
+    }
+
+    .blog-card__date {
+      font-size: 0.8rem;
+      color: var(--color-gold);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 0.5rem;
+    }
+
+    .blog-card__title {
+      font-size: 1.15rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .blog-card__excerpt {
+      color: var(--color-text-light);
+      font-size: 0.95rem;
+    }
+
+    /* ===== 7. Testimonials ===== */
+    .testimonials__grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+    }
+
+    .testimonial-card {
+      background: var(--color-white);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      padding: 2rem 1.5rem;
+      position: relative;
+    }
+
+    .testimonial-card::before {
+      content: '\201C';
+      font-family: var(--font-heading);
+      font-size: 4rem;
+      color: var(--color-gold);
+      opacity: 0.3;
+      position: absolute;
+      top: 0.5rem;
+      left: 1rem;
+      line-height: 1;
+    }
+
+    .testimonial-card__quote {
+      font-style: italic;
+      color: var(--color-text);
+      margin-bottom: 1.25rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    .testimonial-card__author {
+      font-weight: 600;
+      color: var(--color-navy);
+    }
+
+    .testimonial-card__role {
+      font-size: 0.85rem;
+      color: var(--color-text-light);
+    }
+
+    /* ===== 8. FAQ Accordion ===== */
+    .faq__list {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .faq-item {
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      margin-bottom: 0.75rem;
+      overflow: hidden;
+    }
+
+    .faq-item__question {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 1.25rem;
+      background: var(--color-white);
+      border: none;
+      cursor: pointer;
+      font-family: var(--font-heading);
+      font-size: 1rem;
+      color: var(--color-navy);
+      text-align: left;
+      transition: background var(--transition);
+    }
+
+    .faq-item__question:hover {
+      background: var(--color-light);
+    }
+
+    .faq-item__icon {
+      font-size: 1.25rem;
+      transition: transform var(--transition);
+      flex-shrink: 0;
+      margin-left: 1rem;
+      color: var(--color-gold);
+    }
+
+    .faq-item[aria-expanded="true"] .faq-item__icon {
+      transform: rotate(45deg);
+    }
+
+    .faq-item__answer {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.4s ease, padding 0.3s ease;
+    }
+
+    .faq-item__answer-inner {
+      padding: 0 1.25rem 1.25rem;
+      color: var(--color-text-light);
+      line-height: 1.7;
+    }
+
+    /* ===== 9. Gallery / References ===== */
+    .gallery__grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1rem;
+    }
+
+    .gallery__item {
+      overflow: hidden;
+      border-radius: var(--radius);
+      border: 1px solid var(--color-border);
+    }
+
+    .gallery__item img {
+      width: 100%;
+      height: 200px;
+      object-fit: cover;
+      transition: transform var(--transition);
+    }
+
+    .gallery__item:hover img {
+      transform: scale(1.05);
+    }
+
+    /* ===== 10. Google Maps ===== */
+    .map__wrapper {
+      border-radius: var(--radius);
+      overflow: hidden;
+      border: 1px solid var(--color-border);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .map__wrapper iframe {
+      width: 100%;
+      height: 350px;
+      border: 0;
+    }
+
+    /* ===== 11. Contact ===== */
+    .contact__grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 2rem;
+    }
+
+    .contact__info h3 {
+      font-size: 1.3rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .contact__info-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+
+    .contact__info-icon {
+      color: var(--color-gold);
+      font-size: 1.25rem;
+      flex-shrink: 0;
+      margin-top: 0.15rem;
+    }
+
+    .contact__info-text a {
+      color: var(--color-text);
+    }
+
+    .contact__info-text a:hover {
+      color: var(--color-gold);
+    }
+
+    .contact__form {
+      background: var(--color-white);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      padding: 2rem;
+    }
+
+    .form-group {
+      margin-bottom: 1.25rem;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: var(--color-navy);
+      margin-bottom: 0.4rem;
+    }
+
+    .form-group input,
+    .form-group textarea,
+    .form-group select {
+      width: 100%;
+      padding: 0.7rem 0.9rem;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      font-family: var(--font-body);
+      font-size: 0.95rem;
+      transition: border-color var(--transition), box-shadow var(--transition);
+    }
+
+    .form-group input:focus,
+    .form-group textarea:focus,
+    .form-group select:focus {
+      border-color: var(--color-gold);
+      box-shadow: 0 0 0 3px rgba(200, 169, 110, 0.15);
+      outline: none;
+    }
+
+    .form-group textarea {
+      min-height: 120px;
+      resize: vertical;
+    }
+
+    /* ===== 12. Footer ===== */
+    .footer {
+      background: var(--color-navy);
+      color: rgba(255, 255, 255, 0.8);
+      padding: 3rem 0 1.5rem;
+    }
+
+    .footer__grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 2rem;
+      margin-bottom: 2rem;
+    }
+
+    .footer h4 {
+      color: var(--color-white);
+      font-size: 1.1rem;
+      margin-bottom: 1rem;
+    }
+
+    .footer__links {
+      list-style: none;
+    }
+
+    .footer__links li {
+      margin-bottom: 0.5rem;
+    }
+
+    .footer__links a {
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 0.9rem;
+      transition: color var(--transition);
+    }
+
+    .footer__links a:hover {
+      color: var(--color-gold);
+    }
+
+    .footer__social {
+      display: flex;
+      gap: 0.75rem;
+    }
+
+    .footer__social a {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 38px;
+      height: 38px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 50%;
+      color: var(--color-white);
+      transition: background var(--transition), color var(--transition);
+    }
+
+    .footer__social a:hover {
+      background: var(--color-gold);
+      color: var(--color-navy);
+    }
+
+    .footer__bottom {
+      border-top: 1px solid rgba(255, 255, 255, 0.15);
+      padding-top: 1.5rem;
+      text-align: center;
+      font-size: 0.85rem;
+    }
+
+    /* ===== 13. Cookie Consent ===== */
+    .cookie-banner {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: var(--color-navy);
+      color: var(--color-white);
+      padding: 1.25rem;
+      z-index: 9999;
+      box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
+      display: none;
+    }
+
+    .cookie-banner.is-visible {
+      display: block;
+    }
+
+    .cookie-banner__inner {
+      max-width: var(--max-width);
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      align-items: center;
+      text-align: center;
+    }
+
+    .cookie-banner__text {
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+
+    .cookie-banner__actions {
+      display: flex;
+      gap: 0.75rem;
+    }
+
+    .cookie-banner__btn {
+      padding: 0.5rem 1.25rem;
+      border-radius: var(--radius);
+      border: none;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+      transition: background var(--transition);
+    }
+
+    .cookie-banner__btn--accept {
+      background: var(--color-gold);
+      color: var(--color-navy);
+    }
+
+    .cookie-banner__btn--accept:hover {
+      background: #b8994f;
+    }
+
+    .cookie-banner__btn--decline {
+      background: transparent;
+      color: var(--color-white);
+      border: 1px solid rgba(255, 255, 255, 0.4);
+    }
+
+    .cookie-banner__btn--decline:hover {
+      border-color: var(--color-white);
+    }
+
+    /* ===== 14. Scroll to Top ===== */
+    .scroll-top {
+      position: fixed;
+      bottom: 5rem;
+      right: 1.25rem;
+      width: 44px;
+      height: 44px;
+      background: var(--color-navy);
+      color: var(--color-white);
+      border: none;
+      border-radius: 50%;
+      cursor: pointer;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+      z-index: 999;
+      box-shadow: var(--shadow-md);
+      transition: background var(--transition), transform var(--transition);
+    }
+
+    .scroll-top.is-visible {
+      display: flex;
+    }
+
+    .scroll-top:hover {
+      background: var(--color-gold);
+      color: var(--color-navy);
+      transform: translateY(-2px);
+    }
+
+    /* ===== 15. Floating CTA ===== */
+    .floating-cta {
+      position: fixed;
+      bottom: 1.25rem;
+      right: 1.25rem;
+      width: 52px;
+      height: 52px;
+      background: var(--color-gold);
+      color: var(--color-navy);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      z-index: 998;
+      box-shadow: var(--shadow-lg);
+      transition: transform var(--transition), box-shadow var(--transition);
+      text-decoration: none;
+    }
+
+    .floating-cta:hover {
+      transform: scale(1.1);
+      box-shadow: 0 6px 20px rgba(200, 169, 110, 0.4);
+      color: var(--color-navy);
+    }
+
+    /* ===== Responsive: 640px ===== */
+    @media (min-width: 640px) {
+      .section {
+        padding: 4rem 0;
+      }
+
+      .section-title {
+        font-size: 2rem;
+      }
+
+      .hero__headline {
+        font-size: 2.5rem;
+      }
+
+      .stats__grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .services__grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .blog__grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .gallery__grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+
+      .contact__grid {
+        grid-template-columns: 1fr 1.2fr;
+      }
+
+      .footer__grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .cookie-banner__inner {
+        flex-direction: row;
+        text-align: left;
+      }
+    }
+
+    /* ===== Responsive: 768px ===== */
+    @media (min-width: 768px) {
+      .container {
+        padding: 0 1.5rem;
+      }
+
+      .hero__headline {
+        font-size: 3rem;
+      }
+
+      .hero__subheadline {
+        font-size: 1.2rem;
+      }
+
+      .about__grid {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .testimonials__grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .services__grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+
+      .stats__grid {
+        grid-template-columns: repeat(4, 1fr);
+      }
+
+      .gallery__grid {
+        grid-template-columns: repeat(4, 1fr);
+      }
+
+      .map__wrapper iframe {
+        height: 400px;
+      }
+    }
+
+    /* ===== Responsive: 1024px ===== */
+    @media (min-width: 1024px) {
+      .section {
+        padding: 5rem 0;
+      }
+
+      .section-title {
+        font-size: 2.25rem;
+      }
+
+      .navbar__links {
+        display: flex;
+      }
+
+      .navbar__hamburger {
+        display: none;
+      }
+
+      .hero__headline {
+        font-size: 3.5rem;
+      }
+
+      .blog__grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+
+      .testimonials__grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+
+      .footer__grid {
+        grid-template-columns: 2fr 1fr 1fr 1fr;
+      }
+
+      .map__wrapper iframe {
+        height: 450px;
+      }
+    }
+
+    /* ===== Responsive: 1280px ===== */
+    @media (min-width: 1280px) {
+      .container {
+        padding: 0 2rem;
+      }
+
+      .hero__headline {
+        font-size: 4rem;
+      }
+
+      .section {
+        padding: 6rem 0;
+      }
+    }
+
+    /* ===== Prefers Reduced Motion ===== */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Skip to Content -->
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+
+  <!-- ============================================
+       1. Navigation
+       ============================================ -->
+  <header class="navbar" role="banner">
+    <div class="container">
+      <nav class="navbar__inner" aria-label="Main navigation">
+        <a href="#" class="navbar__logo" aria-label="TEMPLATE_VAR_companyName home">
+          <img src="TEMPLATE_VAR_logoUrl" alt="TEMPLATE_VAR_companyName logo">
+        </a>
+        <ul class="navbar__links" role="menubar">
+          <li role="none"><a href="#services" role="menuitem">Services</a></li>
+          <li role="none"><a href="#about" role="menuitem">About</a></li>
+          <li role="none"><a href="#blog" role="menuitem">Blog</a></li>
+          <li role="none"><a href="#testimonials" role="menuitem">Testimonials</a></li>
+          <li role="none"><a href="#faq" role="menuitem">FAQ</a></li>
+          <li role="none"><a href="#gallery" role="menuitem">Gallery</a></li>
+          <li role="none"><a href="#contact" role="menuitem">Contact</a></li>
+        </ul>
+        <button class="navbar__hamburger" aria-label="Toggle navigation menu" aria-expanded="false" aria-controls="mobile-menu">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+      </nav>
+    </div>
+    <div id="mobile-menu" class="navbar__mobile" role="navigation" aria-label="Mobile navigation">
+      <a href="#services">Services</a>
+      <a href="#about">About</a>
+      <a href="#blog">Blog</a>
+      <a href="#testimonials">Testimonials</a>
+      <a href="#faq">FAQ</a>
+      <a href="#gallery">Gallery</a>
+      <a href="#contact">Contact</a>
+    </div>
+  </header>
+
+  <!-- ============================================
+       2. Hero Section
+       ============================================ -->
+  <section class="hero" id="hero" aria-label="Hero banner">
+    <div class="hero__overlay"></div>
+    <div class="hero__content">
+      <h1 class="hero__headline">TEMPLATE_VAR_headline</h1>
+      <p class="hero__subheadline">TEMPLATE_VAR_subheadline</p>
+      <a href="#contact" class="btn btn--primary">TEMPLATE_VAR_ctaText</a>
+    </div>
+  </section>
+
+  <!-- Main Content -->
+  <main id="main-content">
+
+    <!-- ============================================
+         3. Stats / Trust Bar
+         ============================================ -->
+    <section class="stats" aria-label="Key statistics">
+      <div class="container">
+        <div class="stats__grid">
+          <!-- REPEAT:stats -->
+          <div class="stat-item fade-in">
+            <span class="stat-number">TEMPLATE_VAR_statNumber</span>
+            <span class="stat-label">TEMPLATE_VAR_statLabel</span>
+          </div>
+          <!-- /REPEAT:stats -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================
+         4. Services / Products
+         ============================================ -->
+    <section class="section section--alt" id="services" aria-labelledby="services-title">
+      <div class="container">
+        <h2 class="section-title" id="services-title">TEMPLATE_VAR_servicesHeading</h2>
+        <p class="section-subtitle">TEMPLATE_VAR_servicesSubheading</p>
+        <div class="services__grid">
+          <!-- REPEAT:services -->
+          <div class="service-card fade-in">
+            <div class="service-card__icon" aria-hidden="true">TEMPLATE_VAR_serviceIcon</div>
+            <h3 class="service-card__title">TEMPLATE_VAR_serviceTitle</h3>
+            <p class="service-card__desc">TEMPLATE_VAR_serviceDescription</p>
+          </div>
+          <!-- /REPEAT:services -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================
+         5. About Section
+         ============================================ -->
+    <section class="section" id="about" aria-labelledby="about-title">
+      <div class="container">
+        <h2 class="section-title" id="about-title">TEMPLATE_VAR_aboutHeading</h2>
+        <p class="section-subtitle">TEMPLATE_VAR_aboutSubheading</p>
+        <div class="about__grid fade-in">
+          <div class="about__image">
+            <img src="TEMPLATE_VAR_aboutImageUrl" alt="TEMPLATE_VAR_aboutImageAlt">
+          </div>
+          <div class="about__text">
+            <h3>TEMPLATE_VAR_aboutTitle</h3>
+            <p>TEMPLATE_VAR_aboutText</p>
+            <a href="#contact" class="btn btn--outline">TEMPLATE_VAR_aboutCtaText</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================
+         6. Blog / Aktuality
+         ============================================ -->
+    <section class="section section--alt" id="blog" aria-labelledby="blog-title">
+      <div class="container">
+        <h2 class="section-title" id="blog-title">TEMPLATE_VAR_blogHeading</h2>
+        <p class="section-subtitle">TEMPLATE_VAR_blogSubheading</p>
+        <div class="blog__grid">
+          <!-- REPEAT:blogPosts -->
+          <article class="blog-card fade-in">
+            <div class="blog-card__body">
+              <time class="blog-card__date" datetime="TEMPLATE_VAR_blogDate">TEMPLATE_VAR_blogDate</time>
+              <h3 class="blog-card__title">TEMPLATE_VAR_blogTitle</h3>
+              <p class="blog-card__excerpt">TEMPLATE_VAR_blogExcerpt</p>
+            </div>
+          </article>
+          <!-- /REPEAT:blogPosts -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================
+         7. Testimonials
+         ============================================ -->
+    <section class="section" id="testimonials" aria-labelledby="testimonials-title">
+      <div class="container">
+        <h2 class="section-title" id="testimonials-title">TEMPLATE_VAR_testimonialsHeading</h2>
+        <p class="section-subtitle">TEMPLATE_VAR_testimonialsSubheading</p>
+        <div class="testimonials__grid">
+          <!-- REPEAT:testimonials -->
+          <blockquote class="testimonial-card fade-in">
+            <p class="testimonial-card__quote">TEMPLATE_VAR_testimonialQuote</p>
+            <footer>
+              <cite class="testimonial-card__author">TEMPLATE_VAR_testimonialAuthor</cite>
+              <span class="testimonial-card__role">TEMPLATE_VAR_testimonialRole</span>
+            </footer>
+          </blockquote>
+          <!-- /REPEAT:testimonials -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================
+         8. FAQ Accordion
+         ============================================ -->
+    <section class="section section--alt" id="faq" aria-labelledby="faq-title">
+      <div class="container">
+        <h2 class="section-title" id="faq-title">TEMPLATE_VAR_faqHeading</h2>
+        <p class="section-subtitle">TEMPLATE_VAR_faqSubheading</p>
+        <div class="faq__list" role="list">
+          <!-- REPEAT:faqItems -->
+          <div class="faq-item fade-in" aria-expanded="false" role="listitem">
+            <button class="faq-item__question" aria-expanded="false" type="button">
+              <span>TEMPLATE_VAR_faqQuestion</span>
+              <span class="faq-item__icon" aria-hidden="true">+</span>
+            </button>
+            <div class="faq-item__answer" role="region">
+              <div class="faq-item__answer-inner">
+                <p>TEMPLATE_VAR_faqAnswer</p>
+              </div>
+            </div>
+          </div>
+          <!-- /REPEAT:faqItems -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================
+         9. Gallery / References
+         ============================================ -->
+    <section class="section" id="gallery" aria-labelledby="gallery-title">
+      <div class="container">
+        <h2 class="section-title" id="gallery-title">TEMPLATE_VAR_galleryHeading</h2>
+        <p class="section-subtitle">TEMPLATE_VAR_gallerySubheading</p>
+        <div class="gallery__grid">
+          <!-- REPEAT:gallery -->
+          <div class="gallery__item fade-in">
+            <img src="TEMPLATE_VAR_galleryUrl" alt="TEMPLATE_VAR_galleryAlt" loading="lazy">
+          </div>
+          <!-- /REPEAT:gallery -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================
+         10. Google Maps Embed
+         ============================================ -->
+    <!-- IF:address -->
+    <section class="section section--alt" id="map" aria-label="Location map">
+      <div class="container">
+        <div class="map__wrapper">
+          <iframe
+            src="https://maps.google.com/maps?q=TEMPLATE_VAR_address&output=embed"
+            allowfullscreen=""
+            loading="lazy"
+            referrerpolicy="no-referrer-when-downgrade"
+            title="Location of TEMPLATE_VAR_companyName"
+            aria-label="Google Maps showing location of TEMPLATE_VAR_companyName"
+          ></iframe>
+        </div>
+      </div>
+    </section>
+    <!-- /IF:address -->
+
+    <!-- ============================================
+         11. Contact Section
+         ============================================ -->
+    <section class="section" id="contact" aria-labelledby="contact-title">
+      <div class="container">
+        <h2 class="section-title" id="contact-title">TEMPLATE_VAR_contactHeading</h2>
+        <p class="section-subtitle">TEMPLATE_VAR_contactSubheading</p>
+        <div class="contact__grid fade-in">
+          <div class="contact__info">
+            <h3>TEMPLATE_VAR_contactInfoTitle</h3>
+            <div class="contact__info-item">
+              <span class="contact__info-icon" aria-hidden="true">&#9742;</span>
+              <div class="contact__info-text">
+                <a href="tel:TEMPLATE_VAR_phone" aria-label="Call TEMPLATE_VAR_companyName">TEMPLATE_VAR_phone</a>
+              </div>
+            </div>
+            <div class="contact__info-item">
+              <span class="contact__info-icon" aria-hidden="true">&#9993;</span>
+              <div class="contact__info-text">
+                <a href="mailto:TEMPLATE_VAR_email" aria-label="Email TEMPLATE_VAR_companyName">TEMPLATE_VAR_email</a>
+              </div>
+            </div>
+            <div class="contact__info-item">
+              <span class="contact__info-icon" aria-hidden="true">&#9873;</span>
+              <div class="contact__info-text">
+                <p>TEMPLATE_VAR_address</p>
+              </div>
+            </div>
+          </div>
+          <form class="contact__form" action="#" method="POST" aria-label="Contact form">
+            <div class="form-group">
+              <label for="contact-name">Full Name</label>
+              <input type="text" id="contact-name" name="name" required placeholder="Your full name" autocomplete="name">
+            </div>
+            <div class="form-group">
+              <label for="contact-email">Email Address</label>
+              <input type="email" id="contact-email" name="email" required placeholder="your@email.com" autocomplete="email">
+            </div>
+            <div class="form-group">
+              <label for="contact-phone">Phone Number</label>
+              <input type="tel" id="contact-phone" name="phone" placeholder="Your phone number" autocomplete="tel">
+            </div>
+            <div class="form-group">
+              <label for="contact-subject">Subject</label>
+              <select id="contact-subject" name="subject">
+                <option value="">Select a subject</option>
+                <option value="general">General Inquiry</option>
+                <option value="consultation">Consultation</option>
+                <option value="services">Services</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="contact-message">Message</label>
+              <textarea id="contact-message" name="message" required placeholder="How can we help you?"></textarea>
+            </div>
+            <button type="submit" class="btn btn--primary">Send Message</button>
+          </form>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ============================================
+       12. Footer
+       ============================================ -->
+  <footer class="footer" role="contentinfo">
+    <div class="container">
+      <div class="footer__grid">
+        <div class="footer__about">
+          <h4>TEMPLATE_VAR_companyName</h4>
+          <p style="font-size: 0.9rem; margin-bottom: 1rem;">TEMPLATE_VAR_footerDescription</p>
+          <div class="footer__social" aria-label="Social media links">
+            <!-- REPEAT:socialLinks -->
+            <a href="TEMPLATE_VAR_socialUrl" target="_blank" rel="noopener noreferrer" aria-label="TEMPLATE_VAR_socialLabel">
+              <span aria-hidden="true">TEMPLATE_VAR_socialIcon</span>
+            </a>
+            <!-- /REPEAT:socialLinks -->
+          </div>
+        </div>
+        <div>
+          <h4>Quick Links</h4>
+          <ul class="footer__links">
+            <li><a href="#services">Services</a></li>
+            <li><a href="#about">About</a></li>
+            <li><a href="#blog">Blog</a></li>
+            <li><a href="#testimonials">Testimonials</a></li>
+            <li><a href="#contact">Contact</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4>Services</h4>
+          <ul class="footer__links">
+            <li><a href="#">TEMPLATE_VAR_footerService1</a></li>
+            <li><a href="#">TEMPLATE_VAR_footerService2</a></li>
+            <li><a href="#">TEMPLATE_VAR_footerService3</a></li>
+            <li><a href="#">TEMPLATE_VAR_footerService4</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4>Contact</h4>
+          <ul class="footer__links">
+            <li><a href="tel:TEMPLATE_VAR_phone">TEMPLATE_VAR_phone</a></li>
+            <li><a href="mailto:TEMPLATE_VAR_email">TEMPLATE_VAR_email</a></li>
+            <li>TEMPLATE_VAR_address</li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer__bottom">
+        <p>&copy; TEMPLATE_VAR_copyrightYear TEMPLATE_VAR_companyName. All rights reserved.</p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ============================================
+       13. Cookie Consent Banner
+       ============================================ -->
+  <div class="cookie-banner" id="cookie-banner" role="dialog" aria-label="Cookie consent" aria-describedby="cookie-text">
+    <div class="cookie-banner__inner">
+      <p class="cookie-banner__text" id="cookie-text">
+        We use cookies to enhance your browsing experience, serve personalized content, and analyze our traffic.
+        By clicking "Accept", you consent to our use of cookies.
+      </p>
+      <div class="cookie-banner__actions">
+        <button class="cookie-banner__btn cookie-banner__btn--accept" id="cookie-accept" type="button">Accept</button>
+        <button class="cookie-banner__btn cookie-banner__btn--decline" id="cookie-decline" type="button">Decline</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================
+       14. Scroll-to-Top Button
+       ============================================ -->
+  <button class="scroll-top" id="scroll-top" aria-label="Scroll to top of page" type="button">
+    &#8593;
+  </button>
+
+  <!-- ============================================
+       15. Floating CTA Button
+       ============================================ -->
+  <a href="tel:TEMPLATE_VAR_phone" class="floating-cta" aria-label="Call TEMPLATE_VAR_companyName at TEMPLATE_VAR_phone">
+    &#9742;
+  </a>
+
+  <!-- ============================================
+       Inline JavaScript
+       ============================================ -->
+  <script>
+    (function () {
+      'use strict';
+
+      /* ----- Mobile Menu Toggle ----- */
+      var hamburger = document.querySelector('.navbar__hamburger');
+      var mobileMenu = document.getElementById('mobile-menu');
+
+      if (hamburger && mobileMenu) {
+        hamburger.addEventListener('click', function () {
+          var isOpen = mobileMenu.classList.toggle('is-open');
+          hamburger.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        });
+
+        /* Close mobile menu when clicking a link */
+        var mobileLinks = mobileMenu.querySelectorAll('a');
+        mobileLinks.forEach(function (link) {
+          link.addEventListener('click', function () {
+            mobileMenu.classList.remove('is-open');
+            hamburger.setAttribute('aria-expanded', 'false');
+          });
+        });
+      }
+
+      /* ----- FAQ Accordion ----- */
+      var faqItems = document.querySelectorAll('.faq-item__question');
+
+      faqItems.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var parent = btn.closest('.faq-item');
+          var answer = parent.querySelector('.faq-item__answer');
+          var isExpanded = parent.getAttribute('aria-expanded') === 'true';
+
+          /* Close all other items */
+          document.querySelectorAll('.faq-item').forEach(function (item) {
+            if (item !== parent) {
+              item.setAttribute('aria-expanded', 'false');
+              item.querySelector('.faq-item__question').setAttribute('aria-expanded', 'false');
+              item.querySelector('.faq-item__answer').style.maxHeight = null;
+            }
+          });
+
+          /* Toggle current item */
+          if (isExpanded) {
+            parent.setAttribute('aria-expanded', 'false');
+            btn.setAttribute('aria-expanded', 'false');
+            answer.style.maxHeight = null;
+          } else {
+            parent.setAttribute('aria-expanded', 'true');
+            btn.setAttribute('aria-expanded', 'true');
+            answer.style.maxHeight = answer.scrollHeight + 'px';
+          }
+        });
+      });
+
+      /* ----- IntersectionObserver for Fade-in ----- */
+      var prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+      if (!prefersReducedMotion.matches) {
+        var fadeElements = document.querySelectorAll('.fade-in');
+
+        if ('IntersectionObserver' in window) {
+          var observer = new IntersectionObserver(function (entries) {
+            entries.forEach(function (entry) {
+              if (entry.isIntersecting) {
+                entry.target.classList.add('is-visible');
+                observer.unobserve(entry.target);
+              }
+            });
+          }, {
+            threshold: 0.1,
+            rootMargin: '0px 0px -40px 0px'
+          });
+
+          fadeElements.forEach(function (el) {
+            observer.observe(el);
+          });
+        } else {
+          /* Fallback: show everything if IntersectionObserver not supported */
+          fadeElements.forEach(function (el) {
+            el.classList.add('is-visible');
+          });
+        }
+      } else {
+        /* Reduced motion: make all elements visible immediately */
+        document.querySelectorAll('.fade-in').forEach(function (el) {
+          el.classList.add('is-visible');
+        });
+      }
+
+      /* ----- Scroll-to-Top Button ----- */
+      var scrollTopBtn = document.getElementById('scroll-top');
+
+      if (scrollTopBtn) {
+        window.addEventListener('scroll', function () {
+          if (window.pageYOffset > 300) {
+            scrollTopBtn.classList.add('is-visible');
+          } else {
+            scrollTopBtn.classList.remove('is-visible');
+          }
+        }, { passive: true });
+
+        scrollTopBtn.addEventListener('click', function () {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+      }
+
+      /* ----- Cookie Consent Banner ----- */
+      var cookieBanner = document.getElementById('cookie-banner');
+      var cookieAccept = document.getElementById('cookie-accept');
+      var cookieDecline = document.getElementById('cookie-decline');
+
+      function hideCookieBanner() {
+        if (cookieBanner) {
+          cookieBanner.classList.remove('is-visible');
+        }
+      }
+
+      function showCookieBanner() {
+        if (cookieBanner) {
+          cookieBanner.classList.add('is-visible');
+        }
+      }
+
+      /* Check if consent already given */
+      if (!localStorage.getItem('cookie-consent')) {
+        showCookieBanner();
+      }
+
+      if (cookieAccept) {
+        cookieAccept.addEventListener('click', function () {
+          localStorage.setItem('cookie-consent', 'accepted');
+          hideCookieBanner();
+        });
+      }
+
+      if (cookieDecline) {
+        cookieDecline.addEventListener('click', function () {
+          localStorage.setItem('cookie-consent', 'declined');
+          hideCookieBanner();
+        });
+      }
+
+      /* ----- Smooth scroll for anchor links ----- */
+      document.querySelectorAll('a[href^="#"]').forEach(function (anchor) {
+        anchor.addEventListener('click', function (e) {
+          var targetId = this.getAttribute('href');
+          if (targetId === '#') return;
+
+          var target = document.querySelector(targetId);
+          if (target) {
+            e.preventDefault();
+            var navbarHeight = document.querySelector('.navbar') ?
+              document.querySelector('.navbar').offsetHeight : 0;
+            var targetPosition = target.getBoundingClientRect().top + window.pageYOffset - navbarHeight;
+
+            window.scrollTo({
+              top: targetPosition,
+              behavior: 'smooth'
+            });
+          }
+        });
+      });
+
+      /* ----- Navbar scroll shadow ----- */
+      var navbar = document.querySelector('.navbar');
+      if (navbar) {
+        window.addEventListener('scroll', function () {
+          if (window.pageYOffset > 10) {
+            navbar.style.boxShadow = '0 2px 10px rgba(0, 0, 0, 0.1)';
+          } else {
+            navbar.style.boxShadow = 'var(--shadow-sm)';
+          }
+        }, { passive: true });
+      }
+
+      /* ----- Contact Form Handler ----- */
+      var contactForm = document.querySelector('.contact__form');
+      if (contactForm) {
+        contactForm.addEventListener('submit', function (e) {
+          e.preventDefault();
+
+          var formData = new FormData(contactForm);
+          var data = {};
+          formData.forEach(function (value, key) {
+            data[key] = value;
+          });
+
+          /* Dispatch custom event for form handling */
+          var event = new CustomEvent('contactFormSubmit', { detail: data });
+          document.dispatchEvent(event);
+
+          /* Visual feedback */
+          var submitBtn = contactForm.querySelector('button[type="submit"]');
+          if (submitBtn) {
+            var originalText = submitBtn.textContent;
+            submitBtn.textContent = 'Sent!';
+            submitBtn.disabled = true;
+            setTimeout(function () {
+              submitBtn.textContent = originalText;
+              submitBtn.disabled = false;
+              contactForm.reset();
+            }, 2000);
+          }
+        });
+      }
+
+    })();
+  </script>
+
+</body>
+</html>
