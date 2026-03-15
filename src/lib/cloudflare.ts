@@ -5,9 +5,18 @@ export interface CrawledPage {
   html: string;
 }
 
+export interface ExtractedAssets {
+  logo?: string;
+  favicon?: string;
+  images: { url: string; alt: string }[];
+  colors: string[];
+  companyName?: string;
+}
+
 export interface CrawlResult {
   success: boolean;
   pages: CrawledPage[];
+  assets?: ExtractedAssets;
   error?: string;
 }
 
@@ -101,7 +110,10 @@ export async function crawlWebsite(url: string): Promise<CrawlResult> {
         };
       }
 
-      return { success: true, pages };
+      // Extract assets from the main page HTML
+      const assets = extractAssetsFromHtml(pages[0].html, url);
+
+      return { success: true, pages, assets };
     }
 
     return {
@@ -116,6 +128,85 @@ export async function crawlWebsite(url: string): Promise<CrawlResult> {
       error: err instanceof Error ? err.message : "Unknown crawl error",
     };
   }
+}
+
+/**
+ * Extract visual assets (logo, favicon, images, CSS colors) from HTML.
+ */
+function extractAssetsFromHtml(html: string, baseUrl: string): ExtractedAssets {
+  let base: URL;
+  try {
+    base = new URL(baseUrl);
+  } catch {
+    base = new URL("https://example.com");
+  }
+
+  const resolve = (src: string): string => {
+    try {
+      return new URL(src, base).href;
+    } catch {
+      return src;
+    }
+  };
+
+  // Extract logo: first img in header/nav
+  let logo: string | undefined;
+  const headerMatch = html.match(/<(?:header|nav)[^>]*>([\s\S]*?)<\/(?:header|nav)>/i);
+  if (headerMatch) {
+    const logoImg = headerMatch[1].match(/<img[^>]*src="([^"]*)"[^>]*>/i);
+    if (logoImg) logo = resolve(logoImg[1]);
+  }
+
+  // Extract favicon
+  let favicon: string | undefined;
+  const faviconMatch = html.match(/<link[^>]*rel="(?:icon|shortcut icon|apple-touch-icon)"[^>]*href="([^"]*)"[^>]*>/i);
+  if (faviconMatch) favicon = resolve(faviconMatch[1]);
+
+  // Extract all images (deduplicated)
+  const imgRegex = /<img[^>]*\bsrc="([^"]+)"[^>]*>/gi;
+  const altRegex = /\balt="([^"]*)"/i;
+  const seen = new Set<string>();
+  const images: { url: string; alt: string }[] = [];
+  let m;
+  while ((m = imgRegex.exec(html)) !== null) {
+    const imgUrl = resolve(m[1]);
+    if (seen.has(imgUrl)) continue;
+    seen.add(imgUrl);
+    const altMatch = m[0].match(altRegex);
+    images.push({ url: imgUrl, alt: altMatch?.[1] || "" });
+    if (images.length >= 30) break;
+  }
+
+  // Extract colors from inline styles and <style> blocks
+  const colorRegex = /#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{3}\b|rgba?\([^)]+\)/g;
+  const styleBlocks = html.match(/<style[^>]*>([\s\S]*?)<\/style>/gi) || [];
+  const inlineStyles = html.match(/style="([^"]*)"/gi) || [];
+  const colorSet = new Set<string>();
+  for (const block of [...styleBlocks, ...inlineStyles]) {
+    const matches = block.match(colorRegex) || [];
+    for (const c of matches) colorSet.add(c);
+  }
+
+  // Extract company name from <title> or og:site_name
+  let companyName: string | undefined;
+  const ogSiteName = html.match(/<meta[^>]*property="og:site_name"[^>]*content="([^"]*)"[^>]*>/i);
+  if (ogSiteName) {
+    companyName = ogSiteName[1];
+  } else {
+    const title = extractTitle(html);
+    if (title !== "Untitled") {
+      // Use first part before separator
+      companyName = title.split(/[|\-–—]/)[0].trim();
+    }
+  }
+
+  return {
+    logo,
+    favicon,
+    images: images.slice(0, 20),
+    colors: Array.from(colorSet).slice(0, 20),
+    companyName,
+  };
 }
 
 function extractTitle(html: string): string {

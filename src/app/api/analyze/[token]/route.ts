@@ -52,6 +52,13 @@ export async function GET(
         aiVisibility: analysis.score_ai_visibility,
         overall: analysis.score_overall,
       };
+      // Live findings — show top findings during analysis/generating
+      response.liveFindings = (analysis.findings || []).slice(0, 10);
+      response.liveFindingsTotal = (analysis.findings || []).length;
+    }
+
+    if (analysis.status === "generating") {
+      response.variantProgress = analysis.variant_progress || null;
     }
 
     if (analysis.status === "complete") {
@@ -59,12 +66,14 @@ export async function GET(
       if (analysis.email) {
         response.findings = analysis.findings;
         response.variants = analysis.variants;
+        response.htmlVariantsCount = (analysis.html_variants || []).length;
         response.completedAt = analysis.completed_at;
       } else {
         // Show scores but blur/limit findings
         response.findingsPreview = (analysis.findings || []).slice(0, 3);
         response.findingsTotal = (analysis.findings || []).length;
         response.variantsCount = (analysis.variants || []).length;
+        response.htmlVariantsCount = (analysis.html_variants || []).length;
         response.emailRequired = true;
       }
     }

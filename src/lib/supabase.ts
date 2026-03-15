@@ -20,6 +20,20 @@ export interface CategoryScore {
   findings: Finding[];
 }
 
+export interface ExtractedAssets {
+  logo?: string;
+  favicon?: string;
+  images: { url: string; alt: string }[];
+  colors: string[];
+  companyName?: string;
+}
+
+export interface VariantProgress {
+  current: number;
+  total: number;
+  message: string;
+}
+
 export interface AnalysisRow {
   id: string;
   token: string;
@@ -39,6 +53,9 @@ export interface AnalysisRow {
   analysis_results: Record<string, CategoryScore> | null;
   findings: Finding[];
   variants: DesignVariant[];
+  html_variants: string[];
+  extracted_assets: ExtractedAssets | null;
+  variant_progress: VariantProgress | null;
   created_at: string;
   updated_at: string;
   completed_at: string | null;

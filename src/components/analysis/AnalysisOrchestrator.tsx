@@ -17,13 +17,14 @@ import {
   Lock,
   Sparkles,
   ArrowRight,
+  Loader2,
 } from "lucide-react";
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-type Stage = 0 | 1 | 2 | 3 | 4 | 5;
+type Stage = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
 interface Props {
   url: string;
@@ -45,6 +46,9 @@ interface ApiResponse {
     aiVisibility: number | null;
     overall: number | null;
   };
+  liveFindings?: Finding[];
+  liveFindingsTotal?: number;
+  variantProgress?: { current: number; total: number; message: string } | null;
   findings?: Finding[];
   findingsPreview?: Finding[];
   findingsTotal?: number;
@@ -106,11 +110,28 @@ const severityConfig = {
   info: { icon: CheckCircle, color: "text-blue-400", bg: "bg-blue-400/10", border: "border-blue-400/20" },
 };
 
+function getDomainFromUrl(url: string): string {
+  try {
+    return new URL(url.startsWith("http") ? url : `https://${url}`).hostname;
+  } catch {
+    return url;
+  }
+}
+
+function getPathFromUrl(url: string): string {
+  try {
+    return new URL(url).pathname;
+  } catch {
+    return url;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Sub-components
 // ---------------------------------------------------------------------------
 
 function StageConnecting({ url }: { url: string }) {
+  const domain = getDomainFromUrl(url);
   return (
     <motion.div
       key="connecting"
@@ -135,7 +156,7 @@ function StageConnecting({ url }: { url: string }) {
         </div>
       </div>
       <div className="text-center">
-        <h2 className="text-2xl font-bold mb-2" style={{ color: "var(--text-primary)" }}>Connecting</h2>
+        <h2 className="text-2xl font-bold mb-2" style={{ color: "var(--text-primary)" }}>Connecting to {domain}</h2>
         <p className="font-mono text-sm" style={{ color: "var(--text-muted)" }}>{url}</p>
         <div className="flex items-center justify-center gap-1.5 mt-4">
           {[0, 1, 2].map((i) => (
@@ -152,7 +173,24 @@ function StageConnecting({ url }: { url: string }) {
   );
 }
 
-function StageCrawling({ pages }: { pages: { url: string; title: string }[] }) {
+function StageCrawling({ url, pages }: { url: string; pages: { url: string; title: string }[] }) {
+  const domain = getDomainFromUrl(url);
+  const [currentUrlIdx, setCurrentUrlIdx] = useState(0);
+
+  // Simulate crawling animation when no pages are available yet
+  const simulatedPaths = ["/", "/about", "/contact", "/services", "/blog"];
+  useEffect(() => {
+    if (pages.length > 0) return;
+    const interval = setInterval(() => {
+      setCurrentUrlIdx((prev) => (prev + 1) % simulatedPaths.length);
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [pages.length]);
+
+  const currentCrawlUrl = pages.length > 0
+    ? pages[pages.length - 1]?.url
+    : `https://${domain}${simulatedPaths[currentUrlIdx]}`;
+
   return (
     <motion.div
       key="crawling"
@@ -163,29 +201,57 @@ function StageCrawling({ pages }: { pages: { url: string; title: string }[] }) {
     >
       <div className="text-center">
         <Scan className="h-10 w-10 text-cyan-400 mx-auto mb-3" />
-        <h2 className="text-2xl font-bold mb-1" style={{ color: "var(--text-primary)" }}>Crawling Website</h2>
-        <p className="text-cyan-400 font-mono text-sm">
-          Found {pages.length} pages
-        </p>
+        <h2 className="text-2xl font-bold mb-1" style={{ color: "var(--text-primary)" }}>Crawling {domain}</h2>
+        {pages.length > 0 ? (
+          <p className="text-cyan-400 font-mono text-sm">
+            Found {pages.length} pages
+          </p>
+        ) : (
+          <p className="text-cyan-400 font-mono text-sm">
+            Searching for pages...
+          </p>
+        )}
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 w-full">
-        <AnimatePresence>
-          {pages.map((page) => (
-            <motion.div
-              key={page.url}
-              initial={{ opacity: 0, scale: 0.8, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              transition={{ duration: 0.3, ease: "easeOut" }}
-              className="glass rounded-lg px-3 py-2 flex items-center gap-2"
-            >
-              <FileText className="h-3.5 w-3.5 shrink-0" style={{ color: "var(--text-muted)" }} />
-              <span className="text-xs font-mono truncate" style={{ color: "var(--text-secondary)" }}>
-                {page.title || new URL(page.url).pathname}
-              </span>
-            </motion.div>
-          ))}
-        </AnimatePresence>
-      </div>
+
+      {/* Live crawl URL indicator */}
+      <motion.div
+        className="glass rounded-xl px-5 py-3 w-full max-w-md"
+        animate={{ opacity: [0.7, 1, 0.7] }}
+        transition={{ duration: 2, repeat: Infinity }}
+      >
+        <div className="flex items-center gap-3">
+          <motion.div
+            className="h-2 w-2 rounded-full bg-cyan-400"
+            animate={{ scale: [1, 1.4, 1] }}
+            transition={{ duration: 1, repeat: Infinity }}
+          />
+          <span className="text-xs font-mono truncate" style={{ color: "var(--text-secondary)" }}>
+            Loading {getPathFromUrl(currentCrawlUrl)}...
+          </span>
+        </div>
+      </motion.div>
+
+      {/* Already discovered pages */}
+      {pages.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 w-full">
+          <AnimatePresence>
+            {pages.map((page) => (
+              <motion.div
+                key={page.url}
+                initial={{ opacity: 0, scale: 0.8, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                transition={{ duration: 0.3, ease: "easeOut" }}
+                className="glass rounded-lg px-3 py-2 flex items-center gap-2"
+              >
+                <FileText className="h-3.5 w-3.5 shrink-0" style={{ color: "var(--text-muted)" }} />
+                <span className="text-xs font-mono truncate" style={{ color: "var(--text-secondary)" }}>
+                  {page.title || getPathFromUrl(page.url)}
+                </span>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
+      )}
     </motion.div>
   );
 }
@@ -203,11 +269,28 @@ function AnimatedScoreBar({ score, delay }: { score: number; delay: number }) {
   );
 }
 
-function StageAnalyzing({ scores }: { scores: ApiResponse["scores"] }) {
+function StageAnalyzing({
+  url,
+  scores,
+  liveFindings,
+}: {
+  url: string;
+  scores: ApiResponse["scores"];
+  liveFindings: Finding[];
+}) {
+  const domain = getDomainFromUrl(url);
   const categories = CATEGORY_CONFIG.map((cat) => {
     const scoreValue = scores?.[cat.key as keyof NonNullable<ApiResponse["scores"]>] ?? null;
     return { ...cat, score: scoreValue };
   });
+
+  // Only show non-ok findings for live feed (critical/warning are most interesting)
+  const importantFindings = liveFindings.filter(
+    (f) => f.severity === "critical" || f.severity === "warning"
+  );
+  const displayFindings = importantFindings.length > 0
+    ? importantFindings.slice(0, 5)
+    : liveFindings.slice(0, 5);
 
   return (
     <motion.div
@@ -219,10 +302,12 @@ function StageAnalyzing({ scores }: { scores: ApiResponse["scores"] }) {
     >
       <div className="text-center mb-8">
         <BarChart3 className="h-10 w-10 text-blue-400 mx-auto mb-3" />
-        <h2 className="text-2xl font-bold mb-1" style={{ color: "var(--text-primary)" }}>Analyzing</h2>
+        <h2 className="text-2xl font-bold mb-1" style={{ color: "var(--text-primary)" }}>Analyzing {domain}</h2>
         <p className="text-sm" style={{ color: "var(--text-muted)" }}>Running 50+ checks across 6 categories</p>
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+
+      {/* Score cards */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
         {categories.map((cat, i) => {
           const Icon = cat.icon;
           const score = cat.score;
@@ -268,6 +353,152 @@ function StageAnalyzing({ scores }: { scores: ApiResponse["scores"] }) {
                   />
                 </div>
               )}
+            </motion.div>
+          );
+        })}
+      </div>
+
+      {/* Live findings feed */}
+      {displayFindings.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="space-y-2"
+        >
+          <p className="text-xs font-medium uppercase tracking-wider mb-3" style={{ color: "var(--text-muted)" }}>
+            Live findings from {domain}
+          </p>
+          {displayFindings.map((finding, i) => {
+            const config = severityConfig[finding.severity];
+            const Icon = config.icon;
+            return (
+              <motion.div
+                key={`${finding.category}-${finding.title}-${i}`}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.15 }}
+                className={`flex items-start gap-3 rounded-lg border ${config.border} ${config.bg} p-3`}
+              >
+                <Icon className={`h-4 w-4 ${config.color} shrink-0 mt-0.5`} />
+                <div className="min-w-0">
+                  <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
+                    {finding.category.toUpperCase()}: {finding.title}
+                  </span>
+                  <p className="text-xs mt-0.5 truncate" style={{ color: "var(--text-muted)" }}>{finding.description}</p>
+                </div>
+              </motion.div>
+            );
+          })}
+          {liveFindings.length > displayFindings.length && (
+            <p className="text-xs text-center pt-1" style={{ color: "var(--text-muted)" }}>
+              +{liveFindings.length - displayFindings.length} more findings...
+            </p>
+          )}
+        </motion.div>
+      )}
+    </motion.div>
+  );
+}
+
+function StageGenerating({
+  variantProgress,
+}: {
+  variantProgress?: { current: number; total: number; message: string } | null;
+}) {
+  const current = variantProgress?.current ?? 0;
+  const total = variantProgress?.total ?? 3;
+  const message = variantProgress?.message ?? "Preparing variants...";
+
+  return (
+    <motion.div
+      key="generating"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="w-full max-w-3xl mx-auto"
+    >
+      <div className="text-center mb-8">
+        <Sparkles className="h-10 w-10 text-purple-400 mx-auto mb-3" />
+        <h2 className="text-2xl font-bold mb-1" style={{ color: "var(--text-primary)" }}>Generating Redesigns</h2>
+        <p className="text-sm" style={{ color: "var(--text-muted)" }}>{message}</p>
+        {current > 0 && (
+          <p className="text-purple-400 font-mono text-sm mt-2">
+            Variant {current}/{total}
+          </p>
+        )}
+      </div>
+
+      {/* Progress bar */}
+      <div className="w-full max-w-md mx-auto mb-8">
+        <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: "var(--bar-bg)" }}>
+          <motion.div
+            className="h-full rounded-full bg-purple-400"
+            initial={{ width: 0 }}
+            animate={{ width: `${total > 0 ? (current / total) * 100 : 0}%` }}
+            transition={{ duration: 0.5 }}
+          />
+        </div>
+      </div>
+
+      {/* Skeleton variant cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {Array.from({ length: total }).map((_, i) => {
+          const isComplete = i < current;
+          const isActive = i === current - 1 || (current === 0 && i === 0);
+
+          return (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.15 }}
+              className={`glass rounded-2xl p-5 flex flex-col gap-4 ${
+                isComplete ? "border border-purple-400/30" : ""
+              }`}
+            >
+              {/* Skeleton header */}
+              <div className="rounded-lg overflow-hidden">
+                <div className="h-24 relative" style={{ background: "var(--bar-bg)" }}>
+                  {isActive && !isComplete && (
+                    <motion.div
+                      className="absolute inset-0 bg-gradient-to-r from-transparent via-purple-400/10 to-transparent"
+                      animate={{ x: ["-100%", "100%"] }}
+                      transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+                    />
+                  )}
+                  {isComplete && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <CheckCircle className="h-8 w-8 text-purple-400" />
+                    </div>
+                  )}
+                  {isActive && !isComplete && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <Loader2 className="h-6 w-6 text-purple-400 animate-spin" />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Skeleton content */}
+              <div className="space-y-3">
+                <div
+                  className="h-5 rounded-md"
+                  style={{ background: "var(--bar-bg)", width: isComplete ? "80%" : "60%" }}
+                />
+                <div className="space-y-2">
+                  <div className="h-3 rounded" style={{ background: "var(--bar-bg)", width: "100%" }} />
+                  <div className="h-3 rounded" style={{ background: "var(--bar-bg)", width: "70%" }} />
+                </div>
+                <div className="space-y-1.5 pt-2">
+                  {[1, 2, 3].map((j) => (
+                    <div key={j} className="flex items-center gap-2">
+                      <div className="h-3 w-3 rounded-full" style={{ background: "var(--bar-bg)" }} />
+                      <div className="h-3 rounded flex-1" style={{ background: "var(--bar-bg)" }} />
+                    </div>
+                  ))}
+                </div>
+              </div>
             </motion.div>
           );
         })}
@@ -559,15 +790,19 @@ function ProgressBar({ stage }: { stage: Stage }) {
     { label: "Connect", icon: Globe },
     { label: "Crawl", icon: Scan },
     { label: "Analyze", icon: BarChart3 },
+    { label: "Generate", icon: Sparkles },
     { label: "Results", icon: CheckCircle },
   ];
+
+  // Map stage to step index (0=connect, 1=crawl, 2=analyze, 3=generating, 4+=results)
+  const stepIndex = stage <= 3 ? stage : 4;
 
   return (
     <div className="flex items-center justify-center gap-1 mb-12">
       {steps.map((step, i) => {
         const Icon = step.icon;
-        const isActive = stage >= i;
-        const isCurrent = stage === i;
+        const isActive = stepIndex >= i;
+        const isCurrent = stepIndex === i;
         return (
           <div key={step.label} className="flex items-center">
             <div className="flex flex-col items-center gap-1.5">
@@ -585,11 +820,11 @@ function ProgressBar({ stage }: { stage: Stage }) {
               </span>
             </div>
             {i < steps.length - 1 && (
-              <div className="w-12 sm:w-20 h-px mx-2 mb-5">
+              <div className="w-8 sm:w-14 h-px mx-1.5 mb-5">
                 <motion.div
                   className="h-full bg-blue-400/40"
                   initial={{ scaleX: 0 }}
-                  animate={{ scaleX: stage > i ? 1 : 0 }}
+                  animate={{ scaleX: stepIndex > i ? 1 : 0 }}
                   transition={{ duration: 0.6 }}
                   style={{ transformOrigin: "left" }}
                 />
@@ -659,18 +894,20 @@ export default function AnalysisOrchestrator({ url, token }: Props) {
             setStage(1);
             break;
           case "analyzing":
-          case "generating":
             setStage(2);
             break;
-          case "complete":
+          case "generating":
             setStage(3);
+            break;
+          case "complete":
+            setStage(4);
             // Stop polling on complete
             if (pollingRef.current) {
               clearInterval(pollingRef.current);
               pollingRef.current = null;
             }
             // Auto-advance to email gate after 3s
-            setTimeout(() => setStage(4), 3000);
+            setTimeout(() => setStage(5), 3000);
             break;
           case "error":
             setError(result.error || "Analysis failed");
@@ -710,15 +947,15 @@ export default function AnalysisOrchestrator({ url, token }: Props) {
       const res = await fetch(`/api/analyze/${pollToken}`);
       const result = await res.json();
       setData(result);
-      setStage(5);
+      setStage(6);
     } catch {
       // Still advance even if email save fails
-      setStage(5);
+      setStage(6);
     }
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4 py-16 relative overflow-hidden">
+    <div className="min-h-[60vh] flex flex-col items-center justify-center px-4 py-24 relative overflow-hidden">
       {/* Background effects */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="gradient-blob absolute -top-40 -left-40 h-[500px] w-[500px] rounded-full bg-blue-500/15 blur-[120px]" />
@@ -757,21 +994,30 @@ export default function AnalysisOrchestrator({ url, token }: Props) {
         {/* Normal flow */}
         {!error && (
           <>
-            {stage <= 3 && <ProgressBar stage={stage} />}
+            {stage <= 4 && <ProgressBar stage={stage} />}
             <AnimatePresence mode="wait">
               {stage === 0 && <StageConnecting url={url} />}
-              {stage === 1 && <StageCrawling pages={data?.pages || []} />}
-              {stage === 2 && <StageAnalyzing scores={data?.scores} />}
+              {stage === 1 && <StageCrawling url={url} pages={data?.pages || []} />}
+              {stage === 2 && (
+                <StageAnalyzing
+                  url={url}
+                  scores={data?.scores}
+                  liveFindings={data?.liveFindings || []}
+                />
+              )}
               {stage === 3 && (
+                <StageGenerating variantProgress={data?.variantProgress} />
+              )}
+              {stage === 4 && (
                 <StageResults
                   scores={data?.scores}
                   findings={data?.findings || data?.findingsPreview || []}
                 />
               )}
-              {stage === 4 && (
+              {stage === 5 && (
                 <StageEmailGate onSubmit={handleEmailSubmit} scores={data?.scores} />
               )}
-              {stage === 5 && <StageVariants variants={data?.variants || []} />}
+              {stage === 6 && <StageVariants variants={data?.variants || []} />}
             </AnimatePresence>
           </>
         )}

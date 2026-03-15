@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAnalysis, updateAnalysis } from "@/lib/supabase";
 import { crawlWebsite } from "@/lib/cloudflare";
+import type { ExtractedAssets } from "@/lib/cloudflare";
 import { getPageSpeedData } from "@/lib/pagespeed";
 import { analyzeSEO } from "@/lib/analyzers/seo";
 import { analyzeSecurity } from "@/lib/analyzers/security";
@@ -8,6 +9,7 @@ import { analyzeUX } from "@/lib/analyzers/ux";
 import { analyzeContent } from "@/lib/analyzers/content";
 import { analyzeAIVisibility } from "@/lib/analyzers/ai-visibility";
 import { generateVariants } from "@/lib/redesign";
+import { generateHtmlVariants } from "@/lib/generate-html";
 import type { Finding } from "@/lib/supabase";
 
 // Vercel Free = 10s, Pro = 60s. Pipeline needs ~45s for crawl+analyze+generate.
@@ -78,116 +80,162 @@ async function runPipeline(url: string, token: string) {
     html: p.html.slice(0, 50000),
   }));
 
+  // Store extracted assets (logo, images, colors) for variant generation
+  const extractedAssets = crawlResult.assets || null;
+
   await updateAnalysis(token, {
     status: "analyzing",
     crawled_pages: crawledPages,
     page_count: crawledPages.length,
+    extracted_assets: extractedAssets,
   });
 
-  // ─── Stage 2: Analyze (parallel) ───
+  // ─── Stage 2: Analyze (parallel with incremental findings updates) ───
   const mainPage = crawledPages[0];
   const allHtml = crawledPages.map((p) => p.html).join("\n");
   const allMarkdown = crawledPages.map((p) => p.markdown).join("\n\n---\n\n");
 
-  const [
-    performanceResult,
-    seoResult,
-    securityResult,
-    uxResult,
-    contentResult,
-    aiVisibilityResult,
-  ] = await Promise.allSettled([
-    getPageSpeedData(url),
-    Promise.resolve(analyzeSEO(mainPage.html, url)),
-    analyzeSecurity(mainPage.html, url),
-    Promise.resolve(analyzeUX(mainPage.html)),
-    analyzeContent(allMarkdown, allHtml, url),
-    Promise.resolve(analyzeAIVisibility(mainPage.html)),
+  // Track live findings — update DB as each analyzer completes
+  let liveFindings: Finding[] = [];
+  const scores: Record<string, number> = {};
+
+  const pushFindings = async (
+    category: string,
+    result: { score: number; findings: Finding[] }
+  ) => {
+    scores[category] = result.score;
+    liveFindings = [...liveFindings, ...result.findings];
+    // Update DB with partial results so polling can show them live
+    const update: Record<string, unknown> = { findings: liveFindings };
+    if (category === "performance") update.score_performance = result.score;
+    if (category === "seo") update.score_seo = result.score;
+    if (category === "security") update.score_security = result.score;
+    if (category === "ux") update.score_ux = result.score;
+    if (category === "content") update.score_content = result.score;
+    if (category === "aiVisibility") update.score_ai_visibility = result.score;
+    await updateAnalysis(token, update as any).catch(() => {});
+  };
+
+  // Run analyzers in parallel, but update DB as each completes
+  await Promise.allSettled([
+    getPageSpeedData(url).then(
+      (data) => pushFindings("performance", { score: data.score, findings: performanceFindings(data) }),
+      () => pushFindings("performance", { score: 50, findings: [{ category: "performance", severity: "info", title: "PageSpeed unavailable", description: "Could not reach Google PageSpeed API." }] })
+    ),
+    Promise.resolve(analyzeSEO(mainPage.html, url)).then(
+      (r) => pushFindings("seo", r),
+      () => pushFindings("seo", { score: 50, findings: [] })
+    ),
+    analyzeSecurity(mainPage.html, url).then(
+      (r) => pushFindings("security", r),
+      () => pushFindings("security", { score: 50, findings: [] })
+    ),
+    Promise.resolve(analyzeUX(mainPage.html)).then(
+      (r) => pushFindings("ux", r),
+      () => pushFindings("ux", { score: 50, findings: [] })
+    ),
+    analyzeContent(allMarkdown, allHtml, url).then(
+      (r) => pushFindings("content", r),
+      () => pushFindings("content", { score: 50, findings: [] })
+    ),
+    Promise.resolve(analyzeAIVisibility(mainPage.html)).then(
+      (r) => pushFindings("aiVisibility", r),
+      () => pushFindings("aiVisibility", { score: 50, findings: [] })
+    ),
   ]);
-
-  // Extract results (use defaults on failure)
-  const performance =
-    performanceResult.status === "fulfilled"
-      ? { score: performanceResult.value.score, findings: performanceFindings(performanceResult.value) }
-      : { score: 50, findings: [{ category: "performance", severity: "info" as const, title: "PageSpeed unavailable", description: "Could not reach Google PageSpeed API." }] };
-
-  const seo =
-    seoResult.status === "fulfilled" ? seoResult.value : { score: 50, findings: [] };
-
-  const security =
-    securityResult.status === "fulfilled" ? securityResult.value : { score: 50, findings: [] };
-
-  const ux =
-    uxResult.status === "fulfilled" ? uxResult.value : { score: 50, findings: [] };
-
-  const content =
-    contentResult.status === "fulfilled" ? contentResult.value : { score: 50, findings: [] };
-
-  const aiVisibility =
-    aiVisibilityResult.status === "fulfilled" ? aiVisibilityResult.value : { score: 50, findings: [] };
 
   // Calculate overall score (weighted)
   const overall = Math.round(
-    performance.score * 0.2 +
-      seo.score * 0.2 +
-      security.score * 0.15 +
-      ux.score * 0.2 +
-      content.score * 0.15 +
-      aiVisibility.score * 0.1
+    (scores.performance ?? 50) * 0.2 +
+      (scores.seo ?? 50) * 0.2 +
+      (scores.security ?? 50) * 0.15 +
+      (scores.ux ?? 50) * 0.2 +
+      (scores.content ?? 50) * 0.15 +
+      (scores.aiVisibility ?? 50) * 0.1
   );
-
-  // Collect all findings
-  const allFindings: Finding[] = [
-    ...performance.findings,
-    ...seo.findings,
-    ...security.findings,
-    ...ux.findings,
-    ...content.findings,
-    ...aiVisibility.findings,
-  ];
 
   await updateAnalysis(token, {
     status: "generating",
-    score_performance: performance.score,
-    score_seo: seo.score,
-    score_security: security.score,
-    score_ux: ux.score,
-    score_content: content.score,
-    score_ai_visibility: aiVisibility.score,
+    score_performance: scores.performance ?? 50,
+    score_seo: scores.seo ?? 50,
+    score_security: scores.security ?? 50,
+    score_ux: scores.ux ?? 50,
+    score_content: scores.content ?? 50,
+    score_ai_visibility: scores.aiVisibility ?? 50,
     score_overall: overall,
     analysis_results: {
-      performance,
-      seo,
-      security,
-      ux,
-      content,
-      aiVisibility,
+      performance: { score: scores.performance ?? 50, findings: liveFindings.filter(f => f.category === "performance") },
+      seo: { score: scores.seo ?? 50, findings: liveFindings.filter(f => f.category === "seo") },
+      security: { score: scores.security ?? 50, findings: liveFindings.filter(f => f.category === "security") },
+      ux: { score: scores.ux ?? 50, findings: liveFindings.filter(f => f.category === "ux") },
+      content: { score: scores.content ?? 50, findings: liveFindings.filter(f => f.category === "content") },
+      aiVisibility: { score: scores.aiVisibility ?? 50, findings: liveFindings.filter(f => f.category === "aiVisibility") },
     },
-    findings: allFindings,
+    findings: liveFindings,
+    variant_progress: { current: 0, total: 3, message: "Preparing variant generation..." },
   });
 
-  // ─── Stage 3: Generate variants ───
+  // ─── Stage 3: Generate variants (with progress) ───
   let variants: any[] = [];
   try {
     const currentAnalysis = {
       url,
-      score_performance: performance.score,
-      score_seo: seo.score,
-      score_security: security.score,
-      score_ux: ux.score,
-      score_content: content.score,
-      score_ai_visibility: aiVisibility.score,
+      score_performance: scores.performance ?? 50,
+      score_seo: scores.seo ?? 50,
+      score_security: scores.security ?? 50,
+      score_ux: scores.ux ?? 50,
+      score_content: scores.content ?? 50,
+      score_ai_visibility: scores.aiVisibility ?? 50,
       score_overall: overall,
     };
-    variants = await generateVariants(currentAnalysis as any, allMarkdown);
+    await updateAnalysis(token, {
+      variant_progress: { current: 0, total: 3, message: "Designing variant concepts..." },
+    });
+    variants = await generateVariants(currentAnalysis as any, allMarkdown, extractedAssets);
   } catch (err) {
     console.error("Variant generation failed:", err);
     variants = [];
   }
 
+  // ─── Stage 4: Generate HTML previews (sequential with progress) ───
+  const htmlVariants: string[] = [];
+  if (variants.length > 0) {
+    for (let i = 0; i < variants.length; i++) {
+      await updateAnalysis(token, {
+        variant_progress: {
+          current: i + 1,
+          total: variants.length,
+          message: `Generating HTML for "${variants[i].name}"...`,
+        },
+      });
+      try {
+        const html = await generateHtmlVariants(
+          {
+            url,
+            score_performance: scores.performance ?? 50,
+            score_seo: scores.seo ?? 50,
+            score_security: scores.security ?? 50,
+            score_ux: scores.ux ?? 50,
+            score_content: scores.content ?? 50,
+            score_overall: overall,
+          },
+          [variants[i]],
+          allMarkdown,
+          extractedAssets
+        );
+        htmlVariants.push(html[0]);
+      } catch (err) {
+        console.error(`HTML generation failed for variant ${i}:`, err);
+        htmlVariants.push("");
+      }
+    }
+  }
+
   await updateAnalysis(token, {
     status: "complete",
     variants,
+    html_variants: htmlVariants,
+    variant_progress: null,
     completed_at: new Date().toISOString(),
   });
 }
