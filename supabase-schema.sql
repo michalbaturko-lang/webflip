@@ -29,6 +29,11 @@ CREATE TABLE IF NOT EXISTS analyses (
 
   -- Redesign variants
   variants JSONB DEFAULT '[]',
+  html_variants JSONB DEFAULT '[]',
+  variant_progress JSONB,
+
+  -- Extracted assets from crawl (logo, images, colors, company name)
+  extracted_assets JSONB,
 
   -- Timestamps
   created_at TIMESTAMPTZ DEFAULT NOW(),

@@ -1,21 +1,12 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { GeistSans } from "geist/font/sans";
+import { GeistMono } from "geist/font/mono";
 import { NextIntlClientProvider, hasLocale } from "next-intl";
 import { getMessages } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
 import ThemeProvider from "@/components/ThemeProvider";
 import "../globals.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 export async function generateMetadata({
   params,
@@ -51,7 +42,7 @@ export default async function LocaleLayout({
   return (
     <html lang={locale} className="dark" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${GeistSans.variable} ${GeistMono.variable} antialiased`}
       >
         <NextIntlClientProvider messages={messages}>
           <ThemeProvider>
