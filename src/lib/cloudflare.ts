@@ -20,11 +20,16 @@ export interface CrawlResult {
   error?: string;
 }
 
+export interface CrawlOptions {
+  /** Called with partial pages during polling so the caller can persist progress. */
+  onProgress?: (pages: CrawledPage[]) => void;
+}
+
 /**
  * Crawl a website via Cloudflare Browser Rendering /crawl endpoint.
  * The API is async: POST returns a job ID, then we poll GET for results.
  */
-export async function crawlWebsite(url: string): Promise<CrawlResult> {
+export async function crawlWebsite(url: string, options?: CrawlOptions): Promise<CrawlResult> {
   const apiToken = process.env.CLOUDFLARE_API_TOKEN;
   const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
 
@@ -43,7 +48,7 @@ export async function crawlWebsite(url: string): Promise<CrawlResult> {
     const startResponse = await fetch(baseUrl, {
       method: "POST",
       headers,
-      body: JSON.stringify({ url, limit: 10 }),
+      body: JSON.stringify({ url, limit: 5 }),
     });
 
     if (!startResponse.ok) {
@@ -73,22 +78,51 @@ export async function crawlWebsite(url: string): Promise<CrawlResult> {
       };
     }
 
-    // Step 2: Poll for results (max 60s, every 3s)
-    const maxAttempts = 20;
+    // Step 2: Poll for results (max ~30s, every 3s — leaves time for analyze+generate)
+    const maxAttempts = 10;
+    const pollInterval = 3000;
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
-      await new Promise((r) => setTimeout(r, 3000));
+      await new Promise((r) => setTimeout(r, pollInterval));
 
-      const pollResponse = await fetch(`${baseUrl}/${jobId}`, { headers });
+      let pollResponse: Response;
+      try {
+        const controller = new AbortController();
+        setTimeout(() => controller.abort(), 10000); // 10s per-request timeout
+        pollResponse = await fetch(`${baseUrl}/${jobId}`, { headers, signal: controller.signal });
+      } catch {
+        continue; // network/timeout error — retry
+      }
       if (!pollResponse.ok) continue;
 
       const pollData = await pollResponse.json();
       if (!pollData.success) continue;
 
       const result = pollData.result;
-      if (!result || result.status !== "completed") continue;
+      if (!result) continue;
 
-      // Extract pages from records
+      // Extract any available records (even partial) for progress reporting
       const records = result.records || [];
+      if (records.length > 0 && options?.onProgress) {
+        const partialPages: CrawledPage[] = records
+          .filter((r: Record<string, unknown>) => r.html)
+          .map((record: Record<string, unknown>) => {
+            const html = (record.html as string) || "";
+            const metadata = (record.metadata as Record<string, string>) || {};
+            return {
+              url: (record.url as string) || "",
+              title: metadata.title || extractTitle(html),
+              markdown: htmlToSimpleMarkdown(html),
+              html,
+            };
+          });
+        if (partialPages.length > 0) {
+          options.onProgress(partialPages);
+        }
+      }
+
+      if (result.status !== "completed") continue;
+
+      // Final extraction from completed results
       const pages: CrawledPage[] = records
         .filter((r: Record<string, unknown>) => r.html)
         .map((record: Record<string, unknown>) => {
@@ -119,7 +153,7 @@ export async function crawlWebsite(url: string): Promise<CrawlResult> {
     return {
       success: false,
       pages: [],
-      error: "Crawl timed out after 60 seconds",
+      error: "Crawl timed out after 30 seconds",
     };
   } catch (err) {
     return {
