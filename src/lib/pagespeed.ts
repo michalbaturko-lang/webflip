@@ -60,20 +60,21 @@ export async function getPageSpeedData(url: string): Promise<PageSpeedResult> {
   };
 
   // Opportunities
-  const opportunities = Object.values(audits)
-    .filter((a: Record<string, unknown>) => (a as { details?: { type?: string } }).details?.type === "opportunity" && (a as { score?: number }).score !== undefined && ((a as { score?: number }).score ?? 1) < 1)
-    .map((a: Record<string, unknown>) => ({
-      title: (a as { title?: string }).title || "",
-      description: (a as { description?: string }).description || "",
-      savings: (a as { displayValue?: string }).displayValue || "",
+  const allAudits = Object.values(audits) as Record<string, unknown>[];
+  const opportunities = allAudits
+    .filter((a) => (a as { details?: { type?: string } }).details?.type === "opportunity" && (a as { score?: number }).score !== undefined && ((a as { score?: number }).score ?? 1) < 1)
+    .map((a) => ({
+      title: ((a as { title?: string }).title) || "",
+      description: ((a as { description?: string }).description) || "",
+      savings: ((a as { displayValue?: string }).displayValue) || "",
     }))
     .slice(0, 5);
 
   // Resource summary
-  const resourceSummary = audits["resource-summary"]?.details?.items || [];
-  const totalItem = resourceSummary.find((i: Record<string, unknown>) => i.resourceType === "total");
-  const totalSize = totalItem?.transferSize || 0;
-  const requestCount = totalItem?.requestCount || 0;
+  const resourceSummary = (audits["resource-summary"]?.details?.items || []) as Record<string, unknown>[];
+  const totalItem = resourceSummary.find((i) => i.resourceType === "total");
+  const totalSize = (totalItem?.transferSize as number) || 0;
+  const requestCount = (totalItem?.requestCount as number) || 0;
 
   // Checks
   const usesCompression = audits["uses-text-compression"]?.score === 1;
