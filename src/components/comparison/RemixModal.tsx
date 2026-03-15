@@ -132,6 +132,9 @@ export default function RemixModal({
             exit={{ scale: 0.9, opacity: 0 }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
             className="relative w-full max-w-lg glass rounded-2xl shadow-2xl shadow-black/40 border border-white/10 overflow-hidden"
+            role="dialog"
+            aria-modal="true"
+            aria-label={t("remix.title")}
           >
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">

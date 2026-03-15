@@ -38,23 +38,26 @@ export default function VariantComparison({
 
   // Fetch AI recommendation
   useEffect(() => {
-    let cancelled = false;
+    const controller = new AbortController();
     async function fetchRecommendation() {
       setRecommendLoading(true);
       try {
-        const res = await fetch(`/api/analyze/${token}/recommend`);
-        if (res.ok && !cancelled) {
+        const res = await fetch(`/api/analyze/${token}/recommend`, {
+          signal: controller.signal,
+        });
+        if (res.ok) {
           const data: RecommendationResponse = await res.json();
           setRecommendation(data);
         }
-      } catch {
+      } catch (err) {
+        if (err instanceof DOMException && err.name === "AbortError") return;
         // Silent — recommendation is optional
       } finally {
-        if (!cancelled) setRecommendLoading(false);
+        if (!controller.signal.aborted) setRecommendLoading(false);
       }
     }
     fetchRecommendation();
-    return () => { cancelled = true; };
+    return () => { controller.abort(); };
   }, [token]);
 
   // Fetch existing selection
