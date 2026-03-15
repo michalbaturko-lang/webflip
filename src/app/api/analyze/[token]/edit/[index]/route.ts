@@ -5,12 +5,41 @@ import type { EditHistoryEntry } from "@/lib/supabase";
 
 export const maxDuration = 120;
 
-// ── Rate limiting (in-memory, per-token) ─────────────────────────────
+// ── Rate limiting (in-memory, per-token, with eviction) ──────────────
 const rateLimitMap = new Map<string, number[]>();
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX = 10;
+const RATE_LIMIT_MAP_MAX_SIZE = 10_000;
+let rateLimitRequestCount = 0;
+
+function evictStaleEntries() {
+  const now = Date.now();
+  for (const [key, timestamps] of rateLimitMap) {
+    const recent = timestamps.filter((t) => now - t < RATE_LIMIT_WINDOW_MS);
+    if (recent.length === 0) {
+      rateLimitMap.delete(key);
+    } else {
+      rateLimitMap.set(key, recent);
+    }
+  }
+  // Hard cap: if still too large, delete oldest entries
+  if (rateLimitMap.size > RATE_LIMIT_MAP_MAX_SIZE) {
+    const excess = rateLimitMap.size - RATE_LIMIT_MAP_MAX_SIZE;
+    const keys = rateLimitMap.keys();
+    for (let i = 0; i < excess; i++) {
+      const next = keys.next();
+      if (!next.done) rateLimitMap.delete(next.value);
+    }
+  }
+}
 
 function checkRateLimit(token: string): boolean {
+  rateLimitRequestCount++;
+  // Periodic cleanup every 100 requests
+  if (rateLimitRequestCount % 100 === 0) {
+    evictStaleEntries();
+  }
+
   const now = Date.now();
   const timestamps = rateLimitMap.get(token) || [];
   const recent = timestamps.filter((t) => now - t < RATE_LIMIT_WINDOW_MS);
