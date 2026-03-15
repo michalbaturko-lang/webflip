@@ -387,7 +387,7 @@
       <div class="container">
         <div class="section-header">
           <h2 class="section-title" id="about-title">TEMPLATE_VAR_section_about</h2>
-          <p class="section-subtitle">Built on decades of experience and a foundation of trust.</p>
+          <p class="section-subtitle">TEMPLATE_VAR_subtitle_about</p>
         </div>
         <div class="about__grid fade-in">
           <div class="about__image">
@@ -407,7 +407,7 @@
       <div class="container">
         <div class="section-header">
           <h2 class="section-title" id="blog-title">TEMPLATE_VAR_section_blog</h2>
-          <p class="section-subtitle">Stay informed with our latest articles and industry updates.</p>
+          <p class="section-subtitle">TEMPLATE_VAR_subtitle_blog</p>
         </div>
         <div class="blog__grid">
           <!-- REPEAT:blogPosts -->
@@ -601,12 +601,11 @@
           </ul>
         </div>
         <div>
-          <h4>Services</h4>
+          <h4>TEMPLATE_VAR_nav_services</h4>
           <ul class="footer__links">
-            <li><a href="#services">View All Services</a></li>
-            <li><a href="#testimonials">Testimonials</a></li>
-            <li><a href="#faq">FAQ</a></li>
-            <li><a href="#gallery">Gallery</a></li>
+            <!-- REPEAT:navLinks -->
+            <li><a href="TEMPLATE_VAR_navHref">TEMPLATE_VAR_navText</a></li>
+            <!-- /REPEAT:navLinks -->
           </ul>
         </div>
         <div>
@@ -619,7 +618,7 @@
         </div>
       </div>
       <div class="footer__bottom">
-        <p>&copy; TEMPLATE_VAR_year TEMPLATE_VAR_companyName. All rights reserved.</p>
+        <p>&copy; TEMPLATE_VAR_year TEMPLATE_VAR_companyName. TEMPLATE_VAR_footer_rights</p>
       </div>
     </div>
   </footer>
