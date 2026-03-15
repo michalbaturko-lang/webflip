@@ -1,0 +1,115 @@
+{
+  "meta": {
+    "title": "Webflip — Your Website, Redesigned by AI",
+    "description": "Enter your URL. Get a full analysis and 3 stunning redesign proposals. Pay only if you love it."
+  },
+  "nav": {
+    "howItWorks": "How It Works",
+    "analysis": "Analysis",
+    "pricing": "Pricing",
+    "faq": "FAQ",
+    "startFree": "Start Free Analysis"
+  },
+  "hero": {
+    "badge": "AI-Powered Website Redesign",
+    "title": "You're",
+    "titleHighlight": "5 minutes away",
+    "titleEnd": "from a stunning new website.",
+    "subtitle": "Paste your URL. Our AI analyzes, redesigns, and upgrades your site — ready for the future. Own the code, stay independent.",
+    "inputPlaceholder": "Enter your website URL...",
+    "cta": "Redesign My Website",
+    "ctaLoading": "Analyzing...",
+    "socialProof": "2,400+ websites redesigned",
+    "trusted": "Trusted by businesses in 12 countries"
+  },
+  "howItWorks": {
+    "badge": "Simple Process",
+    "title": "How It Works",
+    "subtitle": "From URL to stunning redesign in minutes, not months.",
+    "step1Title": "Paste Your URL",
+    "step1Desc": "Enter your website address. Our AI starts analyzing instantly.",
+    "step2Title": "We Analyze 50+ Parameters",
+    "step2Desc": "Performance, SEO, security, UX, content — we check everything.",
+    "step3Title": "Pick Your Favorite Design",
+    "step3Desc": "Choose from 3 unique redesigns. Pay only if you love it."
+  },
+  "analysisDemo": {
+    "badge": "Deep Analysis",
+    "title": "We Don't Guess. We Measure.",
+    "subtitle": "50+ parameters across 6 categories. Real data, real insights.",
+    "performance": "Performance",
+    "seo": "SEO",
+    "security": "Security",
+    "ux": "UX & Design",
+    "content": "Content",
+    "aiVisibility": "AI Visibility",
+    "performanceItems": "Load time, Core Web Vitals, image optimization, compression",
+    "seoItems": "Meta tags, headings, sitemap, structured data, indexability",
+    "securityItems": "HTTPS, security headers, mixed content, GDPR compliance",
+    "uxItems": "Mobile responsiveness, color contrast, CTA visibility, navigation",
+    "contentItems": "Readability, freshness, trust signals, contact info, structure",
+    "aiVisibilityItems": "AI crawlability, FAQ schema, content structure for AI summaries"
+  },
+  "roi": {
+    "badge": "Save 90%",
+    "title": "What Would This Normally Cost?",
+    "subtitle": "A professional redesign involves multiple specialists and weeks of work.",
+    "designer": "UI/UX Designer",
+    "designerPrice": "$3,000",
+    "developer": "Frontend Developer",
+    "developerPrice": "$5,000",
+    "copywriter": "Copywriter & SEO",
+    "copywriterPrice": "$1,500",
+    "seoAudit": "Technical SEO Audit",
+    "seoAuditPrice": "$1,000",
+    "totalTraditional": "Traditional Total",
+    "totalTraditionalPrice": "$10,500+",
+    "totalTraditionalTime": "4-8 weeks",
+    "vsLabel": "VS",
+    "webflipPrice": "$997",
+    "webflipTime": "7 days to decide",
+    "webflipIncludes": "Everything included",
+    "includes1": "Full source code ownership",
+    "includes2": "No platform lock-in",
+    "includes3": "3 design variants to choose from",
+    "includes4": "SEO-optimized content",
+    "includes5": "Mobile-first responsive design",
+    "noRisk": "Don't love it? Don't pay. Your redesign gets deleted after 7 days."
+  },
+  "testimonials": {
+    "badge": "Results",
+    "title": "Before & After",
+    "subtitle": "See the transformation. Real websites, real results."
+  },
+  "faq": {
+    "badge": "FAQ",
+    "title": "Frequently Asked Questions",
+    "q1": "What if I don't like the redesign?",
+    "a1": "You don't pay. Simple as that. If you don't confirm within 7 days, the redesign gets permanently deleted. Zero risk.",
+    "q2": "Do I get the source code?",
+    "a2": "Yes. You get the complete source code — HTML, CSS, JavaScript, images, everything. No vendor lock-in, no proprietary platform.",
+    "q3": "How long does the analysis take?",
+    "a3": "The initial analysis takes about 60 seconds. Your 3 redesign proposals are ready within minutes.",
+    "q4": "What exactly do you analyze?",
+    "a4": "We check 50+ parameters: page speed, SEO, security headers, mobile responsiveness, content quality, accessibility, AI visibility, and more.",
+    "q5": "Can I request changes to the design?",
+    "a5": "Yes! After selecting your preferred design, you can request adjustments via our AI-powered editor before confirming.",
+    "q6": "What happens after I pay?",
+    "a6": "We transfer the complete website to your domain. You own everything — the code, the design, the content. No subscriptions, no ongoing fees.",
+    "q7": "Is my credit card charged immediately?",
+    "a7": "No. We save your payment method for verification only. You're charged only when you explicitly confirm after reviewing the final result.",
+    "q8": "What technologies do you use?",
+    "a8": "We build with modern technologies: Next.js, React, Tailwind CSS. Fast, SEO-friendly, and easy to maintain."
+  },
+  "finalCta": {
+    "title": "Your New Website Is 5 Minutes Away",
+    "subtitle": "Paste your URL. Get an instant upgrade — modern design, better content, future-ready.",
+    "cta": "Redesign My Website"
+  },
+  "footer": {
+    "rights": "All rights reserved.",
+    "privacy": "Privacy Policy",
+    "terms": "Terms of Service",
+    "tagline": "AI-powered website redesign"
+  }
+}

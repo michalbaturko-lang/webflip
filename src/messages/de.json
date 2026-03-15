@@ -1,0 +1,115 @@
+{
+  "meta": {
+    "title": "Webflip — Ihre Website, neu gestaltet durch KI",
+    "description": "Geben Sie Ihre URL ein. Erhalten Sie eine vollständige Analyse und 3 beeindruckende Redesign-Vorschläge. Zahlen Sie nur, wenn Sie begeistert sind."
+  },
+  "nav": {
+    "howItWorks": "So funktioniert's",
+    "analysis": "Analyse",
+    "pricing": "Preise",
+    "faq": "FAQ",
+    "startFree": "Kostenlose Analyse starten"
+  },
+  "hero": {
+    "badge": "KI-gestütztes Website-Redesign",
+    "title": "Nur noch",
+    "titleHighlight": "5 Minuten",
+    "titleEnd": "bis zu Ihrer neuen Website.",
+    "subtitle": "URL eingeben. Unsere KI analysiert, redesignt und verbessert Ihre Website — bereit für die Zukunft. Der Code gehört Ihnen.",
+    "inputPlaceholder": "Ihre Website-URL eingeben...",
+    "cta": "Website redesignen",
+    "ctaLoading": "Wird analysiert...",
+    "socialProof": "2.400+ Websites redesignt",
+    "trusted": "Vertrauen von Unternehmen in 12 Ländern"
+  },
+  "howItWorks": {
+    "badge": "Einfacher Prozess",
+    "title": "So funktioniert's",
+    "subtitle": "Von der URL zum beeindruckenden Redesign in Minuten, nicht Monaten.",
+    "step1Title": "URL eingeben",
+    "step1Desc": "Geben Sie Ihre Website-Adresse ein. Unsere KI beginnt sofort mit der Analyse.",
+    "step2Title": "Wir analysieren 50+ Parameter",
+    "step2Desc": "Performance, SEO, Sicherheit, UX, Inhalt — wir prüfen alles.",
+    "step3Title": "Wählen Sie Ihr Lieblingsdesign",
+    "step3Desc": "Wählen Sie aus 3 einzigartigen Redesigns. Zahlen Sie nur, wenn Sie begeistert sind."
+  },
+  "analysisDemo": {
+    "badge": "Tiefenanalyse",
+    "title": "Wir raten nicht. Wir messen.",
+    "subtitle": "50+ Parameter in 6 Kategorien. Echte Daten, echte Erkenntnisse.",
+    "performance": "Performance",
+    "seo": "SEO",
+    "security": "Sicherheit",
+    "ux": "UX & Design",
+    "content": "Inhalt",
+    "aiVisibility": "KI-Sichtbarkeit",
+    "performanceItems": "Ladezeit, Core Web Vitals, Bildoptimierung, Komprimierung",
+    "seoItems": "Meta-Tags, Überschriften, Sitemap, strukturierte Daten, Indexierbarkeit",
+    "securityItems": "HTTPS, Sicherheits-Header, Mixed Content, DSGVO-Konformität",
+    "uxItems": "Mobile Responsivität, Farbkontrast, CTA-Sichtbarkeit, Navigation",
+    "contentItems": "Lesbarkeit, Aktualität, Vertrauenssignale, Kontaktinfos, Struktur",
+    "aiVisibilityItems": "KI-Crawlbarkeit, FAQ-Schema, Inhaltsstruktur für KI-Zusammenfassungen"
+  },
+  "roi": {
+    "badge": "90% sparen",
+    "title": "Was würde das normalerweise kosten?",
+    "subtitle": "Ein professionelles Redesign erfordert mehrere Spezialisten und Wochen Arbeit.",
+    "designer": "UI/UX Designer",
+    "designerPrice": "3.000 €",
+    "developer": "Frontend-Entwickler",
+    "developerPrice": "5.000 €",
+    "copywriter": "Texter & SEO",
+    "copywriterPrice": "1.500 €",
+    "seoAudit": "Technisches SEO-Audit",
+    "seoAuditPrice": "1.000 €",
+    "totalTraditional": "Traditionell gesamt",
+    "totalTraditionalPrice": "10.500 €+",
+    "totalTraditionalTime": "4-8 Wochen",
+    "vsLabel": "VS",
+    "webflipPrice": "997 €",
+    "webflipTime": "7 Tage zum Entscheiden",
+    "webflipIncludes": "Alles inklusive",
+    "includes1": "Vollständiger Quellcode-Besitz",
+    "includes2": "Kein Plattform-Lock-in",
+    "includes3": "3 Design-Varianten zur Auswahl",
+    "includes4": "SEO-optimierte Inhalte",
+    "includes5": "Mobile-first responsives Design",
+    "noRisk": "Nicht begeistert? Nicht bezahlen. Ihr Redesign wird nach 7 Tagen gelöscht."
+  },
+  "testimonials": {
+    "badge": "Ergebnisse",
+    "title": "Vorher & Nachher",
+    "subtitle": "Sehen Sie die Verwandlung. Echte Websites, echte Ergebnisse."
+  },
+  "faq": {
+    "badge": "FAQ",
+    "title": "Häufig gestellte Fragen",
+    "q1": "Was, wenn mir das Redesign nicht gefällt?",
+    "a1": "Sie zahlen nicht. So einfach ist das. Wenn Sie nicht innerhalb von 7 Tagen bestätigen, wird das Redesign dauerhaft gelöscht. Null Risiko.",
+    "q2": "Bekomme ich den Quellcode?",
+    "a2": "Ja. Sie erhalten den vollständigen Quellcode — HTML, CSS, JavaScript, Bilder, alles. Kein Vendor-Lock-in, keine proprietäre Plattform.",
+    "q3": "Wie lange dauert die Analyse?",
+    "a3": "Die erste Analyse dauert etwa 60 Sekunden. Ihre 3 Redesign-Vorschläge sind innerhalb von Minuten fertig.",
+    "q4": "Was genau analysieren Sie?",
+    "a4": "Wir prüfen 50+ Parameter: Seitengeschwindigkeit, SEO, Sicherheits-Header, mobile Responsivität, Inhaltsqualität, Barrierefreiheit, KI-Sichtbarkeit und mehr.",
+    "q5": "Kann ich Änderungen am Design anfordern?",
+    "a5": "Ja! Nach der Auswahl Ihres bevorzugten Designs können Sie über unseren KI-gestützten Editor Anpassungen vornehmen, bevor Sie bestätigen.",
+    "q6": "Was passiert nach der Bezahlung?",
+    "a6": "Wir übertragen die komplette Website auf Ihre Domain. Sie besitzen alles — den Code, das Design, den Inhalt. Keine Abonnements, keine laufenden Gebühren.",
+    "q7": "Wird meine Kreditkarte sofort belastet?",
+    "a7": "Nein. Wir speichern Ihre Zahlungsmethode nur zur Verifizierung. Sie werden erst belastet, wenn Sie nach Überprüfung des Endergebnisses ausdrücklich bestätigen.",
+    "q8": "Welche Technologien verwenden Sie?",
+    "a8": "Wir bauen mit modernen Technologien: Next.js, React, Tailwind CSS. Schnell, SEO-freundlich und leicht zu warten."
+  },
+  "finalCta": {
+    "title": "Ihre neue Website ist 5 Minuten entfernt",
+    "subtitle": "URL eingeben. Sofortiges Upgrade — modernes Design, bessere Inhalte, zukunftssicher.",
+    "cta": "Website redesignen"
+  },
+  "footer": {
+    "rights": "Alle Rechte vorbehalten.",
+    "privacy": "Datenschutz",
+    "terms": "AGB",
+    "tagline": "KI-gestütztes Website-Redesign"
+  }
+}

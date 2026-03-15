@@ -1,0 +1,115 @@
+{
+  "meta": {
+    "title": "Webflip — Váš web, přetvořený umělou inteligencí",
+    "description": "Zadejte URL. Získejte kompletní analýzu a 3 návrhy redesignu. Plaťte jen když se vám to líbí."
+  },
+  "nav": {
+    "howItWorks": "Jak to funguje",
+    "analysis": "Analýza",
+    "pricing": "Ceník",
+    "faq": "FAQ",
+    "startFree": "Spustit analýzu zdarma"
+  },
+  "hero": {
+    "badge": "Redesign webu pomocí AI",
+    "title": "Jste",
+    "titleHighlight": "5 minut",
+    "titleEnd": "od úplně nového webu.",
+    "subtitle": "Vložte URL. Naše AI analyzuje, redesignuje a vylepší váš web — připravený na budoucnost. Kód je váš, jste nezávislí.",
+    "inputPlaceholder": "Zadejte URL vašeho webu...",
+    "cta": "Redesignovat můj web",
+    "ctaLoading": "Analyzuji...",
+    "socialProof": "2 400+ redesignovaných webů",
+    "trusted": "Důvěřují nám firmy ve 12 zemích"
+  },
+  "howItWorks": {
+    "badge": "Jednoduchý proces",
+    "title": "Jak to funguje",
+    "subtitle": "Od URL k úžasnému redesignu za minuty, ne měsíce.",
+    "step1Title": "Vložte URL",
+    "step1Desc": "Zadejte adresu svého webu. Naše AI začne okamžitě analyzovat.",
+    "step2Title": "Analyzujeme 50+ parametrů",
+    "step2Desc": "Výkon, SEO, bezpečnost, UX, obsah — kontrolujeme vše.",
+    "step3Title": "Vyberte si oblíbený design",
+    "step3Desc": "Vyberte si z 3 unikátních redesignů. Plaťte jen když se vám to líbí."
+  },
+  "analysisDemo": {
+    "badge": "Hloubková analýza",
+    "title": "Nehádáme. Měříme.",
+    "subtitle": "50+ parametrů v 6 kategoriích. Reálná data, reálné poznatky.",
+    "performance": "Výkon",
+    "seo": "SEO",
+    "security": "Bezpečnost",
+    "ux": "UX & Design",
+    "content": "Obsah",
+    "aiVisibility": "AI viditelnost",
+    "performanceItems": "Doba načítání, Core Web Vitals, optimalizace obrázků, komprese",
+    "seoItems": "Meta tagy, nadpisy, sitemap, strukturovaná data, indexovatelnost",
+    "securityItems": "HTTPS, bezpečnostní hlavičky, smíšený obsah, GDPR",
+    "uxItems": "Mobilní responzivita, barevný kontrast, viditelnost CTA, navigace",
+    "contentItems": "Čitelnost, aktuálnost, signály důvěry, kontaktní údaje, struktura",
+    "aiVisibilityItems": "AI crawlovatelnost, FAQ schéma, struktura obsahu pro AI souhrny"
+  },
+  "roi": {
+    "badge": "Ušetřete 90 %",
+    "title": "Kolik by to normálně stálo?",
+    "subtitle": "Profesionální redesign vyžaduje několik specialistů a týdny práce.",
+    "designer": "UI/UX designér",
+    "designerPrice": "75 000 Kč",
+    "developer": "Frontend vývojář",
+    "developerPrice": "125 000 Kč",
+    "copywriter": "Copywriter & SEO",
+    "copywriterPrice": "37 500 Kč",
+    "seoAudit": "Technický SEO audit",
+    "seoAuditPrice": "25 000 Kč",
+    "totalTraditional": "Celkem tradičně",
+    "totalTraditionalPrice": "262 500 Kč+",
+    "totalTraditionalTime": "4–8 týdnů",
+    "vsLabel": "VS",
+    "webflipPrice": "24 900 Kč",
+    "webflipTime": "7 dní na rozhodnutí",
+    "webflipIncludes": "Vše v ceně",
+    "includes1": "Kompletní zdrojový kód",
+    "includes2": "Žádná závislost na platformě",
+    "includes3": "3 designové varianty na výběr",
+    "includes4": "SEO optimalizovaný obsah",
+    "includes5": "Mobile-first responzivní design",
+    "noRisk": "Nelíbí se? Neplaťte. Redesign se po 7 dnech smaže."
+  },
+  "testimonials": {
+    "badge": "Výsledky",
+    "title": "Před & Po",
+    "subtitle": "Podívejte se na proměnu. Skutečné weby, skutečné výsledky."
+  },
+  "faq": {
+    "badge": "FAQ",
+    "title": "Často kladené dotazy",
+    "q1": "Co když se mi redesign nelíbí?",
+    "a1": "Neplatíte. Tak jednoduché to je. Pokud do 7 dnů nepotvrdíte, redesign se trvale smaže. Nulové riziko.",
+    "q2": "Dostanu zdrojový kód?",
+    "a2": "Ano. Dostanete kompletní zdrojový kód — HTML, CSS, JavaScript, obrázky, vše. Žádný vendor lock-in, žádná proprietární platforma.",
+    "q3": "Jak dlouho trvá analýza?",
+    "a3": "Úvodní analýza trvá asi 60 sekund. Vaše 3 návrhy redesignu jsou připraveny během minut.",
+    "q4": "Co přesně analyzujete?",
+    "a4": "Kontrolujeme 50+ parametrů: rychlost stránek, SEO, bezpečnostní hlavičky, mobilní responzivitu, kvalitu obsahu, přístupnost, AI viditelnost a další.",
+    "q5": "Mohu požádat o změny v designu?",
+    "a5": "Ano! Po výběru preferovaného designu můžete požádat o úpravy přes náš AI editor před finálním potvrzením.",
+    "q6": "Co se stane po zaplacení?",
+    "a6": "Převedeme kompletní web na vaši doménu. Vlastníte vše — kód, design, obsah. Žádné předplatné, žádné průběžné poplatky.",
+    "q7": "Strhne se mi platba z karty ihned?",
+    "a7": "Ne. Platební metodu ukládáme pouze pro ověření. Platba se strhne až když výslovně potvrdíte po přezkoumání finálního výsledku.",
+    "q8": "Jaké technologie používáte?",
+    "a8": "Stavíme na moderních technologiích: Next.js, React, Tailwind CSS. Rychlé, SEO přátelské a snadno udržovatelné."
+  },
+  "finalCta": {
+    "title": "Váš nový web je 5 minut daleko",
+    "subtitle": "Vložte URL. Okamžitý upgrade — moderní design, lepší obsah, připravený na budoucnost.",
+    "cta": "Redesignovat můj web"
+  },
+  "footer": {
+    "rights": "Všechna práva vyhrazena.",
+    "privacy": "Ochrana soukromí",
+    "terms": "Obchodní podmínky",
+    "tagline": "Redesign webu pomocí AI"
+  }
+}

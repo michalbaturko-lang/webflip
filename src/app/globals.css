@@ -1,0 +1,204 @@
+@import "tailwindcss";
+
+/* ─── Theme tokens ─── */
+
+:root,
+.light {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8fafc;
+  --bg-tertiary: #f1f5f9;
+  --bg-card: rgba(0, 0, 0, 0.02);
+  --bg-card-hover: rgba(0, 0, 0, 0.04);
+  --bg-glass: rgba(0, 0, 0, 0.03);
+  --border-primary: rgba(0, 0, 0, 0.08);
+  --border-subtle: rgba(0, 0, 0, 0.05);
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+  --text-faint: #cbd5e1;
+  --accent: #3b82f6;
+  --accent-secondary: #8b5cf6;
+  --glow-opacity: 0.08;
+  --shadow-color: rgba(0, 0, 0, 0.06);
+  --overlay-fade: #ffffff;
+  --bar-bg: rgba(0, 0, 0, 0.06);
+}
+
+.dark {
+  --bg-primary: #030712;
+  --bg-secondary: #0a0f1a;
+  --bg-tertiary: #111827;
+  --bg-card: rgba(255, 255, 255, 0.02);
+  --bg-card-hover: rgba(255, 255, 255, 0.04);
+  --bg-glass: rgba(255, 255, 255, 0.04);
+  --border-primary: rgba(255, 255, 255, 0.07);
+  --border-subtle: rgba(255, 255, 255, 0.04);
+  --text-primary: #f9fafb;
+  --text-secondary: #9ca3af;
+  --text-muted: #6b7280;
+  --text-faint: #374151;
+  --accent: #3b82f6;
+  --accent-secondary: #8b5cf6;
+  --glow-opacity: 0.15;
+  --shadow-color: rgba(0, 0, 0, 0.3);
+  --overlay-fade: #030712;
+  --bar-bg: rgba(255, 255, 255, 0.04);
+}
+
+@theme inline {
+  --color-background: var(--bg-primary);
+  --color-foreground: var(--text-primary);
+  --color-accent: var(--accent);
+  --color-accent-secondary: var(--accent-secondary);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-sans), system-ui, sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* ─── Gradient blob animations ─── */
+
+@keyframes blob-float {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  25% { transform: translate(30px, -50px) scale(1.1); }
+  50% { transform: translate(-20px, 20px) scale(0.9); }
+  75% { transform: translate(20px, 30px) scale(1.05); }
+}
+
+.gradient-blob {
+  animation: blob-float 20s ease-in-out infinite;
+}
+
+.gradient-blob-delay {
+  animation: blob-float 25s ease-in-out infinite reverse;
+}
+
+/* ─── Glass morphism ─── */
+
+.glass {
+  background: var(--bg-glass);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--border-primary);
+}
+
+/* ─── Glow effects ─── */
+
+.glow-border {
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.3);
+  transition: box-shadow 0.3s ease;
+}
+
+.glow-border:focus-within {
+  box-shadow: 0 0 30px rgba(59, 130, 246, 0.15), 0 0 0 1px rgba(59, 130, 246, 0.5);
+}
+
+/* ─── Gradient text ─── */
+
+.gradient-text {
+  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 50%, #ec4899 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ─── Section dividers ─── */
+
+.section-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border-primary), transparent);
+  margin: 0 auto;
+  max-width: 60%;
+}
+
+/* ─── Animated gradient line ─── */
+
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* ─── Pulse glow on CTA ─── */
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.2); }
+  50% { box-shadow: 0 0 40px rgba(59, 130, 246, 0.4), 0 0 60px rgba(59, 130, 246, 0.15); }
+}
+
+.pulse-glow {
+  animation: pulse-glow 3s ease-in-out infinite;
+}
+
+/* ─── Smooth scrolling & scrollbar ─── */
+
+html {
+  scroll-behavior: smooth;
+}
+
+.dark::-webkit-scrollbar {
+  width: 6px;
+}
+
+.dark::-webkit-scrollbar-track {
+  background: #111827;
+}
+
+.dark::-webkit-scrollbar-thumb {
+  background: #374151;
+  border-radius: 3px;
+}
+
+/* ─── Selection color ─── */
+
+::selection {
+  background: rgba(59, 130, 246, 0.3);
+  color: var(--text-primary);
+}
+
+/* ─── Theme-aware utility classes ─── */
+
+.themed-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  transition: background-color 0.2s ease;
+}
+
+.themed-card:hover {
+  background: var(--bg-card-hover);
+}
+
+.themed-text {
+  color: var(--text-primary);
+}
+
+.themed-text-secondary {
+  color: var(--text-secondary);
+}
+
+.themed-text-muted {
+  color: var(--text-muted);
+}
+
+/* Light mode specific adjustments */
+.light .gradient-blob,
+.light .gradient-blob-delay {
+  opacity: 0.5;
+}
+
+.light .glow-border:focus-within {
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.1), 0 0 0 1px rgba(59, 130, 246, 0.4);
+}
+
+.light .pulse-glow {
+  animation: none;
+  box-shadow: 0 4px 14px rgba(59, 130, 246, 0.25);
+}
+
+.light .section-divider {
+  background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.08), transparent);
+}
