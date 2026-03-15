@@ -26,6 +26,12 @@ export interface ExtractedAssets {
   images: { url: string; alt: string }[];
   colors: string[];
   companyName?: string;
+  metaDescription?: string;
+  socialLinks: string[];
+  navLinks: { text: string; href: string }[];
+  phoneNumbers: string[];
+  emails: string[];
+  address?: string;
 }
 
 export interface VariantProgress {

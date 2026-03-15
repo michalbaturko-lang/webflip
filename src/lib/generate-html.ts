@@ -50,11 +50,16 @@ async function generateSingleHtml(
 - Company Name: "${assets.companyName || companyName}"
 ${assets.logo ? `- Logo: ${assets.logo} (use in navbar AND footer)` : "- No logo found — use company name as text logo"}
 ${assets.favicon ? `- Favicon: ${assets.favicon}` : ""}
+${assets.metaDescription ? `- Site Description: "${assets.metaDescription}"` : ""}
 
 ### Client Images (use these absolute URLs for hero backgrounds, about sections, galleries):
 ${assets.images.slice(0, 15).map((img, i) => `${i + 1}. ${img.url}${img.alt ? ` — "${img.alt}"` : ""}`).join("\n")}
 
 ### Brand Colors from current site: ${assets.colors.slice(0, 10).join(", ")}
+${assets.socialLinks.length > 0 ? `\n### Social Media Links (link these in the footer):\n${assets.socialLinks.map((l) => `- ${l}`).join("\n")}` : ""}
+${assets.phoneNumbers.length > 0 ? `\n### Phone Numbers: ${assets.phoneNumbers.join(", ")}` : ""}
+${assets.emails.length > 0 ? `\n### Email Addresses: ${assets.emails.join(", ")}` : ""}
+${assets.address ? `\n### Address: ${assets.address}` : ""}
 `
     : "";
 
@@ -127,7 +132,15 @@ ${variantInstructions}
   * Subtitle: slide up 15px + fade in, 500ms, 200ms delay
   * CTA: scale 0.95→1 + fade in, 400ms, 400ms delay
 
-### 3. SERVICES / PRODUCTS
+### 3. STATS / TRUST BAR (optional but strongly recommended)
+- Horizontal row of 3-4 key numbers/stats from the crawled content
+- Examples: years of experience, clients served, projects completed, satisfaction rate
+- Each stat: large animated number (count-up on scroll), short label below
+- Use IntersectionObserver to trigger count-up animation
+- Centered layout, evenly spaced, with subtle separator lines or cards
+- Extract real numbers from crawled content — if none found, SKIP this section
+
+### 4. SERVICES / PRODUCTS
 - 3-column grid on desktop, 2 on tablet (768-1024px), 1 on mobile
 - Each card: decorative SVG icon, heading, description paragraph
 - Content from the crawled site's service/product sections
@@ -135,34 +148,52 @@ ${variantInstructions}
 - Staggered fade-in on scroll: each card delays 0.08s × index
 - Cards must have equal height (use grid, not flexbox)
 
-### 4. ABOUT / O NÁS
+### 5. ABOUT / O NÁS
 - Two-column layout: text content left (55%), image right (45%)
 - Stack vertically on mobile with image on top
 - Real description text from the crawled content
 - Optional stats/numbers row with count-up animation if data available
 - Image with border-radius: 16px and subtle shadow
 
-### 5. GALLERY / REFERENCES
+### 6. TESTIMONIALS / REVIEWS (include if testimonial content found in crawled data)
+- Elegant card layout: 2-3 testimonial cards with quote marks
+- Each card: quote text, customer name, optional role/company
+- Use real testimonials from the crawled content — if none found, SKIP entirely
+- Decorative large quote SVG icon (") in primary color at 10-15% opacity
+- Cards with subtle border and generous padding (40px+)
+- Fade-in animation on scroll
+
+### 7. GALLERY / REFERENCES
 - Grid of real client images (use absolute URLs from assets)
 - 3 columns desktop, 2 tablet, 1 mobile
 - Images: border-radius 12px, object-fit cover, height 260px
 - Hover: scale(1.03) + brightness(1.05), 400ms ease
 - Only include if images are available — otherwise skip entirely
 
-### 6. CONTACT
+### 8. FAQ (include if Q&A content found in crawled data)
+- Accordion-style FAQ section with expandable questions
+- Each item: question as clickable header, answer revealed on click
+- Use real FAQ content from crawled data — if none found, SKIP
+- JavaScript: toggle visibility with smooth max-height transition
+- Chevron/arrow SVG icon that rotates 180° on toggle
+- Maximum 6 items, accessible with Enter/Space keyboard triggers
+
+### 9. CONTACT
 - Two-column: contact info left, visual form right
 - Show real phone, email, address from crawled content (if found)
 - Form fields: Jméno, Email, Zpráva, submit button (visual only)
 - Styled inputs: focus ring uses primary color with 3px spread
 - Labels must use <label> with for attribute (accessibility)
 - Submit button matches CTA style from hero
+- Include Google Maps embed or location visual if address is available
 
-### 7. FOOTER
+### 10. FOOTER
 - Company logo + name
 - Navigation links repeated
 - Contact info (phone, email, address)
 - © ${new Date().getFullYear()} ${companyName}
-- Social media SVG icons (generic, clean SVGs — not placeholder circles)
+- Social media SVG icons — use REAL social links if provided in assets, otherwise use clean generic SVGs
+- If social media URLs were provided, link to the actual profiles
 
 ## ANIMATION & INTERACTION SPEC (Apple-quality motion design)
 
@@ -203,9 +234,12 @@ Design mobile-first, then enhance:
 |---------|---------------|----------------|-------------------|
 | Navbar | Hamburger, logo left | Same | Horizontal links |
 | Hero | min-h 50vh, smaller text | 60vh | 70vh, full effect |
+| Stats | 2×2 grid | 4 columns | 4 columns, larger text |
 | Services | 1 column | 2 columns | 3 columns |
 | About | Stack vertical | Same | 2-column 55/45 |
+| Testimonials | 1 column | 2 columns | 3 columns |
 | Gallery | 1 column | 2 columns | 3 columns |
+| FAQ | Full width | max-w 800px | max-w 800px centered |
 | Contact | Stack vertical | Same | 2-column |
 | Footer | Stack 1 col | 2 col | Horizontal flex |
 
@@ -560,12 +594,18 @@ function buildFallbackHtml(
   const aboutImage = images[1]?.url || images[0]?.url || "";
   const galleryImages = images.slice(0, 6);
 
-  // Contact info from content
-  const allText = crawledContent || "";
-  const phoneMatch = allText.match(/(?:\+420|00420)?\s*\d{3}\s*\d{3}\s*\d{3}/) || allText.match(/\d{3}[-.\s]?\d{3}[-.\s]?\d{3,4}/);
-  const emailMatch = allText.match(/[\w.-]+@[\w.-]+\.\w{2,}/);
-  const phone = phoneMatch?.[0] || "";
-  const email = emailMatch?.[0] || "";
+  // Contact info — prefer extracted assets, fall back to regex
+  const phone = assets?.phoneNumbers?.[0] || (() => {
+    const allText = crawledContent || "";
+    const phoneMatch = allText.match(/(?:\+420|00420)?\s*\d{3}\s*\d{3}\s*\d{3}/) || allText.match(/\d{3}[-.\s]?\d{3}[-.\s]?\d{3,4}/);
+    return phoneMatch?.[0] || "";
+  })();
+  const email = assets?.emails?.[0] || (() => {
+    const allText = crawledContent || "";
+    const emailMatch = allText.match(/[\w.-]+@[\w.-]+\.\w{2,}/);
+    return emailMatch?.[0] || "";
+  })();
+  const address = assets?.address || "";
 
   // Logo HTML
   const logoHtml = assets?.logo
@@ -600,6 +640,55 @@ function buildFallbackHtml(
           <img src="${img.url}" alt="${escapeHtml(img.alt || companyName)}" loading="lazy" />
         </div>`).join("")
     : "";
+
+  // Extract stats/numbers from content for stats bar
+  const allText = crawledContent || "";
+  const statNumbers = extractStats(allText);
+  const statsHtml = statNumbers.length >= 3
+    ? statNumbers.slice(0, 4).map((stat) => `
+        <div class="stat-item fade-in">
+          <span class="stat-number" data-target="${stat.number}">${stat.number}</span>
+          <span class="stat-label">${escapeHtml(stat.label)}</span>
+        </div>`).join("")
+    : "";
+
+  // Extract testimonials from content
+  const testimonials = extractTestimonials(allText);
+  const testimonialsHtml = testimonials.length >= 1
+    ? testimonials.slice(0, 3).map((t) => `
+        <div class="testimonial-card fade-in">
+          <div class="quote-icon">
+            <svg viewBox="0 0 32 32" fill="${p.primary}" opacity="0.15"><path d="M10 8c-3.3 0-6 2.7-6 6v10h10V14H8c0-1.1.9-2 2-2V8zm14 0c-3.3 0-6 2.7-6 6v10h10V14h-6c0-1.1.9-2 2-2V8z"/></svg>
+          </div>
+          <p class="testimonial-text">${escapeHtml(t.text)}</p>
+          <div class="testimonial-author">
+            <strong>${escapeHtml(t.author)}</strong>
+            ${t.role ? `<span>${escapeHtml(t.role)}</span>` : ""}
+          </div>
+        </div>`).join("")
+    : "";
+
+  // Extract FAQ items from content
+  const faqItems = extractFaqItems(allText);
+  const faqHtml = faqItems.length >= 2
+    ? faqItems.slice(0, 6).map((item, i) => `
+        <div class="faq-item fade-in">
+          <button class="faq-question" aria-expanded="false" aria-controls="faq-answer-${i}" onclick="toggleFaq(this)">
+            <span>${escapeHtml(item.question)}</span>
+            <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </button>
+          <div class="faq-answer" id="faq-answer-${i}" role="region">
+            <p>${escapeHtml(item.answer)}</p>
+          </div>
+        </div>`).join("")
+    : "";
+
+  // Social links HTML
+  const socialLinksHtml = (assets?.socialLinks || []).map((link) => {
+    const domain = (() => { try { return new URL(link).hostname; } catch { return ""; } })();
+    const iconName = domain.includes("facebook") ? "Facebook" : domain.includes("instagram") ? "Instagram" : domain.includes("linkedin") ? "LinkedIn" : domain.includes("twitter") || domain.includes("x.com") ? "X" : domain.includes("youtube") ? "YouTube" : "Link";
+    return `<a href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer" aria-label="${iconName}" class="social-link">${getSocialIcon(iconName, p.text)}</a>`;
+  }).join("");
 
   return `<!DOCTYPE html>
 <html lang="cs">
@@ -753,6 +842,33 @@ function buildFallbackHtml(
     .about-text p { opacity: 0.8; font-size: 1rem; margin-bottom: 16px; line-height: 1.8; }
     .about-image img { width: 100%; height: auto; border-radius: var(--radius-md); object-fit: cover; max-height: 420px; }
 
+    /* ── Stats Bar ── */
+    .stats-bar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 32px; max-width: 1000px; margin: 0 auto; text-align: center; }
+    @media (max-width: 768px) { .stats-bar { grid-template-columns: repeat(2, 1fr); gap: 24px; } }
+    .stat-item { padding: 24px 16px; }
+    .stat-number { display: block; font-family: var(--font-heading); font-size: clamp(2rem, 5vw, 3rem); font-weight: 800; color: var(--color-primary); line-height: 1.1; letter-spacing: -0.02em; }
+    .stat-label { display: block; font-size: 0.875rem; opacity: 0.6; margin-top: 8px; text-transform: uppercase; letter-spacing: 0.05em; }
+
+    /* ── Testimonials ── */
+    .testimonials-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; max-width: 1200px; margin: 0 auto; }
+    @media (max-width: 1024px) { .testimonials-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 640px) { .testimonials-grid { grid-template-columns: 1fr; } }
+    .testimonial-card { padding: 40px; border: 1px solid var(--card-border); border-radius: var(--radius-md); background: var(--card-bg); position: relative; }
+    .quote-icon { width: 40px; height: 40px; margin-bottom: 16px; }
+    .quote-icon svg { width: 40px; height: 40px; }
+    .testimonial-text { font-size: 1rem; line-height: 1.7; opacity: 0.85; margin-bottom: 20px; font-style: italic; }
+    .testimonial-author strong { display: block; font-size: 0.95rem; }
+    .testimonial-author span { font-size: 0.8rem; opacity: 0.6; }
+
+    /* ── FAQ ── */
+    .faq-container { max-width: 800px; margin: 0 auto; }
+    .faq-item { border-bottom: 1px solid var(--card-border); }
+    .faq-question { width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 20px 0; background: none; border: none; color: var(--color-text); font-family: var(--font-heading); font-size: 1.05rem; font-weight: 600; cursor: pointer; text-align: left; gap: 16px; min-height: 44px; }
+    .faq-chevron { width: 20px; height: 20px; flex-shrink: 0; transition: transform 0.3s ease; }
+    .faq-question[aria-expanded="true"] .faq-chevron { transform: rotate(180deg); }
+    .faq-answer { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
+    .faq-answer p { padding: 0 0 20px; opacity: 0.75; line-height: 1.7; font-size: 0.95rem; }
+
     /* ── Gallery ── */
     .gallery-grid {
       display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; max-width: 1200px; margin: 0 auto;
@@ -793,6 +909,10 @@ function buildFallbackHtml(
     .footer-links a { color: var(--color-text); opacity: 0.6; text-decoration: none; font-size: 0.85rem; transition: opacity 0.2s; min-height: 44px; display: flex; align-items: center; }
     .footer-links a:hover { opacity: 1; }
     .footer-copy { width: 100%; text-align: center; opacity: 0.4; font-size: 0.8rem; padding-top: 24px; border-top: 1px solid var(--card-border); margin-top: 8px; }
+    .footer-social { display: flex; gap: 16px; align-items: center; }
+    .social-link { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--card-border); transition: border-color 0.2s, opacity 0.2s; opacity: 0.6; }
+    .social-link:hover { opacity: 1; border-color: var(--color-primary); }
+    .social-link svg { width: 18px; height: 18px; }
 
     /* ── Animations ── */
     .fade-in { opacity: 0; transform: translateY(24px); transition: opacity 0.7s ease, transform 0.7s ease; }
@@ -852,6 +972,14 @@ function buildFallbackHtml(
       </div>
     </section>
 
+    ${statsHtml ? `
+    <section class="section" id="stats">
+      <div class="container">
+        <div class="stats-bar">${statsHtml}</div>
+      </div>
+    </section>
+    ` : ""}
+
     ${servicesHtml ? `
     <section class="section" id="services">
       <div class="container">
@@ -876,11 +1004,29 @@ function buildFallbackHtml(
     </section>
     ` : ""}
 
+    ${testimonialsHtml ? `
+    <section class="section" id="testimonials">
+      <div class="container">
+        <h2 class="section-title fade-in">Co o nás říkají</h2>
+        <div class="testimonials-grid">${testimonialsHtml}</div>
+      </div>
+    </section>
+    ` : ""}
+
     ${galleryHtml ? `
     <section class="section" id="gallery">
       <div class="container">
         <h2 class="section-title fade-in">Reference</h2>
         <div class="gallery-grid">${galleryHtml}</div>
+      </div>
+    </section>
+    ` : ""}
+
+    ${faqHtml ? `
+    <section class="section" id="faq" style="background: var(--card-bg);">
+      <div class="container">
+        <h2 class="section-title fade-in">Často kladené otázky</h2>
+        <div class="faq-container">${faqHtml}</div>
       </div>
     </section>
     ` : ""}
@@ -893,6 +1039,7 @@ function buildFallbackHtml(
             <h3>${escapeHtml(companyName)}</h3>
             ${phone ? `<p>Tel: <a href="tel:${phone.replace(/\s/g, "")}">${escapeHtml(phone)}</a></p>` : ""}
             ${email ? `<p>Email: <a href="mailto:${email}">${escapeHtml(email)}</a></p>` : ""}
+            ${address ? `<p>${escapeHtml(address)}</p>` : ""}
             <p><a href="${url}" target="_blank" rel="noopener noreferrer">${siteHost}</a></p>
           </div>
           <form class="contact-form fade-in" onsubmit="event.preventDefault();">
@@ -923,6 +1070,7 @@ function buildFallbackHtml(
         ${aboutText ? '<a href="#about">O nás</a>' : ""}
         <a href="#contact">Kontakt</a>
       </nav>
+      ${socialLinksHtml ? `<div class="footer-social">${socialLinksHtml}</div>` : ""}
       <div class="footer-copy">&copy; ${year} ${escapeHtml(companyName)}. Redesign preview by Webflip.</div>
     </div>
   </footer>
@@ -985,6 +1133,44 @@ function buildFallbackHtml(
         el.classList.add('visible');
       });
     }
+
+    // FAQ accordion toggle
+    function toggleFaq(btn) {
+      var expanded = btn.getAttribute('aria-expanded') === 'true';
+      btn.setAttribute('aria-expanded', !expanded);
+      var answer = btn.nextElementSibling;
+      if (!expanded) {
+        answer.style.maxHeight = answer.scrollHeight + 'px';
+      } else {
+        answer.style.maxHeight = '0';
+      }
+    }
+
+    // Stats count-up animation
+    var statsObserver = new IntersectionObserver(function(entries) {
+      entries.forEach(function(entry) {
+        if (entry.isIntersecting) {
+          var el = entry.target;
+          var target = parseInt(el.getAttribute('data-target'));
+          if (isNaN(target)) return;
+          var duration = 1500;
+          var start = 0;
+          var startTime = null;
+          function animate(timestamp) {
+            if (!startTime) startTime = timestamp;
+            var progress = Math.min((timestamp - startTime) / duration, 1);
+            var eased = 1 - Math.pow(1 - progress, 3);
+            el.textContent = Math.round(start + (target - start) * eased) + (el.textContent.includes('+') ? '+' : el.textContent.includes('%') ? '%' : '');
+            if (progress < 1) requestAnimationFrame(animate);
+          }
+          requestAnimationFrame(animate);
+          statsObserver.unobserve(el);
+        }
+      });
+    }, { threshold: 0.5 });
+    document.querySelectorAll('.stat-number').forEach(function(el) {
+      statsObserver.observe(el);
+    });
   </script>
 </body>
 </html>`;
@@ -1017,4 +1203,114 @@ function getServiceIcon(index: number, color: string): string {
     `<svg viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="18" stroke="${color}" stroke-width="2" opacity="0.2"/><path d="M24 14v10l7 7" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
   ];
   return icons[index % icons.length];
+}
+
+/**
+ * Extract stats/numbers from crawled content for the stats bar.
+ * Looks for patterns like "15+ years", "500 clients", "98% satisfaction".
+ */
+function extractStats(content: string): { number: number; label: string }[] {
+  const stats: { number: number; label: string }[] = [];
+  const seen = new Set<number>();
+
+  // Pattern: number followed by descriptive text (e.g., "150+ projects", "25 let zkušeností")
+  const patterns = [
+    /(\d{1,6})\+?\s*(let|years?|roků|roku)\s*(zkušeností|experience|praxe|na trhu)?/gi,
+    /(\d{1,6})\+?\s*(klientů|clients?|zákazníků|customers?|spokojených)/gi,
+    /(\d{1,6})\+?\s*(projektů|projects?|realizací|zakázek|completed)/gi,
+    /(\d{1,3})\s*%\s*(spokojenost|satisfaction|úspěšnost|success)/gi,
+    /(\d{1,6})\+?\s*(zaměstnanců|employees?|členů|members?|team)/gi,
+  ];
+
+  const labels = [
+    ["Let zkušeností", "Roků praxe"],
+    ["Spokojených klientů", "Klientů"],
+    ["Dokončených projektů", "Projektů"],
+    ["Spokojenost", "Úspěšnost"],
+    ["Členů týmu", "Zaměstnanců"],
+  ];
+
+  for (let i = 0; i < patterns.length && stats.length < 4; i++) {
+    const match = patterns[i].exec(content);
+    if (match) {
+      const num = parseInt(match[1]);
+      if (num > 0 && num < 1000000 && !seen.has(num)) {
+        seen.add(num);
+        stats.push({ number: num, label: labels[i][0] });
+      }
+    }
+  }
+
+  return stats;
+}
+
+/**
+ * Extract testimonials/reviews from crawled content.
+ * Looks for quoted text near names or review patterns.
+ */
+function extractTestimonials(content: string): { text: string; author: string; role?: string }[] {
+  const testimonials: { text: string; author: string; role?: string }[] = [];
+
+  // Look for quoted text (either with actual quote marks or in testimonial-like blocks)
+  const quotePatterns = [
+    // "Quote text" — Author Name
+    /"([^"]{30,300})"\s*[-—–]\s*([A-ZÁ-Ž][a-zá-ž]+ [A-ZÁ-Ž][a-zá-ž]+)(?:\s*,\s*(.+?))?(?:\n|$)/g,
+    // „Quote text" — Author Name (Czech quotes)
+    /„([^"]{30,300})"\s*[-—–]\s*([A-ZÁ-Ž][a-zá-ž]+ [A-ZÁ-Ž][a-zá-ž]+)(?:\s*,\s*(.+?))?(?:\n|$)/g,
+  ];
+
+  for (const pattern of quotePatterns) {
+    let match;
+    while ((match = pattern.exec(content)) !== null && testimonials.length < 3) {
+      testimonials.push({
+        text: match[1].trim(),
+        author: match[2].trim(),
+        role: match[3]?.trim(),
+      });
+    }
+  }
+
+  return testimonials;
+}
+
+/**
+ * Extract FAQ items from crawled content.
+ * Looks for question-answer patterns.
+ */
+function extractFaqItems(content: string): { question: string; answer: string }[] {
+  const items: { question: string; answer: string }[] = [];
+  const lines = content.split("\n").map((l) => l.trim()).filter(Boolean);
+
+  for (let i = 0; i < lines.length - 1 && items.length < 6; i++) {
+    const line = lines[i];
+    // Look for lines ending with ? that are likely questions
+    if (line.endsWith("?") && line.length > 15 && line.length < 200) {
+      // Next non-empty line is the answer
+      const answer = lines[i + 1];
+      if (answer && !answer.endsWith("?") && answer.length > 20) {
+        items.push({
+          question: line.replace(/^#+\s*/, "").replace(/^\*\*/, "").replace(/\*\*$/, ""),
+          answer: answer.slice(0, 300),
+        });
+        i++; // Skip the answer line
+      }
+    }
+  }
+
+  return items;
+}
+
+/**
+ * Get a social media SVG icon by platform name.
+ */
+function getSocialIcon(platform: string, color: string): string {
+  const icons: Record<string, string> = {
+    Facebook: `<svg viewBox="0 0 24 24" fill="${color}"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>`,
+    Instagram: `<svg viewBox="0 0 24 24" fill="${color}"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>`,
+    LinkedIn: `<svg viewBox="0 0 24 24" fill="${color}"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>`,
+    X: `<svg viewBox="0 0 24 24" fill="${color}"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>`,
+    YouTube: `<svg viewBox="0 0 24 24" fill="${color}"><path d="M23.498 6.186a3.016 3.016 0 00-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 00.502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 002.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 002.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>`,
+    Link: `<svg viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>`,
+  };
+  return icons[platform] || icons.Link;
 }
