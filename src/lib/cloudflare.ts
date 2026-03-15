@@ -34,10 +34,11 @@ export async function crawlWebsite(url: string, options?: CrawlOptions): Promise
   const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
 
   if (!apiToken || !accountId) {
+    console.error("[crawl] Missing CLOUDFLARE_API_TOKEN or CLOUDFLARE_ACCOUNT_ID");
     throw new Error("Missing CLOUDFLARE_API_TOKEN or CLOUDFLARE_ACCOUNT_ID");
   }
 
-  const baseUrl = `https://api.cloudflare.com/client/v4/accounts/${accountId}/browser-rendering/crawl`;
+  const baseUrl = `https://api.cloudflare.com/client/v4/accounts/${accountId}/browser-rendering`;
   const headers = {
     Authorization: `Bearer ${apiToken}`,
     "Content-Type": "application/json",
@@ -45,23 +46,33 @@ export async function crawlWebsite(url: string, options?: CrawlOptions): Promise
 
   try {
     // Step 1: Start crawl job
-    const startResponse = await fetch(baseUrl, {
+    console.log(`[crawl] Starting crawl for ${url} (limit: 3)`);
+    const startResponse = await fetch(`${baseUrl}/crawl`, {
       method: "POST",
       headers,
-      body: JSON.stringify({ url, limit: 5 }),
+      body: JSON.stringify({ url, limit: 3 }),
     });
 
+    const startBody = await startResponse.text();
+    console.log(`[crawl] Start response status=${startResponse.status}, body=${startBody.slice(0, 500)}`);
+
     if (!startResponse.ok) {
-      const errorBody = await startResponse.text();
       return {
         success: false,
         pages: [],
-        error: `Cloudflare API error ${startResponse.status}: ${errorBody}`,
+        error: `Cloudflare API error ${startResponse.status}: ${startBody}`,
       };
     }
 
-    const startData = await startResponse.json();
+    let startData: any;
+    try {
+      startData = JSON.parse(startBody);
+    } catch {
+      return { success: false, pages: [], error: `Invalid JSON from crawl API: ${startBody.slice(0, 200)}` };
+    }
+
     if (!startData.success) {
+      console.error("[crawl] API returned success=false:", startData.errors);
       return {
         success: false,
         pages: [],
@@ -70,51 +81,69 @@ export async function crawlWebsite(url: string, options?: CrawlOptions): Promise
     }
 
     const jobId = startData.result;
+    console.log(`[crawl] Job started, jobId=${jobId}, type=${typeof jobId}`);
+
     if (!jobId || typeof jobId !== "string") {
+      // Some CF API versions return the result directly (not a job ID)
+      // Check if result itself contains crawl data
+      if (startData.result && typeof startData.result === "object") {
+        console.log("[crawl] Result is an object, checking for inline data:", JSON.stringify(startData.result).slice(0, 300));
+        const inlineRecords = startData.result.records || startData.result.pages || [];
+        if (Array.isArray(inlineRecords) && inlineRecords.length > 0) {
+          const pages = extractPagesFromRecords(inlineRecords, url);
+          if (pages.length > 0) {
+            console.log(`[crawl] Got ${pages.length} pages from inline result`);
+            const assets = extractAssetsFromHtml(pages[0].html, url);
+            return { success: true, pages, assets };
+          }
+        }
+      }
       return {
         success: false,
         pages: [],
-        error: "No job ID returned from crawl API",
+        error: `No job ID returned from crawl API. Result type: ${typeof startData.result}, value: ${JSON.stringify(startData.result).slice(0, 200)}`,
       };
     }
 
-    // Step 2: Poll for results (max ~30s, every 3s — leaves time for analyze+generate)
-    const maxAttempts = 10;
-    const pollInterval = 3000;
+    // Step 2: Poll for results (max ~60s, every 4s)
+    const maxAttempts = 15;
+    const pollInterval = 4000;
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       await new Promise((r) => setTimeout(r, pollInterval));
 
       let pollResponse: Response;
       try {
         const controller = new AbortController();
-        setTimeout(() => controller.abort(), 10000); // 10s per-request timeout
-        pollResponse = await fetch(`${baseUrl}/${jobId}`, { headers, signal: controller.signal });
-      } catch {
-        continue; // network/timeout error — retry
+        setTimeout(() => controller.abort(), 10000);
+        pollResponse = await fetch(`${baseUrl}/crawl/${jobId}`, { headers, signal: controller.signal });
+      } catch (err) {
+        console.warn(`[crawl] Poll attempt ${attempt + 1} network error:`, err);
+        continue;
       }
+
+      const pollBody = await pollResponse.text();
+      console.log(`[crawl] Poll attempt ${attempt + 1}: status=${pollResponse.status}, body=${pollBody.slice(0, 300)}`);
+
       if (!pollResponse.ok) continue;
 
-      const pollData = await pollResponse.json();
+      let pollData: any;
+      try {
+        pollData = JSON.parse(pollBody);
+      } catch {
+        console.warn(`[crawl] Poll returned invalid JSON`);
+        continue;
+      }
       if (!pollData.success) continue;
 
       const result = pollData.result;
       if (!result) continue;
 
-      // Extract any available records (even partial) for progress reporting
+      console.log(`[crawl] Poll result status=${result.status}, records=${(result.records || []).length}`);
+
+      // Extract any available records for progress reporting
       const records = result.records || [];
       if (records.length > 0 && options?.onProgress) {
-        const partialPages: CrawledPage[] = records
-          .filter((r: Record<string, unknown>) => r.html)
-          .map((record: Record<string, unknown>) => {
-            const html = (record.html as string) || "";
-            const metadata = (record.metadata as Record<string, string>) || {};
-            return {
-              url: (record.url as string) || "",
-              title: metadata.title || extractTitle(html),
-              markdown: htmlToSimpleMarkdown(html),
-              html,
-            };
-          });
+        const partialPages = extractPagesFromRecords(records, url);
         if (partialPages.length > 0) {
           options.onProgress(partialPages);
         }
@@ -123,18 +152,8 @@ export async function crawlWebsite(url: string, options?: CrawlOptions): Promise
       if (result.status !== "completed") continue;
 
       // Final extraction from completed results
-      const pages: CrawledPage[] = records
-        .filter((r: Record<string, unknown>) => r.html)
-        .map((record: Record<string, unknown>) => {
-          const html = (record.html as string) || "";
-          const metadata = (record.metadata as Record<string, string>) || {};
-          return {
-            url: (record.url as string) || "",
-            title: metadata.title || extractTitle(html),
-            markdown: htmlToSimpleMarkdown(html),
-            html,
-          };
-        });
+      const pages = extractPagesFromRecords(records, url);
+      console.log(`[crawl] Completed. Pages with content: ${pages.length}`);
 
       if (pages.length === 0) {
         return {
@@ -144,24 +163,39 @@ export async function crawlWebsite(url: string, options?: CrawlOptions): Promise
         };
       }
 
-      // Extract assets from the main page HTML
       const assets = extractAssetsFromHtml(pages[0].html, url);
-
       return { success: true, pages, assets };
     }
 
+    console.error(`[crawl] Timed out after ${maxAttempts} poll attempts (~${maxAttempts * pollInterval / 1000}s)`);
     return {
       success: false,
       pages: [],
-      error: "Crawl timed out after 30 seconds",
+      error: `Crawl timed out after ${maxAttempts * pollInterval / 1000} seconds`,
     };
   } catch (err) {
+    console.error("[crawl] Unexpected error:", err);
     return {
       success: false,
       pages: [],
       error: err instanceof Error ? err.message : "Unknown crawl error",
     };
   }
+}
+
+function extractPagesFromRecords(records: Record<string, unknown>[], baseUrl: string): CrawledPage[] {
+  return records
+    .filter((r) => r.html)
+    .map((record) => {
+      const html = (record.html as string) || "";
+      const metadata = (record.metadata as Record<string, string>) || {};
+      return {
+        url: (record.url as string) || baseUrl,
+        title: metadata.title || extractTitle(html),
+        markdown: htmlToSimpleMarkdown(html),
+        html,
+      };
+    });
 }
 
 /**
