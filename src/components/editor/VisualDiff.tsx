@@ -1,6 +1,9 @@
 "use client";
 
 import { useMemo } from "react";
+import { diffLines } from "diff";
+import { useTranslations } from "next-intl";
+import type { DiffLine } from "@/types/editor";
 
 interface VisualDiffProps {
   beforeHtml: string;
@@ -8,62 +11,40 @@ interface VisualDiffProps {
   isVisible: boolean;
 }
 
-interface DiffLine {
-  type: "added" | "removed" | "changed" | "unchanged";
-  content: string;
-  lineNum: number;
-}
-
 export default function VisualDiff({
   beforeHtml,
   afterHtml,
   isVisible,
 }: VisualDiffProps) {
-  const diffLines = useMemo(() => {
+  const t = useTranslations("editor");
+
+  const diffResult = useMemo((): DiffLine[] => {
     if (!beforeHtml || !afterHtml) return [];
 
-    const beforeLines = beforeHtml.split("\n");
-    const afterLines = afterHtml.split("\n");
+    const changes = diffLines(beforeHtml, afterHtml);
     const result: DiffLine[] = [];
+    let lineNum = 1;
 
-    // Simple line-by-line diff
-    const maxLen = Math.max(beforeLines.length, afterLines.length);
-    const beforeSet = new Set(beforeLines);
-    const afterSet = new Set(afterLines);
-
-    // Find removed lines (in before but not in after)
-    for (let i = 0; i < beforeLines.length; i++) {
-      if (!afterSet.has(beforeLines[i]) && beforeLines[i].trim()) {
-        result.push({
-          type: "removed",
-          content: beforeLines[i],
-          lineNum: i + 1,
-        });
+    for (const change of changes) {
+      const lines = (change.value || "").split("\n").filter((l) => l.trim());
+      for (const line of lines) {
+        if (change.added) {
+          result.push({ type: "added", content: line, lineNum });
+        } else if (change.removed) {
+          result.push({ type: "removed", content: line, lineNum });
+        }
+        // Skip unchanged lines to keep the view focused
+        lineNum++;
       }
     }
 
-    // Find added lines (in after but not in before)
-    for (let i = 0; i < afterLines.length; i++) {
-      if (!beforeSet.has(afterLines[i]) && afterLines[i].trim()) {
-        result.push({
-          type: "added",
-          content: afterLines[i],
-          lineNum: i + 1,
-        });
-      }
-    }
-
-    // Sort by line number
-    result.sort((a, b) => a.lineNum - b.lineNum);
-
-    // Limit to most relevant changes
     return result.slice(0, 50);
   }, [beforeHtml, afterHtml]);
 
   if (!isVisible) return null;
 
-  const addedCount = diffLines.filter((l) => l.type === "added").length;
-  const removedCount = diffLines.filter((l) => l.type === "removed").length;
+  const addedCount = diffResult.filter((l) => l.type === "added").length;
+  const removedCount = diffResult.filter((l) => l.type === "removed").length;
 
   return (
     <div
@@ -76,7 +57,7 @@ export default function VisualDiff({
     >
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 flex-shrink-0">
-        <span className="font-semibold text-sm text-white">Zmeny</span>
+        <span className="font-semibold text-sm text-white">{t("diffTitle")}</span>
         <div className="flex items-center gap-3 text-xs">
           <span className="flex items-center gap-1 text-emerald-400">
             <span className="w-2 h-2 rounded-full bg-emerald-400" />+{addedCount}
@@ -89,24 +70,22 @@ export default function VisualDiff({
 
       {/* Diff content */}
       <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
-        {diffLines.length === 0 ? (
+        {diffResult.length === 0 ? (
           <div className="text-center py-8 text-xs text-gray-500">
-            Zadne zmeny k zobrazeni
+            {t("diffNoChanges")}
           </div>
         ) : (
-          diffLines.map((line, i) => (
+          diffResult.map((line, i) => (
             <div
               key={i}
               className={`flex items-start gap-2 px-2 py-1 rounded text-[11px] font-mono leading-relaxed ${
                 line.type === "added"
                   ? "bg-emerald-500/10 text-emerald-300"
-                  : line.type === "removed"
-                  ? "bg-red-500/10 text-red-300"
-                  : "bg-yellow-500/10 text-yellow-300"
+                  : "bg-red-500/10 text-red-300"
               }`}
             >
               <span className="text-gray-600 w-4 flex-shrink-0 text-right select-none">
-                {line.type === "added" ? "+" : line.type === "removed" ? "-" : "~"}
+                {line.type === "added" ? "+" : "-"}
               </span>
               <span className="break-all whitespace-pre-wrap">
                 {line.content.trim().substring(0, 200)}

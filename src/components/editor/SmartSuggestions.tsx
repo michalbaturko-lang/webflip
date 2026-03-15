@@ -13,6 +13,7 @@ import {
   Zap,
   X,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface Suggestion {
   id: string;
@@ -30,16 +31,33 @@ interface SmartSuggestionsProps {
   onClose: () => void;
 }
 
+// Multilingual keyword sets for detection (#11)
+const KEYWORDS = {
+  hours: ["hodiny", "hodin", "hours", "opening", "otevir", "provozni", "otvár", "öffnungszeiten", "geschäftszeiten"],
+  form: ["<form", "formular", "formulář", "formulár", "contact form", "kontaktformular"],
+  gallery: ["gallery", "galerie", "galéria", "portfolio", "lightbox", "fotogal"],
+  map: ["maps", "mapa", "iframe", "map", "karte"],
+  testimonials: ["testimonial", "recenze", "reference", "hodnocen", "hodnoteni", "bewertung", "kundenstimme", "referencie"],
+  phone: ["tel:"],
+  phoneText: ["telefon", "phone", "telefón", "anruf"],
+  faq: ["faq", "otázk", "otazk", "dotaz", "häufig", "frequently", "otázky"],
+  lazyLoad: ["loading=\"lazy\""],
+};
+
+function matchesAny(content: string, keywords: string[]): boolean {
+  return keywords.some((kw) => content.includes(kw));
+}
+
 export default function SmartSuggestions({
   iframeRef,
   onApply,
   isVisible,
   onClose,
 }: SmartSuggestionsProps) {
+  const t = useTranslations("editor");
   const [htmlContent, setHtmlContent] = useState("");
   const [appliedIds, setAppliedIds] = useState<Set<string>>(new Set());
 
-  // Extract HTML from iframe for analysis
   useEffect(() => {
     if (!isVisible || !iframeRef.current) return;
 
@@ -50,14 +68,12 @@ export default function SmartSuggestions({
           setHtmlContent(doc.documentElement.outerHTML.toLowerCase());
         }
       } catch {
-        // Cross-origin - try to read from srcdoc
         const srcdoc = iframeRef.current?.getAttribute("srcdoc");
         if (srcdoc) setHtmlContent(srcdoc.toLowerCase());
       }
     };
 
     extractHtml();
-    // Re-analyze after iframe loads
     const iframe = iframeRef.current;
     iframe.addEventListener("load", extractHtml);
     return () => iframe.removeEventListener("load", extractHtml);
@@ -68,149 +84,100 @@ export default function SmartSuggestions({
 
     const result: Suggestion[] = [];
 
-    // Check for missing opening hours
-    const hasHours =
-      htmlContent.includes("hodiny") ||
-      htmlContent.includes("hours") ||
-      htmlContent.includes("otevir") ||
-      htmlContent.includes("provozni");
-    if (!hasHours) {
+    if (!matchesAny(htmlContent, KEYWORDS.hours)) {
       result.push({
         id: "add-hours",
         icon: <Clock className="h-4 w-4" />,
-        title: "Oteviraci doba",
-        description: "Stranka neobsahuje informace o oteviraci dobe.",
-        instruction:
-          "Pridej sekci s oteviraci dobou (Pondeli-Patek 9:00-17:00, Sobota 9:00-12:00, Nedele zavreno) pred paticku.",
+        title: t("suggestHoursTitle"),
+        description: t("suggestHoursDesc"),
+        instruction: t("suggestHoursInstruction"),
         priority: "high",
       });
     }
 
-    // Check for contact form
-    const hasForm =
-      htmlContent.includes("<form") ||
-      htmlContent.includes("formular") ||
-      htmlContent.includes("contact form");
-    if (!hasForm) {
+    if (!matchesAny(htmlContent, KEYWORDS.form)) {
       result.push({
         id: "add-form",
         icon: <MessageSquare className="h-4 w-4" />,
-        title: "Kontaktni formular",
-        description: "Chybi kontaktni formular pro snadne osloveni.",
-        instruction:
-          "Pridej kontaktni formular s polozkami Jmeno, Email, Zprava a tlacitkem Odeslat do kontaktni sekce.",
+        title: t("suggestFormTitle"),
+        description: t("suggestFormDesc"),
+        instruction: t("suggestFormInstruction"),
         priority: "high",
       });
     }
 
-    // Check for gallery
-    const hasGallery =
-      htmlContent.includes("gallery") ||
-      htmlContent.includes("galerie") ||
-      htmlContent.includes("portfolio") ||
-      htmlContent.includes("lightbox");
-    if (!hasGallery) {
+    if (!matchesAny(htmlContent, KEYWORDS.gallery)) {
       result.push({
         id: "add-gallery",
         icon: <Image className="h-4 w-4" />,
-        title: "Fotogalerie",
-        description: "Pridejte fotogalerii pro vizualni prezentaci.",
-        instruction:
-          "Pridej sekci fotogalerie s 6 placeholder obrazky v gridu 3x2 s hover efektem pred paticku.",
+        title: t("suggestGalleryTitle"),
+        description: t("suggestGalleryDesc"),
+        instruction: t("suggestGalleryInstruction"),
         priority: "medium",
       });
     }
 
-    // Check for map
-    const hasMap =
-      htmlContent.includes("maps") ||
-      htmlContent.includes("mapa") ||
-      htmlContent.includes("iframe") ||
-      htmlContent.includes("map");
-    if (!hasMap) {
+    if (!matchesAny(htmlContent, KEYWORDS.map)) {
       result.push({
         id: "add-map",
         icon: <MapPin className="h-4 w-4" />,
-        title: "Mapa",
-        description: "Pridejte mapu pro snazsi nalezeni provozovny.",
-        instruction:
-          "Pridej Google Maps iframe s placeholder lokaci do kontaktni sekce.",
+        title: t("suggestMapTitle"),
+        description: t("suggestMapDesc"),
+        instruction: t("suggestMapInstruction"),
         priority: "medium",
       });
     }
 
-    // Check for testimonials
-    const hasTestimonials =
-      htmlContent.includes("testimonial") ||
-      htmlContent.includes("recenze") ||
-      htmlContent.includes("reference") ||
-      htmlContent.includes("hodnoceni");
-    if (!hasTestimonials) {
+    if (!matchesAny(htmlContent, KEYWORDS.testimonials)) {
       result.push({
         id: "add-testimonials",
         icon: <Star className="h-4 w-4" />,
-        title: "Reference zakazniku",
-        description: "Pridejte reference pro zvyseni duveryhodnosti.",
-        instruction:
-          "Pridej sekci s 3 referencemi zakazniku - kazda s citaci, jmenem a hodnocenim hvezdami.",
+        title: t("suggestTestimonialsTitle"),
+        description: t("suggestTestimonialsDesc"),
+        instruction: t("suggestTestimonialsInstruction"),
         priority: "medium",
       });
     }
 
-    // Check for phone link
-    const hasPhoneLink = htmlContent.includes("tel:");
-    const hasPhone =
-      htmlContent.includes("telefon") || htmlContent.includes("phone");
-    if (hasPhone && !hasPhoneLink) {
+    if (matchesAny(htmlContent, KEYWORDS.phoneText) && !matchesAny(htmlContent, KEYWORDS.phone)) {
       result.push({
         id: "add-phone-link",
         icon: <Phone className="h-4 w-4" />,
-        title: "Klikaci telefonni cislo",
-        description: "Telefonni cislo neni klikaci pro mobilni zarizeni.",
-        instruction:
-          "Obal vsechna telefonni cisla na strance do odkazu s tel: protokolem pro snadne volani z mobilu.",
+        title: t("suggestPhoneTitle"),
+        description: t("suggestPhoneDesc"),
+        instruction: t("suggestPhoneInstruction"),
         priority: "low",
       });
     }
 
-    // Check for FAQ
-    const hasFaq =
-      htmlContent.includes("faq") ||
-      htmlContent.includes("otazk") ||
-      htmlContent.includes("dotaz");
-    if (!hasFaq) {
+    if (!matchesAny(htmlContent, KEYWORDS.faq)) {
       result.push({
         id: "add-faq",
         icon: <FileText className="h-4 w-4" />,
-        title: "Caste dotazy (FAQ)",
-        description: "Sekce FAQ zlepsi SEO a zodpovi bezne otazky.",
-        instruction:
-          "Pridej sekci Caste dotazy s 5 otazkami a odpovedi relevantnimi pro tento typ podnikani s accordion stylem.",
+        title: t("suggestFaqTitle"),
+        description: t("suggestFaqDesc"),
+        instruction: t("suggestFaqInstruction"),
         priority: "low",
       });
     }
 
-    // Performance suggestion
-    const hasLazyLoad = htmlContent.includes("loading=\"lazy\"");
     const imgCount = (htmlContent.match(/<img/g) || []).length;
-    if (imgCount > 3 && !hasLazyLoad) {
+    if (imgCount > 3 && !matchesAny(htmlContent, KEYWORDS.lazyLoad)) {
       result.push({
         id: "add-lazy-load",
         icon: <Zap className="h-4 w-4" />,
-        title: "Lazy loading obrazku",
-        description: `${imgCount} obrazku bez lazy loadingu muze zpomalit nacitani.`,
-        instruction:
-          'Pridej atribut loading="lazy" vsem obrazkum na strance krome prvniho hero obrazku.',
+        title: t("suggestLazyTitle"),
+        description: t("suggestLazyDesc", { count: imgCount }),
+        instruction: t("suggestLazyInstruction"),
         priority: "low",
       });
     }
 
-    // Sort by priority
     const priorityOrder = { high: 0, medium: 1, low: 2 };
     result.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
 
     return result;
-  }, [htmlContent]);
+  }, [htmlContent, t]);
 
   if (!isVisible) return null;
 
@@ -225,12 +192,11 @@ export default function SmartSuggestions({
         backdropFilter: "blur(24px)",
       }}
     >
-      {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 flex-shrink-0">
         <div className="flex items-center gap-2">
           <Lightbulb className="h-4 w-4 text-amber-400" />
           <span className="font-semibold text-sm text-white">
-            Chytre navrhy
+            {t("suggestionsTitle")}
           </span>
           {filteredSuggestions.length > 0 && (
             <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300">
@@ -240,19 +206,19 @@ export default function SmartSuggestions({
         </div>
         <button
           onClick={onClose}
-          className="p-1.5 rounded-lg hover:bg-white/10 transition-colors text-gray-400 hover:text-white"
+          aria-label="Close"
+          className="p-1.5 rounded-lg hover:bg-white/10 transition-colors text-gray-400 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
         >
           <X className="h-4 w-4" />
         </button>
       </div>
 
-      {/* Suggestions list */}
       <div className="flex-1 overflow-y-auto p-3 space-y-2">
         {filteredSuggestions.length === 0 ? (
           <div className="text-center py-8">
             <Lightbulb className="h-8 w-8 text-gray-600 mx-auto mb-2" />
             <p className="text-xs text-gray-500">
-              Vsechny navrhy byly aplikovany!
+              {t("suggestionsAllApplied")}
             </p>
           </div>
         ) : (
@@ -290,10 +256,10 @@ export default function SmartSuggestions({
                         }`}
                       >
                         {suggestion.priority === "high"
-                          ? "Dulezite"
+                          ? t("suggestPriorityHigh")
                           : suggestion.priority === "medium"
-                          ? "Doporuceno"
-                          : "Volitelne"}
+                          ? t("suggestPriorityMedium")
+                          : t("suggestPriorityLow")}
                       </span>
                     </div>
                     <p className="text-[11px] text-gray-400 mt-0.5 leading-relaxed">
@@ -307,13 +273,13 @@ export default function SmartSuggestions({
                       onApply(suggestion.instruction);
                       setAppliedIds((prev) => new Set([...prev, suggestion.id]));
                     }}
-                    className="px-3 py-1.5 rounded-lg text-[11px] font-medium text-white transition-all hover:brightness-110 active:scale-[0.98]"
+                    className="px-3 py-1.5 rounded-lg text-[11px] font-medium text-white transition-all hover:brightness-110 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500"
                     style={{
                       background:
                         "linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%)",
                     }}
                   >
-                    Aplikovat
+                    {t("suggestApply")}
                   </button>
                 </div>
               </div>

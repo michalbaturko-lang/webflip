@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import ChatPanel, { type ChatMessage } from "./ChatPanel";
+import { useState, useCallback, useMemo } from "react";
+import ChatPanel from "./ChatPanel";
 import InlineEditor from "./InlineEditor";
 import VisualDiff from "./VisualDiff";
 import UndoStackPanel, { useUndoStack, useUndoKeyboard } from "./UndoStack";
 import SmartSuggestions from "./SmartSuggestions";
 import EditorToolbar from "./EditorToolbar";
+import type { ChatMessage } from "@/types/editor";
 
 interface AIEditorProps {
   token: string;
@@ -23,20 +24,15 @@ export default function AIEditor({
   iframeRef,
   initialHtml,
 }: AIEditorProps) {
-  // Chat messages
   const [messages, setMessages] = useState<ChatMessage[]>([]);
 
-  // Panel visibility states
+  // Panel visibility
   const [isDiffVisible, setIsDiffVisible] = useState(false);
   const [isSuggestionsVisible, setIsSuggestionsVisible] = useState(false);
   const [isHistoryVisible, setIsHistoryVisible] = useState(false);
   const [isInlineEditEnabled, setIsInlineEditEnabled] = useState(false);
 
-  // Diff state - track before/after HTML
-  const [beforeHtml, setBeforeHtml] = useState("");
-  const [afterHtml, setAfterHtml] = useState("");
-
-  // Undo/Redo stack
+  // Undo/redo stack
   const {
     snapshots,
     currentIndex,
@@ -48,7 +44,6 @@ export default function AIEditor({
     canRedo,
   } = useUndoStack(initialHtml);
 
-  // Apply HTML to iframe
   const applyHtml = useCallback(
     (html: string) => {
       onHtmlUpdate(html);
@@ -56,87 +51,63 @@ export default function AIEditor({
     [onHtmlUpdate]
   );
 
-  // Keyboard shortcuts for undo/redo
+  // Keyboard shortcuts
   useUndoKeyboard(undo, redo, applyHtml);
+
+  // Derive diff from snapshots instead of separate state (#4)
+  const beforeHtml = useMemo(
+    () => (currentIndex > 0 ? snapshots[currentIndex - 1]?.html || "" : ""),
+    [currentIndex, snapshots]
+  );
+  const afterHtml = useMemo(
+    () => snapshots[currentIndex]?.html || "",
+    [currentIndex, snapshots]
+  );
 
   // Handle successful edit from chat
   const handleEditSuccess = useCallback(
     (instruction: string, html: string) => {
-      // Store before HTML for diff
-      const currentHtml =
-        snapshots.length > 0 ? snapshots[currentIndex]?.html || "" : "";
-      setBeforeHtml(currentHtml);
-      setAfterHtml(html);
-
-      // Push to undo stack
       pushSnapshot(html, instruction.substring(0, 60));
     },
-    [snapshots, currentIndex, pushSnapshot]
+    [pushSnapshot]
   );
 
   // Handle inline edit
   const handleInlineEdit = useCallback(
     (instruction: string) => {
-      // Get current HTML from iframe for snapshot
       try {
         const doc = iframeRef.current?.contentDocument;
         if (doc) {
           const html = doc.documentElement.outerHTML;
-          const currentHtml =
-            snapshots.length > 0
-              ? snapshots[currentIndex]?.html || ""
-              : "";
-          setBeforeHtml(currentHtml);
-          setAfterHtml(html);
           pushSnapshot(html, instruction.substring(0, 60));
         }
       } catch {
         // Ignore cross-origin
       }
     },
-    [iframeRef, snapshots, currentIndex, pushSnapshot]
+    [iframeRef, pushSnapshot]
   );
 
-  // Undo handler
   const handleUndo = useCallback(() => {
     const html = undo();
-    if (html) {
-      applyHtml(html);
-      // Update diff
-      const prevIdx = currentIndex - 1;
-      if (prevIdx >= 0 && snapshots[prevIdx]) {
-        setAfterHtml(snapshots[prevIdx].html);
-        setBeforeHtml(prevIdx > 0 ? snapshots[prevIdx - 1]?.html || "" : "");
-      }
-    }
-  }, [undo, applyHtml, currentIndex, snapshots]);
+    if (html) applyHtml(html);
+  }, [undo, applyHtml]);
 
-  // Redo handler
   const handleRedo = useCallback(() => {
     const html = redo();
-    if (html) {
-      applyHtml(html);
-    }
+    if (html) applyHtml(html);
   }, [redo, applyHtml]);
 
-  // Restore to specific snapshot
   const handleRestore = useCallback(
     (index: number) => {
       const html = restoreToIndex(index);
-      if (html) {
-        applyHtml(html);
-        setAfterHtml(html);
-        setBeforeHtml(index > 0 ? snapshots[index - 1]?.html || "" : "");
-      }
+      if (html) applyHtml(html);
     },
-    [restoreToIndex, applyHtml, snapshots]
+    [restoreToIndex, applyHtml]
   );
 
-  // Handle suggestion apply - send through chat
   const handleSuggestionApply = useCallback(
     (instruction: string) => {
-      // This will trigger the chat panel to send the instruction
-      // We add a user message and let the chat panel handle the API call
       setMessages((prev) => [
         ...prev,
         {
@@ -157,14 +128,12 @@ export default function AIEditor({
 
   return (
     <>
-      {/* Inline click-to-edit */}
       <InlineEditor
         iframeRef={iframeRef}
         onEditApplied={handleInlineEdit}
         enabled={isInlineEditEnabled}
       />
 
-      {/* Chat panel - floating bottom-right */}
       <ChatPanel
         token={token}
         variantIndex={variantIndex}
@@ -174,14 +143,12 @@ export default function AIEditor({
         setMessages={setMessages}
       />
 
-      {/* Visual diff panel */}
       <VisualDiff
         beforeHtml={beforeHtml}
         afterHtml={afterHtml}
         isVisible={isDiffVisible}
       />
 
-      {/* Undo/redo history timeline */}
       <UndoStackPanel
         snapshots={snapshots}
         currentIndex={currentIndex}
@@ -189,7 +156,6 @@ export default function AIEditor({
         isVisible={isHistoryVisible}
       />
 
-      {/* Smart suggestions */}
       <SmartSuggestions
         iframeRef={iframeRef}
         onApply={handleSuggestionApply}
@@ -197,7 +163,6 @@ export default function AIEditor({
         onClose={() => setIsSuggestionsVisible(false)}
       />
 
-      {/* Bottom toolbar */}
       <EditorToolbar
         canUndo={canUndo}
         canRedo={canRedo}

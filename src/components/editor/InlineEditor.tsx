@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useTranslations } from "next-intl";
+import type { InlineEditMessage } from "@/types/editor";
 
 interface InlineEditorProps {
   iframeRef: React.RefObject<HTMLIFrameElement | null>;
@@ -13,10 +15,11 @@ export default function InlineEditor({
   onEditApplied,
   enabled,
 }: InlineEditorProps) {
+  const t = useTranslations("editor");
   const [editingElement, setEditingElement] = useState<{
     selector: string;
     originalText: string;
-    rect: DOMRect;
+    rect: { left: number; top: number; width: number; height: number };
   } | null>(null);
   const [editValue, setEditValue] = useState("");
   const popoverRef = useRef<HTMLDivElement>(null);
@@ -45,26 +48,10 @@ export default function InlineEditor({
               cursor: text !important;
               transition: outline 0.15s ease !important;
             }
-            .webflip-editable-hover::after {
-              content: 'Klikni pro editaci' !important;
-              position: absolute !important;
-              top: -24px !important;
-              left: 0 !important;
-              background: #3b82f6 !important;
-              color: white !important;
-              font-size: 10px !important;
-              padding: 2px 6px !important;
-              border-radius: 3px !important;
-              pointer-events: none !important;
-              z-index: 99999 !important;
-              font-family: system-ui, sans-serif !important;
-              white-space: nowrap !important;
-            }
           `;
           doc.head.appendChild(style);
         }
 
-        // Editable text tags
         const editableTags = new Set([
           "H1", "H2", "H3", "H4", "H5", "H6",
           "P", "SPAN", "A", "LI", "TD", "TH",
@@ -77,7 +64,6 @@ export default function InlineEditor({
           return text.length > 0 && text.length < 500;
         };
 
-        // Generate a unique CSS selector for an element
         const getSelector = (el: Element): string => {
           if (el.id) return `#${el.id}`;
           const path: string[] = [];
@@ -104,7 +90,6 @@ export default function InlineEditor({
           return path.join(" > ");
         };
 
-        // Mouse handlers
         const handleMouseOver = (e: MouseEvent) => {
           const target = e.target as Element;
           if (isEditableText(target)) {
@@ -127,32 +112,22 @@ export default function InlineEditor({
           const iframeRect = iframe.getBoundingClientRect();
           const elRect = target.getBoundingClientRect();
 
-          // Offset rect to page coordinates
-          const adjustedRect = new DOMRect(
-            iframeRect.left + elRect.left,
-            iframeRect.top + elRect.top,
-            elRect.width,
-            elRect.height
-          );
-
           const text = target.textContent?.trim() || "";
           const selector = getSelector(target);
 
-          // Post message to parent
-          window.parent.postMessage(
-            {
-              type: "webflip-inline-edit",
-              selector,
-              text,
-              rect: {
-                left: adjustedRect.left,
-                top: adjustedRect.top,
-                width: adjustedRect.width,
-                height: adjustedRect.height,
-              },
+          const message: InlineEditMessage = {
+            type: "webflip-inline-edit",
+            selector,
+            text,
+            rect: {
+              left: iframeRect.left + elRect.left,
+              top: iframeRect.top + elRect.top,
+              width: elRect.width,
+              height: elRect.height,
             },
-            "*"
-          );
+          };
+
+          window.parent.postMessage(message, window.location.origin);
         };
 
         doc.body.addEventListener("mouseover", handleMouseOver, true);
@@ -165,11 +140,10 @@ export default function InlineEditor({
           doc.body.removeEventListener("click", handleClick, true);
         };
       } catch {
-        // Cross-origin fallback - ignore
+        // Cross-origin fallback
       }
     };
 
-    // Setup on load
     iframe.addEventListener("load", setupInlineEdit);
     const cleanup = setupInlineEdit();
 
@@ -179,18 +153,20 @@ export default function InlineEditor({
     };
   }, [enabled, iframeRef]);
 
-  // Listen for postMessage from iframe
+  // Listen for postMessage from iframe with origin check
   useEffect(() => {
     if (!enabled) return;
 
     const handleMessage = (e: MessageEvent) => {
+      if (e.origin !== window.location.origin) return;
       if (e.data?.type === "webflip-inline-edit") {
+        const data = e.data as InlineEditMessage;
         setEditingElement({
-          selector: e.data.selector,
-          originalText: e.data.text,
-          rect: e.data.rect,
+          selector: data.selector,
+          originalText: data.text,
+          rect: data.rect,
         });
-        setEditValue(e.data.text);
+        setEditValue(data.text);
         setTimeout(() => inputRef.current?.focus(), 50);
       }
     };
@@ -217,7 +193,6 @@ export default function InlineEditor({
       return;
     }
 
-    // Apply directly in iframe
     try {
       const doc = iframeRef.current?.contentDocument;
       if (doc) {
@@ -230,9 +205,10 @@ export default function InlineEditor({
       // Ignore cross-origin
     }
 
-    // Notify parent about the edit
+    const origShort = editingElement.originalText.substring(0, 40);
+    const newShort = editValue.substring(0, 40);
     onEditApplied(
-      `Zmeni text "${editingElement.originalText.substring(0, 40)}${editingElement.originalText.length > 40 ? "..." : ""}" na "${editValue.substring(0, 40)}${editValue.length > 40 ? "..." : ""}"`
+      `Change text "${origShort}${editingElement.originalText.length > 40 ? "..." : ""}" to "${newShort}${editValue.length > 40 ? "..." : ""}"`
     );
     setEditingElement(null);
   }, [editingElement, editValue, iframeRef, onEditApplied]);
@@ -249,13 +225,14 @@ export default function InlineEditor({
 
   if (!editingElement) return null;
 
-  // Calculate popover position
   const popoverTop = editingElement.rect.top + editingElement.rect.height + 8;
   const popoverLeft = Math.max(8, Math.min(editingElement.rect.left, window.innerWidth - 340));
 
   return (
     <div
       ref={popoverRef}
+      role="dialog"
+      aria-label={t("inlineEditTitle")}
       className="fixed z-[9999] w-[320px] rounded-xl shadow-2xl shadow-black/50 border border-white/15 overflow-hidden"
       style={{
         top: `${popoverTop}px`,
@@ -265,7 +242,7 @@ export default function InlineEditor({
       }}
     >
       <div className="px-3 py-2 border-b border-white/10">
-        <span className="text-xs font-medium text-blue-400">Upravit text</span>
+        <span className="text-xs font-medium text-blue-400">{t("inlineEditTitle")}</span>
       </div>
       <div className="p-3">
         <textarea
@@ -274,24 +251,25 @@ export default function InlineEditor({
           onChange={(e) => setEditValue(e.target.value)}
           onKeyDown={handleKeyDown}
           rows={3}
+          aria-label={t("inlineEditTitle")}
           className="w-full resize-none rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 border border-white/10 focus:border-blue-500/50 focus:outline-none focus:ring-1 focus:ring-blue-500/25 transition-colors"
           style={{ background: "rgba(255,255,255,0.05)" }}
         />
         <div className="flex items-center justify-between mt-2">
           <button
             onClick={() => setEditingElement(null)}
-            className="px-3 py-1.5 rounded-lg text-xs text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
+            className="px-3 py-1.5 rounded-lg text-xs text-gray-400 hover:text-white hover:bg-white/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           >
-            Zrusit
+            {t("inlineCancel")}
           </button>
           <button
             onClick={handleApply}
-            className="px-4 py-1.5 rounded-lg text-xs font-medium text-white transition-all hover:brightness-110 active:scale-[0.98]"
+            className="px-4 py-1.5 rounded-lg text-xs font-medium text-white transition-all hover:brightness-110 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
             style={{
               background: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
             }}
           >
-            Ulozit
+            {t("inlineSave")}
           </button>
         </div>
       </div>

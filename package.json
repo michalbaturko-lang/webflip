@@ -11,8 +11,10 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",
     "@supabase/supabase-js": "^2.99.1",
+    "@types/diff": "^7.0.2",
     "@vercel/functions": "^3.4.3",
     "cheerio": "^1.2.0",
+    "diff": "^8.0.3",
     "framer-motion": "^12.36.0",
     "geist": "^1.7.0",
     "lucide-react": "^0.577.0",

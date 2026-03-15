@@ -2,13 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Clock, RotateCcw } from "lucide-react";
-
-export interface Snapshot {
-  id: string;
-  html: string;
-  label: string;
-  timestamp: Date;
-}
+import { useTranslations } from "next-intl";
+import type { Snapshot } from "@/types/editor";
 
 interface UndoStackProps {
   snapshots: Snapshot[];
@@ -21,14 +16,13 @@ export function useUndoStack(initialHtml?: string) {
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
   const [currentIndex, setCurrentIndex] = useState(-1);
 
-  // Initialize with first HTML
   useEffect(() => {
     if (initialHtml && snapshots.length === 0) {
       setSnapshots([
         {
           id: `snap-initial`,
           html: initialHtml,
-          label: "Puvodni verze",
+          label: "Original",
           timestamp: new Date(),
         },
       ]);
@@ -39,7 +33,6 @@ export function useUndoStack(initialHtml?: string) {
   const pushSnapshot = useCallback(
     (html: string, label: string) => {
       setSnapshots((prev) => {
-        // Remove any snapshots after current index (discard redo history)
         const trimmed = prev.slice(0, currentIndex + 1);
         const newSnap: Snapshot = {
           id: `snap-${Date.now()}`,
@@ -92,7 +85,7 @@ export function useUndoStack(initialHtml?: string) {
   };
 }
 
-// Keyboard shortcuts hook
+// Keyboard shortcuts hook - skips when focus is in input/textarea (#5)
 export function useUndoKeyboard(
   undo: () => string | null,
   redo: () => string | null,
@@ -100,6 +93,12 @@ export function useUndoKeyboard(
 ) {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't intercept undo/redo in text inputs
+      const isInput =
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement;
+      if (isInput) return;
+
       if ((e.ctrlKey || e.metaKey) && e.key === "z") {
         e.preventDefault();
         if (e.shiftKey) {
@@ -117,17 +116,19 @@ export function useUndoKeyboard(
   }, [undo, redo, onRestore]);
 }
 
-// Timeline history panel component
+// Timeline history panel
 export default function UndoStackPanel({
   snapshots,
   currentIndex,
   onRestore,
   isVisible,
 }: UndoStackProps) {
+  const t = useTranslations("editor");
+
   if (!isVisible || snapshots.length <= 1) return null;
 
   const formatTime = (date: Date) => {
-    return date.toLocaleTimeString("cs-CZ", {
+    return date.toLocaleTimeString(undefined, {
       hour: "2-digit",
       minute: "2-digit",
       second: "2-digit",
@@ -143,25 +144,23 @@ export default function UndoStackPanel({
         backdropFilter: "blur(24px)",
       }}
     >
-      {/* Header */}
       <div className="flex items-center gap-2 px-4 py-3 border-b border-white/10 flex-shrink-0">
         <Clock className="h-4 w-4 text-purple-400" />
-        <span className="font-semibold text-sm text-white">Historie zmen</span>
+        <span className="font-semibold text-sm text-white">{t("historyTitle")}</span>
       </div>
 
-      {/* Timeline */}
       <div className="flex-1 overflow-y-auto p-3 space-y-1">
         {snapshots.map((snap, i) => (
           <button
             key={snap.id}
             onClick={() => onRestore(i)}
-            className={`w-full text-left flex items-start gap-2.5 px-3 py-2 rounded-lg transition-colors text-xs group ${
+            aria-label={snap.label}
+            className={`w-full text-left flex items-start gap-2.5 px-3 py-2 rounded-lg transition-colors text-xs group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 ${
               i === currentIndex
                 ? "bg-purple-500/20 border border-purple-500/30"
                 : "hover:bg-white/5 border border-transparent"
             }`}
           >
-            {/* Timeline dot */}
             <div className="flex flex-col items-center flex-shrink-0 mt-0.5">
               <div
                 className={`w-2.5 h-2.5 rounded-full ${
@@ -177,21 +176,19 @@ export default function UndoStackPanel({
               )}
             </div>
 
-            {/* Content */}
             <div className="min-w-0 flex-1">
               <p
                 className={`font-medium truncate ${
                   i === currentIndex ? "text-purple-300" : "text-gray-300"
                 }`}
               >
-                {snap.label}
+                {i === 0 ? t("historyOriginal") : snap.label}
               </p>
               <p className="text-[10px] text-gray-500 mt-0.5">
                 {formatTime(snap.timestamp)}
               </p>
             </div>
 
-            {/* Restore icon on hover for non-current */}
             {i !== currentIndex && (
               <RotateCcw className="h-3 w-3 text-gray-600 group-hover:text-purple-400 transition-colors flex-shrink-0 mt-0.5" />
             )}
