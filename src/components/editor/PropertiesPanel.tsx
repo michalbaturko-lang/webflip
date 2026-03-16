@@ -187,10 +187,10 @@ export default function PropertiesPanel({
 
             <SliderInput
               label="Line Height"
-              value={cs.lineHeight || "1.5"}
+              value={cs.lineHeight || "24px"}
               onChange={(v) => onStyleChange("lineHeight", v)}
-              min={8}
-              max={60}
+              min={12}
+              max={72}
             />
 
             <div>

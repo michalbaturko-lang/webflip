@@ -118,6 +118,22 @@ Return ONLY the modified HTML element. No explanations, no markdown code blocks.
       );
     }
 
+    // Security validation — reject dangerous content in element HTML
+    const dangerousPatterns = [
+      /<script[\s>]/i,
+      /javascript:/i,
+      /on(?:load|error|click|mouseover|focus|blur|submit|change|input)\s*=/i,
+      /data:\s*text\/html/i,
+    ];
+    for (const pattern of dangerousPatterns) {
+      if (pattern.test(resultHtml)) {
+        return NextResponse.json(
+          { error: "AI returned potentially unsafe content. Please try again." },
+          { status: 500 }
+        );
+      }
+    }
+
     // Save edit history
     const idx = typeof variantIndex === "number" ? variantIndex : 0;
     const existingHistory = analysis.edit_history || [];

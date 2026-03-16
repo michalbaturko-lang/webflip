@@ -17,7 +17,6 @@ interface VisualEditorProps {
   iframeRef: React.RefObject<HTMLIFrameElement | null>;
   editorMode: EditorMode;
   onHtmlUpdate: (html: string) => void;
-  onPushSnapshot: (html: string, label: string) => void;
 }
 
 export default function VisualEditor({
@@ -26,7 +25,6 @@ export default function VisualEditor({
   iframeRef,
   editorMode,
   onHtmlUpdate,
-  onPushSnapshot,
 }: VisualEditorProps) {
   const [selectedElement, setSelectedElement] = useState<ElementInfo | null>(null);
   const [iframeRect, setIframeRect] = useState<DOMRect | null>(null);
@@ -130,21 +128,16 @@ export default function VisualEditor({
           break;
         case "wf-text-edit":
           onHtmlUpdate(data.newHtml);
-          onPushSnapshot(data.newHtml, `Edit text: ${data.newText.substring(0, 30)}...`);
           break;
         case "wf-html-update":
           onHtmlUpdate(data.html);
-          onPushSnapshot(data.html, "Visual edit");
-          break;
-        case "wf-delete":
-          // Handled by iframe, we get wf-html-update after
           break;
       }
     };
 
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, [onHtmlUpdate, onPushSnapshot]);
+  }, [onHtmlUpdate]);
 
   // Send style change to iframe
   const handleStyleChange = useCallback(
@@ -266,22 +259,13 @@ export default function VisualEditor({
         },
         "*"
       );
-      // Also update via direct attribute for img
-      try {
-        const doc = iframeRef.current?.contentDocument;
-        if (doc) {
-          const img = doc.querySelector(selectedElement.cssPath) as HTMLImageElement;
-          if (img) {
-            img.src = newSrc;
-            iframeRef.current?.contentWindow?.postMessage(
-              { type: "wf-cmd-get-html" },
-              "*"
-            );
-          }
-        }
-      } catch {
-        // Cross-origin
-      }
+      // Request updated HTML after attribute change
+      setTimeout(() => {
+        iframeRef.current?.contentWindow?.postMessage(
+          { type: "wf-cmd-get-html" },
+          "*"
+        );
+      }, 50);
       setShowImageReplacer(false);
     },
     [selectedElement, iframeRef]
@@ -318,10 +302,6 @@ export default function VisualEditor({
           element={selectedElement}
           onStyleChange={handleStyleChange}
           onAIEdit={() => setShowAIContext(true)}
-          token={token}
-          variantIndex={variantIndex}
-          onHtmlUpdate={onHtmlUpdate}
-          onPushSnapshot={onPushSnapshot}
         />
       )}
 

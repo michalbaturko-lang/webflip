@@ -277,7 +277,10 @@ export function getInjectionScript(): string {
     if (e.key === 'Delete' || e.key === 'Backspace') {
       if (selectedEl && !isTextEditing) {
         e.preventDefault();
-        sendMessage({ type: 'wf-delete', cssPath: getCSSPath(selectedEl) });
+        var toRemove = selectedEl;
+        clearSelection();
+        toRemove.remove();
+        sendMessage({ type: 'wf-html-update', html: document.documentElement.outerHTML });
       }
     }
 
@@ -326,8 +329,13 @@ export function getInjectionScript(): string {
       case 'wf-cmd-style':
         var target = document.querySelector(data.cssPath);
         if (target) {
-          target.style[data.property] = data.value;
-          // Send updated element info
+          // Handle HTML attributes (src, href, alt) separately from CSS properties
+          var attrProps = ['src', 'href', 'alt', 'title', 'placeholder', 'value'];
+          if (attrProps.indexOf(data.property) !== -1) {
+            target.setAttribute(data.property, data.value);
+          } else {
+            target.style[data.property] = data.value;
+          }
           sendMessage({ type: 'wf-select', element: getElementInfo(target) });
         }
         break;
@@ -368,7 +376,7 @@ export function getInjectionScript(): string {
         break;
 
       case 'wf-cmd-reorder-section':
-        var sections = document.querySelectorAll('body > section, body > header, body > main, body > footer, body > div');
+        var sections = document.querySelectorAll('body > section, body > header, body > main, body > footer, body > nav');
         var arr = Array.from(sections);
         if (data.fromIndex >= 0 && data.fromIndex < arr.length && data.toIndex >= 0 && data.toIndex < arr.length) {
           var moving = arr[data.fromIndex];

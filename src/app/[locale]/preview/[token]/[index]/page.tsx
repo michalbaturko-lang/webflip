@@ -252,11 +252,6 @@ export default function PreviewPage() {
           iframeRef={iframeRef}
           editorMode={editorMode}
           onHtmlUpdate={handleHtmlUpdate}
-          onPushSnapshot={(html, label) => {
-            // This will be handled by AIEditor's undo stack too
-            // For now, just update HTML
-            handleHtmlUpdate(html);
-          }}
         />
       )}
 

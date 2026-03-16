@@ -1,6 +1,6 @@
 "use client";
 
-import { Clock, RotateCcw, Eye } from "lucide-react";
+import { Clock, RotateCcw } from "lucide-react";
 import type { Snapshot } from "@/types/editor";
 
 interface UndoRedoTimelineProps {
@@ -115,7 +115,7 @@ export default function UndoRedoTimeline({
 
               {/* Actions */}
               {!isCurrent && (
-                <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -125,16 +125,6 @@ export default function UndoRedoTimeline({
                     title="Restore this version"
                   >
                     <RotateCcw className="h-3 w-3" />
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onRestore(i);
-                    }}
-                    className="p-1 rounded hover:bg-white/10 text-gray-500 hover:text-blue-400 transition-colors"
-                    title="Preview this version"
-                  >
-                    <Eye className="h-3 w-3" />
                   </button>
                 </div>
               )}

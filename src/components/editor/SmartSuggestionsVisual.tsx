@@ -7,10 +7,6 @@ interface SmartSuggestionsVisualProps {
   element: ElementInfo;
   onStyleChange: (property: string, value: string) => void;
   onAIEdit: () => void;
-  token: string;
-  variantIndex: number;
-  onHtmlUpdate: (html: string) => void;
-  onPushSnapshot: (html: string, label: string) => void;
 }
 
 interface Chip {

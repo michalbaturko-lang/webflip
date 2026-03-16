@@ -18,7 +18,6 @@ export type EditorMessage =
   | { type: "wf-select"; element: ElementInfo }
   | { type: "wf-deselect" }
   | { type: "wf-text-edit"; cssPath: string; oldText: string; newText: string; newHtml: string }
-  | { type: "wf-style-change"; cssPath: string; property: string; value: string }
   | { type: "wf-delete"; cssPath: string }
   | { type: "wf-html-update"; html: string }
   | { type: "wf-ready" };
