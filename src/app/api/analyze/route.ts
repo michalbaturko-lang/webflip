@@ -106,6 +106,7 @@ async function runPipeline(url: string, token: string, locale?: string) {
     title: p.title,
     markdown: p.markdown.slice(0, 20000),
     html: p.html.slice(0, 50000),
+    pageType: p.pageType || "other",
   }));
 
   // Store extracted assets (logo, images, colors) for variant generation

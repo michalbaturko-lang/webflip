@@ -1,22 +1,13 @@
+import type { CrawledImage, CrawledProduct, CrawledBlogPost, NavigationStructure, ExtractedAssets, PageType, SiteType } from "./supabase";
+
+export type { ExtractedAssets };
+
 export interface CrawledPage {
   url: string;
   title: string;
   markdown: string;
   html: string;
-}
-
-export interface ExtractedAssets {
-  logo?: string;
-  favicon?: string;
-  images: { url: string; alt: string }[];
-  colors: string[];
-  companyName?: string;
-  metaDescription?: string;
-  socialLinks: string[];
-  navLinks: { text: string; href: string }[];
-  phoneNumbers: string[];
-  emails: string[];
-  address?: string;
+  pageType?: PageType;
 }
 
 export interface CrawlResult {
@@ -31,11 +22,93 @@ export interface CrawlOptions {
   onProgress?: (pages: CrawledPage[]) => void;
 }
 
-const CRAWL_PAGE_LIMIT = 15;
+const CRAWL_PAGE_LIMIT = 50;
+
+// ── Page type classification by URL patterns ──
+
+const PAGE_TYPE_PATTERNS: { type: PageType; patterns: RegExp[] }[] = [
+  { type: "product-listing", patterns: [/\/products?\/?$/i, /\/shop\/?$/i, /\/catalog\/?$/i, /\/store\/?$/i, /\/collection/i, /\/kategori/i, /\/category/i, /\/produkty\/?$/i, /\/zbozi\/?$/i, /\/sortiment\/?$/i] },
+  { type: "product-detail", patterns: [/\/products?\/[^/]+$/i, /\/shop\/[^/]+$/i, /\/item\/[^/]+$/i, /\/zbozi\/[^/]+$/i, /\/produkt\/[^/]+$/i] },
+  { type: "blog-listing", patterns: [/\/blog\/?$/i, /\/news\/?$/i, /\/articles?\/?$/i, /\/aktuality\/?$/i, /\/clanky\/?$/i, /\/novinky\/?$/i, /\/magazine\/?$/i] },
+  { type: "blog-post", patterns: [/\/blog\/[^/]+$/i, /\/news\/[^/]+$/i, /\/articles?\/[^/]+$/i, /\/aktuality\/[^/]+$/i, /\/clanky\/[^/]+$/i] },
+  { type: "about", patterns: [/\/about/i, /\/o-nas/i, /\/o-firme/i, /\/ueber-uns/i, /\/about-us/i, /\/company/i, /\/team/i, /\/tym/i] },
+  { type: "contact", patterns: [/\/contact/i, /\/kontakt/i, /\/get-in-touch/i] },
+  { type: "gallery", patterns: [/\/gallery/i, /\/galerie/i, /\/portfolio/i, /\/fotogalerie/i, /\/projects?/i, /\/realizace/i, /\/reference/i] },
+  { type: "services", patterns: [/\/services/i, /\/sluzby/i, /\/dienstleistungen/i, /\/what-we-do/i, /\/nabidka/i] },
+  { type: "pricing", patterns: [/\/pricing/i, /\/ceny/i, /\/ceník/i, /\/plans?/i, /\/preise/i] },
+];
+
+function classifyPageType(pageUrl: string, html: string): PageType {
+  try {
+    const urlObj = new URL(pageUrl);
+    const path = urlObj.pathname;
+
+    // Homepage detection
+    if (path === "/" || path === "" || path === "/index.html" || path === "/index.php") {
+      return "homepage";
+    }
+
+    // URL-based classification
+    for (const { type, patterns } of PAGE_TYPE_PATTERNS) {
+      for (const pattern of patterns) {
+        if (pattern.test(path)) return type;
+      }
+    }
+
+    // Content-based classification for product pages
+    const lowerHtml = html.toLowerCase();
+    if (lowerHtml.includes("add to cart") || lowerHtml.includes("přidat do košíku") ||
+        lowerHtml.includes("buy now") || lowerHtml.includes("koupit") ||
+        lowerHtml.includes("price") && lowerHtml.includes("product")) {
+      return "product-detail";
+    }
+
+    return "other";
+  } catch {
+    return "other";
+  }
+}
+
+// ── Page priority for intelligent crawl ordering ──
+
+function getPagePriority(url: string, pageType: PageType): number {
+  // Lower number = higher priority
+  switch (pageType) {
+    case "homepage": return 0;
+    case "services": return 1;
+    case "product-listing": return 2;
+    case "about": return 3;
+    case "gallery": return 4;
+    case "blog-listing": return 5;
+    case "pricing": return 6;
+    case "contact": return 7;
+    case "product-detail": return 8;
+    case "blog-post": return 9;
+    case "other": return 10;
+  }
+}
+
+// ── Site type detection from page types ──
+
+function detectSiteType(pageTypes: Record<string, PageType>): SiteType {
+  const types = Object.values(pageTypes);
+  const productPages = types.filter(t => t === "product-listing" || t === "product-detail").length;
+  const blogPages = types.filter(t => t === "blog-listing" || t === "blog-post").length;
+  const galleryPages = types.filter(t => t === "gallery").length;
+  const servicePages = types.filter(t => t === "services").length;
+  const pricingPages = types.filter(t => t === "pricing").length;
+
+  if (productPages >= 3) return "e-commerce";
+  if (productPages >= 1) return "catalog";
+  if (blogPages >= 3) return "blog";
+  if (galleryPages >= 2 || (galleryPages >= 1 && servicePages === 0)) return "portfolio";
+  if (pricingPages >= 1) return "saas";
+  return "corporate";
+}
 
 /**
  * Crawl a website via Cloudflare Browser Rendering /crawl endpoint.
- * The API is async: POST returns a job ID, then we poll GET for results.
+ * Enhanced with intelligent prioritization, page classification, and rich extraction.
  */
 export async function crawlWebsite(url: string, options?: CrawlOptions): Promise<CrawlResult> {
   const apiToken = process.env.CLOUDFLARE_API_TOKEN;
@@ -53,7 +126,7 @@ export async function crawlWebsite(url: string, options?: CrawlOptions): Promise
   };
 
   try {
-    // Step 1: Start crawl job
+    // Step 1: Start crawl job with increased limit
     console.log(`[crawl] Starting crawl for ${url} (limit: ${CRAWL_PAGE_LIMIT})`);
     const startResponse = await fetch(`${baseUrl}/crawl`, {
       method: "POST",
@@ -102,8 +175,7 @@ export async function crawlWebsite(url: string, options?: CrawlOptions): Promise
           const pages = extractPagesFromRecords(inlineRecords, url);
           if (pages.length > 0) {
             console.log(`[crawl] Got ${pages.length} pages from inline result`);
-            const allHtml = pages.map((p) => p.html).join("\n");
-            const assets = extractAssetsFromHtml(allHtml, url);
+            const assets = extractAllAssets(pages, url);
             return { success: true, pages, assets };
           }
         }
@@ -115,8 +187,8 @@ export async function crawlWebsite(url: string, options?: CrawlOptions): Promise
       };
     }
 
-    // Step 2: Poll for results (max ~80s, every 4s)
-    const maxAttempts = 25;
+    // Step 2: Poll for results (max ~120s, every 4s)
+    const maxAttempts = 30;
     const pollInterval = 4000;
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       await new Promise((r) => setTimeout(r, pollInterval));
@@ -173,9 +245,15 @@ export async function crawlWebsite(url: string, options?: CrawlOptions): Promise
         };
       }
 
-      // Extract assets from ALL pages, not just the first one
-      const allHtml = pages.map((p) => p.html).join("\n");
-      const assets = extractAssetsFromHtml(allHtml, url);
+      // Sort pages by priority (homepage first, then nav pages, etc.)
+      pages.sort((a, b) => {
+        const aPriority = getPagePriority(a.url, a.pageType || "other");
+        const bPriority = getPagePriority(b.url, b.pageType || "other");
+        return aPriority - bPriority;
+      });
+
+      // Extract assets from ALL pages
+      const assets = extractAllAssets(pages, url);
       return { success: true, pages, assets };
     }
 
@@ -201,17 +279,392 @@ function extractPagesFromRecords(records: Record<string, unknown>[], baseUrl: st
     .map((record) => {
       const html = (record.html as string) || "";
       const metadata = (record.metadata as Record<string, string>) || {};
+      const pageUrl = (record.url as string) || baseUrl;
       return {
-        url: (record.url as string) || baseUrl,
+        url: pageUrl,
         title: metadata.title || extractTitle(html),
         markdown: htmlToSimpleMarkdown(html),
         html,
+        pageType: classifyPageType(pageUrl, html),
       };
     });
 }
 
 /**
+ * Extract all assets from crawled pages with enhanced image/product/blog extraction.
+ */
+function extractAllAssets(pages: CrawledPage[], baseUrl: string): ExtractedAssets {
+  const allHtml = pages.map((p) => p.html).join("\n");
+  const assets = extractAssetsFromHtml(allHtml, baseUrl);
+
+  // Build page type map
+  const pageTypes: Record<string, PageType> = {};
+  for (const page of pages) {
+    if (page.pageType) {
+      pageTypes[page.url] = page.pageType;
+    }
+  }
+  assets.pageTypes = pageTypes;
+
+  // Detect site type
+  assets.siteType = detectSiteType(pageTypes);
+  console.log(`[crawl] Detected site type: ${assets.siteType}`);
+
+  // Extract products from product pages
+  const productPages = pages.filter(p => p.pageType === "product-detail" || p.pageType === "product-listing");
+  if (productPages.length > 0) {
+    assets.products = extractProducts(productPages, baseUrl);
+    console.log(`[crawl] Extracted ${assets.products.length} products`);
+  }
+
+  // Extract blog posts from blog pages
+  const blogPages = pages.filter(p => p.pageType === "blog-listing" || p.pageType === "blog-post");
+  if (blogPages.length > 0) {
+    assets.blogPosts = extractBlogPosts(blogPages, baseUrl);
+    console.log(`[crawl] Extracted ${assets.blogPosts.length} blog posts`);
+  }
+
+  // Extract navigation structure (header + footer)
+  const homePage = pages.find(p => p.pageType === "homepage") || pages[0];
+  if (homePage) {
+    assets.navigation = extractNavigationStructure(homePage.html, baseUrl);
+  }
+
+  // Find hero image (largest/most prominent image from homepage)
+  if (!assets.heroImageUrl) {
+    const heroImage = findHeroImage(homePage?.html || "", baseUrl, assets.images);
+    if (heroImage) {
+      assets.heroImageUrl = heroImage;
+    }
+  }
+
+  return assets;
+}
+
+/**
+ * Extract products from product pages.
+ */
+function extractProducts(pages: CrawledPage[], baseUrl: string): CrawledProduct[] {
+  const products: CrawledProduct[] = [];
+  let base: URL;
+  try { base = new URL(baseUrl); } catch { base = new URL("https://example.com"); }
+  const resolve = (src: string): string => {
+    if (!src || src.startsWith("data:")) return src;
+    try { return new URL(src, base).href; } catch { return src; }
+  };
+
+  for (const page of pages) {
+    const html = page.html;
+
+    if (page.pageType === "product-detail") {
+      // Extract single product from detail page
+      const name = extractProductName(html) || page.title;
+      const description = extractProductDescription(html);
+      const price = extractPrice(html);
+      const imageUrl = extractProductImage(html, resolve);
+
+      if (name && name !== "Untitled") {
+        products.push({ name, description, price, imageUrl, url: page.url });
+      }
+    } else if (page.pageType === "product-listing") {
+      // Extract multiple products from listing page
+      const listingProducts = extractProductsFromListing(html, resolve, page.url);
+      products.push(...listingProducts);
+    }
+  }
+
+  return products.slice(0, 30);
+}
+
+function extractProductName(html: string): string {
+  // Try Schema.org product name
+  const schemaMatch = html.match(/"@type"\s*:\s*"Product"[\s\S]*?"name"\s*:\s*"([^"]+)"/i);
+  if (schemaMatch) return schemaMatch[1];
+
+  // Try og:title
+  const ogMatch = html.match(/<meta\b[^>]*\bproperty=["']og:title["'][^>]*\bcontent=["']([^"']*)["']/i)
+    || html.match(/<meta\b[^>]*\bcontent=["']([^"']*)["'][^>]*\bproperty=["']og:title["']/i);
+  if (ogMatch) return ogMatch[1];
+
+  // Try h1
+  const h1Match = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+  if (h1Match) return h1Match[1].replace(/<[^>]+>/g, "").trim();
+
+  return "";
+}
+
+function extractProductDescription(html: string): string {
+  // Try Schema.org description
+  const schemaMatch = html.match(/"@type"\s*:\s*"Product"[\s\S]*?"description"\s*:\s*"([^"]+)"/i);
+  if (schemaMatch) return schemaMatch[1].slice(0, 300);
+
+  // Try meta description
+  const metaMatch = html.match(/<meta\b[^>]*\bname=["']description["'][^>]*\bcontent=["']([^"']*)["']/i)
+    || html.match(/<meta\b[^>]*\bcontent=["']([^"']*)["'][^>]*\bname=["']description["']/i);
+  if (metaMatch) return metaMatch[1].slice(0, 300);
+
+  return "";
+}
+
+function extractPrice(html: string): string | undefined {
+  // Schema.org price
+  const schemaPrice = html.match(/"price"\s*:\s*"?([0-9.,]+)"?/i);
+  const schemaCurrency = html.match(/"priceCurrency"\s*:\s*"([^"]+)"/i);
+  if (schemaPrice) {
+    return `${schemaPrice[1]} ${schemaCurrency?.[1] || ""}`.trim();
+  }
+
+  // Common price patterns
+  const priceMatch = html.match(/(?:class=["'][^"']*price[^"']*["'][^>]*>)\s*([^<]*\d+[.,]?\d*\s*(?:Kč|CZK|€|EUR|\$|USD)[^<]*)/i);
+  if (priceMatch) return priceMatch[1].trim();
+
+  return undefined;
+}
+
+function extractProductImage(html: string, resolve: (src: string) => string): string | undefined {
+  // Schema.org image
+  const schemaImg = html.match(/"@type"\s*:\s*"Product"[\s\S]*?"image"\s*:\s*"([^"]+)"/i);
+  if (schemaImg) return resolve(schemaImg[1]);
+
+  // OG image
+  const ogImg = html.match(/<meta\b[^>]*\bproperty=["']og:image["'][^>]*\bcontent=["']([^"']*)["']/i)
+    || html.match(/<meta\b[^>]*\bcontent=["']([^"']*)["'][^>]*\bproperty=["']og:image["']/i);
+  if (ogImg) return resolve(ogImg[1]);
+
+  // First large image in main content area
+  const mainMatch = html.match(/<main[^>]*>([\s\S]*?)<\/main>/i) || html.match(/<article[^>]*>([\s\S]*?)<\/article>/i);
+  if (mainMatch) {
+    const imgMatch = mainMatch[1].match(/<img\b[^>]*\bsrc=["']([^"']+)["'][^>]*>/i);
+    if (imgMatch && !imgMatch[1].startsWith("data:")) return resolve(imgMatch[1]);
+  }
+
+  return undefined;
+}
+
+function extractProductsFromListing(html: string, resolve: (src: string) => string, pageUrl: string): CrawledProduct[] {
+  const products: CrawledProduct[] = [];
+
+  // Look for product cards/items in listing
+  const productCardPatterns = [
+    /<(?:div|article|li)\b[^>]*class=["'][^"']*(?:product|item|card)[^"']*["'][^>]*>([\s\S]*?)<\/(?:div|article|li)>/gi,
+  ];
+
+  for (const pattern of productCardPatterns) {
+    let match;
+    while ((match = pattern.exec(html)) !== null && products.length < 20) {
+      const card = match[1];
+
+      // Extract name from heading or link
+      const nameMatch = card.match(/<(?:h[1-6]|a)[^>]*>([\s\S]*?)<\/(?:h[1-6]|a)>/i);
+      const name = nameMatch ? nameMatch[1].replace(/<[^>]+>/g, "").trim() : "";
+      if (!name || name.length < 2 || name.length > 200) continue;
+
+      // Extract image
+      const imgMatch = card.match(/<img\b[^>]*\bsrc=["']([^"']+)["'][^>]*>/i);
+      const imageUrl = imgMatch && !imgMatch[1].startsWith("data:") ? resolve(imgMatch[1]) : undefined;
+
+      // Extract link
+      const linkMatch = card.match(/<a\b[^>]*\bhref=["']([^"']+)["'][^>]*>/i);
+      const url = linkMatch ? resolve(linkMatch[1]) : undefined;
+
+      // Extract description
+      const descMatch = card.match(/<p[^>]*>([\s\S]*?)<\/p>/i);
+      const description = descMatch ? descMatch[1].replace(/<[^>]+>/g, "").trim().slice(0, 200) : "";
+
+      // Extract price
+      const priceMatch = card.match(/(?:price|cena)[^"']*["'][^>]*>\s*([^<]+)/i)
+        || card.match(/(\d+[.,]?\d*\s*(?:Kč|CZK|€|EUR|\$|USD))/i);
+      const price = priceMatch ? priceMatch[1].trim() : undefined;
+
+      products.push({ name, description, price, imageUrl, url });
+    }
+  }
+
+  return products;
+}
+
+/**
+ * Extract real blog posts from blog pages.
+ */
+function extractBlogPosts(pages: CrawledPage[], baseUrl: string): CrawledBlogPost[] {
+  const posts: CrawledBlogPost[] = [];
+  let base: URL;
+  try { base = new URL(baseUrl); } catch { base = new URL("https://example.com"); }
+  const resolve = (src: string): string => {
+    if (!src || src.startsWith("data:")) return src;
+    try { return new URL(src, base).href; } catch { return src; }
+  };
+
+  for (const page of pages) {
+    if (page.pageType === "blog-listing") {
+      // Extract multiple posts from listing
+      const listingPosts = extractBlogPostsFromListing(page.html, resolve, page.url);
+      posts.push(...listingPosts);
+    } else if (page.pageType === "blog-post") {
+      // Extract single post detail
+      const title = page.title;
+      const dateMatch = page.html.match(/<time[^>]*datetime=["']([^"']+)["']/i)
+        || page.html.match(/(\d{4}-\d{2}-\d{2})/);
+      const date = dateMatch ? dateMatch[1] : undefined;
+
+      const authorMatch = page.html.match(/(?:author|autor)[^"']*["'][^>]*>\s*([^<]+)/i);
+      const author = authorMatch ? authorMatch[1].trim() : undefined;
+
+      // Featured image
+      const ogImg = page.html.match(/<meta\b[^>]*\bproperty=["']og:image["'][^>]*\bcontent=["']([^"']*)["']/i)
+        || page.html.match(/<meta\b[^>]*\bcontent=["']([^"']*)["'][^>]*\bproperty=["']og:image["']/i);
+      const featuredImage = ogImg ? resolve(ogImg[1]) : undefined;
+
+      // Excerpt from meta description or first paragraph
+      const metaDesc = page.html.match(/<meta\b[^>]*\bname=["']description["'][^>]*\bcontent=["']([^"']*)["']/i);
+      const firstP = page.html.match(/<article[^>]*>[\s\S]*?<p[^>]*>([\s\S]*?)<\/p>/i)
+        || page.html.match(/<main[^>]*>[\s\S]*?<p[^>]*>([\s\S]*?)<\/p>/i);
+      const excerpt = metaDesc?.[1] || firstP?.[1]?.replace(/<[^>]+>/g, "").trim().slice(0, 200) || "";
+
+      if (title && title !== "Untitled") {
+        posts.push({ title, date, author, featuredImage, excerpt, url: page.url });
+      }
+    }
+  }
+
+  return posts.slice(0, 10);
+}
+
+function extractBlogPostsFromListing(html: string, resolve: (src: string) => string, pageUrl: string): CrawledBlogPost[] {
+  const posts: CrawledBlogPost[] = [];
+
+  // Look for article cards
+  const articlePatterns = [
+    /<article\b[^>]*>([\s\S]*?)<\/article>/gi,
+    /<(?:div|li)\b[^>]*class=["'][^"']*(?:post|article|blog|news|entry)[^"']*["'][^>]*>([\s\S]*?)<\/(?:div|li)>/gi,
+  ];
+
+  for (const pattern of articlePatterns) {
+    let match;
+    while ((match = pattern.exec(html)) !== null && posts.length < 10) {
+      const card = match[1] || match[2] || match[0];
+
+      // Title from heading
+      const titleMatch = card.match(/<(?:h[1-6])[^>]*>([\s\S]*?)<\/(?:h[1-6])>/i);
+      const title = titleMatch ? titleMatch[1].replace(/<[^>]+>/g, "").trim() : "";
+      if (!title || title.length < 3 || title.length > 200) continue;
+
+      // Date
+      const dateMatch = card.match(/<time[^>]*datetime=["']([^"']+)["']/i)
+        || card.match(/(\d{1,2}[./]\s?\d{1,2}[./]\s?\d{2,4})/);
+      const date = dateMatch ? dateMatch[1] : undefined;
+
+      // Image
+      const imgMatch = card.match(/<img\b[^>]*\bsrc=["']([^"']+)["'][^>]*>/i);
+      const featuredImage = imgMatch && !imgMatch[1].startsWith("data:") ? resolve(imgMatch[1]) : undefined;
+
+      // Excerpt
+      const excerptMatch = card.match(/<p[^>]*>([\s\S]*?)<\/p>/i);
+      const excerpt = excerptMatch ? excerptMatch[1].replace(/<[^>]+>/g, "").trim().slice(0, 200) : "";
+
+      // Link
+      const linkMatch = card.match(/<a\b[^>]*\bhref=["']([^"']+)["'][^>]*>/i);
+      const url = linkMatch ? resolve(linkMatch[1]) : undefined;
+
+      // Author
+      const authorMatch = card.match(/(?:author|autor)[^"']*["'][^>]*>\s*([^<]+)/i);
+      const author = authorMatch ? authorMatch[1].trim() : undefined;
+
+      posts.push({ title, date, author, featuredImage, excerpt, url });
+    }
+    if (posts.length > 0) break; // Use first matching pattern
+  }
+
+  return posts;
+}
+
+/**
+ * Extract full navigation structure from HTML.
+ */
+function extractNavigationStructure(html: string, baseUrl: string): NavigationStructure {
+  let base: URL;
+  try { base = new URL(baseUrl); } catch { base = new URL("https://example.com"); }
+  const resolve = (src: string): string => {
+    if (!src || src.startsWith("data:") || src.startsWith("javascript:")) return "";
+    try { return new URL(src, base).href; } catch { return src; }
+  };
+
+  const extractLinks = (content: string): { text: string; href: string }[] => {
+    const links: { text: string; href: string }[] = [];
+    const linkRegex = /<a\b[^>]*\bhref=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
+    let match;
+    while ((match = linkRegex.exec(content)) !== null) {
+      const href = match[1];
+      const text = match[2].replace(/<[^>]+>/g, "").trim();
+      if (text && text.length < 60 && !href.startsWith("javascript:") && !href.startsWith("#")) {
+        const resolved = resolve(href);
+        if (resolved) links.push({ text, href: resolved });
+      }
+    }
+    return links;
+  };
+
+  // Header navigation
+  const headerMatches = html.match(/<(?:header|nav)\b[^>]*>([\s\S]*?)<\/(?:header|nav)>/gi) || [];
+  const headerContent = headerMatches.map(m => m).join("\n");
+  const headerLinks = extractLinks(headerContent).slice(0, 15);
+
+  // Footer navigation
+  const footerMatches = html.match(/<footer\b[^>]*>([\s\S]*?)<\/footer>/gi) || [];
+  const footerContent = footerMatches.map(m => m).join("\n");
+  const footerLinks = extractLinks(footerContent).slice(0, 20);
+
+  return { header: headerLinks, footer: footerLinks };
+}
+
+/**
+ * Find the best hero image candidate from homepage HTML.
+ */
+function findHeroImage(html: string, baseUrl: string, images: CrawledImage[]): string | undefined {
+  let base: URL;
+  try { base = new URL(baseUrl); } catch { base = new URL("https://example.com"); }
+  const resolve = (src: string): string => {
+    if (!src || src.startsWith("data:")) return src;
+    try { return new URL(src, base).href; } catch { return src; }
+  };
+
+  // 1. OG image is usually the best hero candidate
+  const ogImg = html.match(/<meta\b[^>]*\bproperty=["']og:image["'][^>]*\bcontent=["']([^"']*)["']/i)
+    || html.match(/<meta\b[^>]*\bcontent=["']([^"']*)["'][^>]*\bproperty=["']og:image["']/i);
+  if (ogImg?.[1] && !ogImg[1].includes("logo")) return resolve(ogImg[1]);
+
+  // 2. Look for hero/banner section image
+  const heroSection = html.match(/<(?:section|div)\b[^>]*(?:class|id)=["'][^"']*(?:hero|banner|jumbotron|slider|carousel)[^"']*["'][^>]*>([\s\S]*?)<\/(?:section|div)>/i);
+  if (heroSection) {
+    // Check for background-image in style
+    const bgMatch = heroSection[0].match(/background(?:-image)?\s*:\s*url\(['"]?([^'")\s]+)['"]?\)/i);
+    if (bgMatch) return resolve(bgMatch[1]);
+
+    // Check for img inside hero
+    const imgMatch = heroSection[1].match(/<img\b[^>]*\bsrc=["']([^"']+)["'][^>]*>/i);
+    if (imgMatch && !imgMatch[1].startsWith("data:") && !imgMatch[1].includes("logo")) return resolve(imgMatch[1]);
+  }
+
+  // 3. Background image on body or first section
+  const bgImgMatch = html.match(/background(?:-image)?\s*:\s*url\(['"]?([^'")\s]+)['"]?\)/i);
+  if (bgImgMatch && !bgImgMatch[1].startsWith("data:") && !bgImgMatch[1].includes("logo")) {
+    return resolve(bgImgMatch[1]);
+  }
+
+  // 4. Use the first non-logo, non-icon image classified as hero or content
+  const heroImg = images.find(img => img.context === "hero");
+  if (heroImg) return heroImg.url;
+
+  // 5. First large content image (skip logos and icons)
+  const contentImg = images.find(img => img.context === "content" && !img.url.includes("logo") && !img.url.includes("icon"));
+  if (contentImg) return contentImg.url;
+
+  return undefined;
+}
+
+/**
  * Extract visual assets, contact info, navigation, and social links from HTML.
+ * Enhanced with image context classification and rich metadata.
  */
 function extractAssetsFromHtml(html: string, baseUrl: string): ExtractedAssets {
   let base: URL;
@@ -311,40 +764,15 @@ function extractAssetsFromHtml(html: string, baseUrl: string): ExtractedAssets {
     if (ogDescMatch) metaDescription = ogDescMatch[1];
   }
 
-  // ---------- All images (deduplicated, absolute URLs) ----------
-  const imgRegex = /<img\b[^>]*\bsrc=["']([^"']+)["'][^>]*>/gi;
-  const seen = new Set<string>();
-  const images: { url: string; alt: string }[] = [];
-  let m;
-  while ((m = imgRegex.exec(html)) !== null) {
-    const rawSrc = m[1];
-    if (rawSrc.startsWith("data:") || rawSrc.includes("1x1") || rawSrc.includes("pixel")) continue;
+  // ---------- Enhanced image extraction with context ----------
+  const images = extractImagesWithContext(html, resolve);
 
-    const imgUrl = resolve(rawSrc);
-    if (seen.has(imgUrl)) continue;
-    seen.add(imgUrl);
-    const altMatch = m[0].match(/\balt=["']([^"']*)["']/i);
-    images.push({ url: imgUrl, alt: altMatch?.[1] || "" });
-
-    // Also extract highest-res srcset image
-    const srcsetMatch = m[0].match(/\bsrcset=["']([^"']*)["']/i);
-    if (srcsetMatch) {
-      const srcsetParts = srcsetMatch[1].split(",").map((s) => s.trim().split(/\s+/));
-      const highRes = srcsetParts.sort((a, b) => {
-        const aW = parseInt(a[1]) || 0;
-        const bW = parseInt(b[1]) || 0;
-        return bW - aW;
-      })[0];
-      if (highRes?.[0]) {
-        const hiUrl = resolve(highRes[0]);
-        if (!seen.has(hiUrl)) {
-          seen.add(hiUrl);
-          images.push({ url: hiUrl, alt: altMatch?.[1] || "" });
-        }
-      }
-    }
-
-    if (images.length >= 30) break;
+  // ---------- Hero image from OG ----------
+  let heroImageUrl: string | undefined;
+  const ogImgMatch = html.match(/<meta\b[^>]*\bproperty=["']og:image["'][^>]*\bcontent=["']([^"']*)["']/i)
+    || html.match(/<meta\b[^>]*\bcontent=["']([^"']*)["'][^>]*\bproperty=["']og:image["']/i);
+  if (ogImgMatch?.[1] && !ogImgMatch[1].includes("logo")) {
+    heroImageUrl = resolve(ogImgMatch[1]);
   }
 
   // ---------- CSS colors extraction ----------
@@ -487,16 +915,155 @@ function extractAssetsFromHtml(html: string, baseUrl: string): ExtractedAssets {
   return {
     logo,
     favicon,
-    images: images.slice(0, 20),
+    images: images.slice(0, 50),
     colors: Array.from(colorSet).slice(0, 20),
     companyName,
     metaDescription,
     socialLinks,
-    navLinks: navLinks.slice(0, 10),
+    navLinks: navLinks.slice(0, 15),
     phoneNumbers: phoneNumbers.slice(0, 3),
     emails: emails.slice(0, 3),
     address,
+    heroImageUrl,
   };
+}
+
+/**
+ * Extract images with context — classifies each image by its purpose.
+ */
+function extractImagesWithContext(html: string, resolve: (src: string) => string): CrawledImage[] {
+  const images: CrawledImage[] = [];
+  const seen = new Set<string>();
+
+  // Identify section contexts by scanning for section/div with recognizable IDs/classes
+  const sectionRegex = /<(?:section|div|article)\b[^>]*(?:class|id)=["']([^"']+)["'][^>]*>([\s\S]*?)<\/(?:section|div|article)>/gi;
+  let sectionMatch;
+
+  // First pass: extract images within identified sections
+  while ((sectionMatch = sectionRegex.exec(html)) !== null) {
+    const sectionId = sectionMatch[1].toLowerCase();
+    const sectionContent = sectionMatch[2];
+
+    // Determine section type
+    let sectionName = "other";
+    if (sectionId.match(/hero|banner|jumbotron|slider|carousel/)) sectionName = "hero";
+    else if (sectionId.match(/product|shop|catalog|item/)) sectionName = "product";
+    else if (sectionId.match(/gallery|portfolio|photo|image/)) sectionName = "gallery";
+    else if (sectionId.match(/about|team|company/)) sectionName = "about";
+    else if (sectionId.match(/blog|news|article|post/)) sectionName = "blog";
+    else if (sectionId.match(/service|feature|offer/)) sectionName = "services";
+
+    extractImagesFromContent(sectionContent, sectionName, resolve, images, seen);
+  }
+
+  // Second pass: extract all remaining images from the full HTML
+  extractImagesFromContent(html, "content", resolve, images, seen);
+
+  return images;
+}
+
+function extractImagesFromContent(
+  content: string,
+  defaultSection: string,
+  resolve: (src: string) => string,
+  images: CrawledImage[],
+  seen: Set<string>
+): void {
+  const imgRegex = /<img\b([^>]*)>/gi;
+  let m;
+
+  while ((m = imgRegex.exec(content)) !== null && images.length < 60) {
+    const attrs = m[1];
+
+    // Extract src
+    const srcMatch = attrs.match(/\bsrc=["']([^"']+)["']/i);
+    if (!srcMatch) continue;
+    const rawSrc = srcMatch[1];
+    if (rawSrc.startsWith("data:") || rawSrc.includes("1x1") || rawSrc.includes("pixel") || rawSrc.includes("spacer")) continue;
+
+    const imgUrl = resolve(rawSrc);
+    if (seen.has(imgUrl)) continue;
+    seen.add(imgUrl);
+
+    // Extract alt
+    const altMatch = attrs.match(/\balt=["']([^"']*)["']/i);
+    const alt = altMatch?.[1] || "";
+
+    // Classify image context
+    let context: CrawledImage["context"] = "other";
+    const lowerSrc = rawSrc.toLowerCase();
+    const lowerAlt = alt.toLowerCase();
+    const lowerAttrs = attrs.toLowerCase();
+
+    if (lowerSrc.includes("logo") || lowerAlt.includes("logo") || lowerAttrs.includes("logo")) {
+      context = "logo";
+    } else if (lowerSrc.includes("icon") || lowerAlt.includes("icon") || lowerAttrs.includes("icon") ||
+               (attrs.match(/width=["'](\d+)["']/i)?.[1] && parseInt(attrs.match(/width=["'](\d+)["']/i)![1]) <= 48)) {
+      context = "icon";
+    } else if (defaultSection === "hero" || lowerAttrs.includes("hero") || lowerAttrs.includes("banner")) {
+      context = "hero";
+    } else if (defaultSection === "product" || lowerAttrs.includes("product")) {
+      context = "product";
+    } else if (defaultSection === "gallery" || lowerAttrs.includes("gallery") || lowerAttrs.includes("lightbox")) {
+      context = "gallery";
+    } else if (lowerSrc.includes("bg") || lowerSrc.includes("background")) {
+      context = "background";
+    } else {
+      context = "content";
+    }
+
+    // Extract dimensions
+    const widthMatch = attrs.match(/\bwidth=["'](\d+)["']/i);
+    const heightMatch = attrs.match(/\bheight=["'](\d+)["']/i);
+    const width = widthMatch ? parseInt(widthMatch[1]) : undefined;
+    const height = heightMatch ? parseInt(heightMatch[1]) : undefined;
+    const aspectRatio = width && height ? `${width}:${height}` : undefined;
+
+    // Get highest resolution from srcset
+    const srcsetMatch = attrs.match(/\bsrcset=["']([^"']*)["']/i);
+    let bestUrl = imgUrl;
+    if (srcsetMatch) {
+      const srcsetParts = srcsetMatch[1].split(",").map((s) => s.trim().split(/\s+/));
+      const highRes = srcsetParts.sort((a, b) => {
+        const aW = parseInt(a[1]) || 0;
+        const bW = parseInt(b[1]) || 0;
+        return bW - aW;
+      })[0];
+      if (highRes?.[0]) {
+        const hiUrl = resolve(highRes[0]);
+        if (hiUrl && !seen.has(hiUrl)) {
+          bestUrl = hiUrl;
+          seen.add(hiUrl);
+        }
+      }
+    }
+
+    // Get surrounding text for context
+    const surroundingText = extractSurroundingText(content, m.index, m[0].length);
+
+    images.push({
+      url: bestUrl,
+      alt,
+      context,
+      section: defaultSection,
+      surroundingText,
+      width,
+      height,
+      aspectRatio,
+    });
+  }
+}
+
+function extractSurroundingText(html: string, imgIndex: number, imgLength: number): string | undefined {
+  // Look for text within 200 chars before and after the image
+  const before = html.slice(Math.max(0, imgIndex - 200), imgIndex);
+  const after = html.slice(imgIndex + imgLength, imgIndex + imgLength + 200);
+  const nearbyText = (before + " " + after)
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 100);
+  return nearbyText || undefined;
 }
 
 function extractTitle(html: string): string {
@@ -582,16 +1149,7 @@ function htmlToSimpleMarkdown(html: string): string {
   md = md.replace(/<sub[^>]*>([\s\S]*?)<\/sub>/gi, "$1");
   md = md.replace(/<sup[^>]*>([\s\S]*?)<\/sup>/gi, "$1");
 
-  // Convert lists (handle ordered lists with numbers)
-  md = md.replace(/<ol[^>]*>([\s\S]*?)<\/ol>/gi, (_, content) => {
-    let counter = 1;
-    return "\n" + content.replace(/<li[^>]*>([\s\S]*?)<\/li>/gi, () => {
-      // We need the match text, so we use a workaround
-      return "";
-    }) + "\n";
-  });
-  // Actually, let's handle lists more carefully
-  // First, convert ordered lists
+  // Convert ordered lists
   md = md.replace(/<ol[^>]*>([\s\S]*?)<\/ol>/gi, (_, listContent) => {
     let counter = 0;
     return "\n" + listContent.replace(/<li[^>]*>([\s\S]*?)<\/li>/gi, (_: string, itemContent: string) => {

@@ -20,10 +20,67 @@ export interface CategoryScore {
   findings: Finding[];
 }
 
+export type PageType =
+  | "homepage"
+  | "product-listing"
+  | "product-detail"
+  | "blog-listing"
+  | "blog-post"
+  | "about"
+  | "contact"
+  | "gallery"
+  | "services"
+  | "pricing"
+  | "other";
+
+export type SiteType =
+  | "corporate"
+  | "e-commerce"
+  | "catalog"
+  | "portfolio"
+  | "blog"
+  | "saas";
+
+export interface CrawledImage {
+  url: string;
+  alt: string;
+  context: "hero" | "product" | "gallery" | "background" | "logo" | "icon" | "content" | "other";
+  section?: string;
+  surroundingText?: string;
+  width?: number;
+  height?: number;
+  aspectRatio?: string;
+}
+
+export interface CrawledProduct {
+  name: string;
+  description: string;
+  price?: string;
+  imageUrl?: string;
+  specs?: Record<string, string>;
+  url?: string;
+}
+
+export interface CrawledBlogPost {
+  title: string;
+  date?: string;
+  author?: string;
+  featuredImage?: string;
+  excerpt: string;
+  categories?: string[];
+  url?: string;
+}
+
+export interface NavigationStructure {
+  header: { text: string; href: string }[];
+  footer: { text: string; href: string }[];
+  breadcrumbs?: { text: string; href: string }[][];
+}
+
 export interface ExtractedAssets {
   logo?: string;
   favicon?: string;
-  images: { url: string; alt: string }[];
+  images: CrawledImage[];
   colors: string[];
   companyName?: string;
   metaDescription?: string;
@@ -32,6 +89,12 @@ export interface ExtractedAssets {
   phoneNumbers: string[];
   emails: string[];
   address?: string;
+  heroImageUrl?: string;
+  siteType?: SiteType;
+  products?: CrawledProduct[];
+  blogPosts?: CrawledBlogPost[];
+  navigation?: NavigationStructure;
+  pageTypes?: Record<string, PageType>;
 }
 
 export interface VariantProgress {
