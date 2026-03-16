@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion } from "framer-motion";
 import { Shuffle, ChevronLeft, ChevronRight, Loader2, AlertCircle } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import VariantCard from "./VariantCard";
 import RemixModal from "./RemixModal";
 import type { RecommendBadgeProps } from "./RecommendBadge";
@@ -21,6 +21,7 @@ export default function VariantComparison({
   onSelectVariant,
 }: VariantComparisonProps) {
   const t = useTranslations("comparison");
+  const locale = useLocale();
   const [recommendation, setRecommendation] =
     useState<RecommendationResponse | null>(null);
   const [recommendLoading, setRecommendLoading] = useState(true);
@@ -101,7 +102,7 @@ export default function VariantComparison({
         // Selection persistence failed — still open preview
       }
 
-      window.open(`/preview/${token}/${index}`, "_blank");
+      window.open(`/${locale}/preview/${token}/${index}`, "_blank");
     },
     [token, onSelectVariant]
   );

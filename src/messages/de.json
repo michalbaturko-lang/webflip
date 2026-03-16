@@ -276,6 +276,11 @@
     "ux": "UX & Design",
     "content": "Inhalt",
     "aiVisibility": "KI-Sichtbarkeit",
-    "analysisTakingTooLong": "Die Analyse dauert zu lange. Der Server antwortet wahrscheinlich nicht. Bitte versuchen Sie es erneut."
+    "analysisTakingTooLong": "Die Analyse dauert zu lange. Der Server antwortet wahrscheinlich nicht. Bitte versuchen Sie es erneut.",
+    "stepConnect": "Verbinden",
+    "stepCrawl": "Scannen",
+    "stepAnalyze": "Analysieren",
+    "stepGenerate": "Generieren",
+    "stepResults": "Ergebnisse"
   }
 }

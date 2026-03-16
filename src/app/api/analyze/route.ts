@@ -19,7 +19,7 @@ export const maxDuration = 300;
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { url } = body;
+    const { url, locale } = body;
 
     if (!url || typeof url !== "string") {
       return NextResponse.json({ error: "URL is required" }, { status: 400 });
@@ -46,7 +46,7 @@ export async function POST(request: Request) {
 
     // Start async pipeline — waitUntil keeps the function alive after response is sent
     waitUntil(
-      runPipeline(normalizedUrl, token).catch(async (err) => {
+      runPipeline(normalizedUrl, token, locale).catch(async (err) => {
         console.error(`Pipeline error for ${token}:`, err);
         try {
           await updateAnalysis(token, {
@@ -72,7 +72,7 @@ export async function POST(request: Request) {
 /**
  * Full analysis pipeline — runs async after returning the token.
  */
-async function runPipeline(url: string, token: string) {
+async function runPipeline(url: string, token: string, locale?: string) {
   try {
   // ─── Stage 1: Crawl ───
   console.log(`[pipeline:${token}] Stage 1: Starting crawl for ${url}`);
@@ -238,7 +238,7 @@ async function runPipeline(url: string, token: string) {
     await updateAnalysis(token, {
       variant_progress: { current: 0, total: 3, message: "Designing variant concepts..." },
     });
-    variants = await generateVariants(currentAnalysis as any, allMarkdown, extractedAssets, businessProfile);
+    variants = await generateVariants(currentAnalysis as any, allMarkdown, extractedAssets, businessProfile, locale);
     console.log(`[pipeline:${token}] Generated ${variants.length} variant concepts`);
     await updateAnalysis(token, { variants }).catch(() => {});
   } catch (err) {
