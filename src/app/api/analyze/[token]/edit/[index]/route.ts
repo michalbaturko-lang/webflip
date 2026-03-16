@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
+import * as cheerio from "cheerio";
 import { getAnalysis, updateAnalysis } from "@/lib/supabase";
 import type { EditHistoryEntry } from "@/lib/supabase";
 
@@ -164,7 +165,51 @@ export async function POST(
     }
 
     const body = await request.json();
-    const { instruction } = body;
+    const { instruction, type: editType, cssPath, property, value } = body;
+
+    // ── Granular element update (from visual editor) ──────────────
+    if (editType === "element" && cssPath && property && value !== undefined) {
+      const analysis = await getAnalysis(token);
+      if (!analysis) {
+        return NextResponse.json({ error: "Analysis not found" }, { status: 404 });
+      }
+
+      const htmlVariants = analysis.html_variants || [];
+      if (variantIndex >= htmlVariants.length || !htmlVariants[variantIndex]) {
+        return NextResponse.json({ error: "Variant not found" }, { status: 404 });
+      }
+
+      const currentHtml = htmlVariants[variantIndex];
+      const $ = cheerio.load(currentHtml);
+      const el = $(cssPath);
+
+      if (el.length === 0) {
+        return NextResponse.json({ error: "Element not found" }, { status: 404 });
+      }
+
+      // Apply CSS property change
+      el.css(property, value);
+
+      const updatedHtml = $.html();
+      const newHtmlVariants = [...htmlVariants];
+      newHtmlVariants[variantIndex] = updatedHtml;
+
+      const existingHistory = analysis.edit_history || [];
+      const newEntry: EditHistoryEntry = {
+        variant_index: variantIndex,
+        instruction: `Style: ${cssPath} { ${property}: ${value} }`,
+        timestamp: new Date().toISOString(),
+        previous_html: currentHtml,
+      };
+      const updatedHistory = [...existingHistory, newEntry].slice(-50);
+
+      await updateAnalysis(token, {
+        html_variants: newHtmlVariants,
+        edit_history: updatedHistory,
+      });
+
+      return NextResponse.json({ success: true, html: updatedHtml });
+    }
 
     if (!instruction || typeof instruction !== "string" || instruction.trim().length === 0) {
       return NextResponse.json({ error: "Instruction is required" }, { status: 400 });

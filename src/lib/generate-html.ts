@@ -140,18 +140,20 @@ AVAILABLE ASSETS:
 - Nav Links: ${(assets?.navLinks || []).map(l => `${l.text}: ${l.href}`).join(", ") || "none"}
 
 INSTRUCTIONS:
-1. Extract ALL real content from the crawled data — NEVER invent placeholder text
-2. ${businessProfile ? `Use the detected language "${businessProfile.language}"` : "Detect the website language (cs/en/de/sk)"} — ALL output text MUST be in that same language
-3. Generate 3 Blog/Aktuality posts — ${businessProfile
+CRITICAL LANGUAGE RULE: ${businessProfile ? `The detected language is "${businessProfile.language}".` : "Detect the website language (cs/en/de/sk)."} Every single piece of text you output — headlines, descriptions, blog titles, FAQ questions and answers, testimonial quotes, stat labels, navLink texts — MUST be in that language. ZERO English text is acceptable when the language is not "en". This includes ALL generated content like blog posts, FAQ items, and testimonials.
+
+1. Extract ALL real content from the crawled data — NEVER invent placeholder text for services/about/stats
+2. Generate 3 Blog/Aktuality posts — ${businessProfile
   ? `use these seed topics grounded in the business's actual expertise: ${businessProfile.blogSeedTopics.slice(0, 4).join("; ")}. Write posts that demonstrate "${companyName}"'s knowledge of ${businessProfile.industry}/${businessProfile.industrySegment} and would attract their target audience (${businessProfile.targetAudience.slice(0, 2).join(", ")})`
-  : "relevant to the detected industry, written in the detected language"}
-4. Generate 5-8 FAQ items — ${businessProfile
+  : "relevant to the detected industry, written in the detected language"}. Use RECENT dates within the last 2-3 months from today (${new Date().toISOString().slice(0, 10)}). Never use dates older than 6 months.
+3. Generate 5-8 FAQ items — ${businessProfile
   ? `use these seed topics based on real customer questions: ${businessProfile.faqSeedTopics.slice(0, 6).join("; ")}. Answers MUST reference "${companyName}"'s actual services (${businessProfile.coreServices.slice(0, 3).map(s => s.name).join(", ")}) and value propositions (${businessProfile.valuePropositions.slice(0, 2).join("; ")}). Address pain points: ${businessProfile.painPointsSolved.slice(0, 3).join("; ")}`
   : "relevant to the company's services, in the detected language"}
-5. Extract real stats/numbers if present (years, clients, projects, satisfaction)${businessProfile?.keyBusinessClaims.length ? ` — known claims: ${businessProfile.keyBusinessClaims.slice(0, 4).join("; ")}` : ""}
-6. Extract real testimonials if present
-7. Use real service/product names and descriptions from the crawled content
-8. For service icons, use one of: briefcase, chart, shield, globe, users, code, heart, star, lightbulb, target
+4. Extract real stats/numbers if present (years, clients, projects, satisfaction)${businessProfile?.keyBusinessClaims.length ? ` — known claims: ${businessProfile.keyBusinessClaims.slice(0, 4).join("; ")}` : ""}
+5. ALWAYS generate at least 3 realistic client testimonials with name, role/company, and review text in the site language. If real testimonials exist in the crawled content, use those. Otherwise create realistic ones that reference specific services of "${companyName}". Never leave testimonials empty.
+6. Use real service/product names and descriptions from the crawled content
+7. For service icons, use one of: briefcase, chart, shield, globe, users, code, heart, star, lightbulb, target
+8. navLinks must include anchor links to ALL sections present on the page (services, about, gallery, blog, testimonials, faq, contact). Use #section-id format. The text of each navLink MUST be in the detected language.
 ${businessProfile ? `9. The headline/subheadline should reflect the core value proposition: ${businessProfile.valuePropositions[0] || businessProfile.summary}` : ""}
 
 Return ONLY valid JSON (no markdown fences, no explanation) with this exact structure:
@@ -225,15 +227,17 @@ Return ONLY valid JSON (no markdown fences, no explanation) with this exact stru
 const TRANSLATIONS: Record<string, Record<string, string>> = {
   section_services: { cs: 'Naše služby', sk: 'Naše služby', en: 'Our Services', de: 'Unsere Dienstleistungen' },
   section_about: { cs: 'O nás', sk: 'O nás', en: 'About Us', de: 'Über uns' },
-  section_blog: { cs: 'Aktuality', sk: 'Aktuality', en: 'Latest Insights', de: 'Neuigkeiten' },
-  section_testimonials: { cs: 'Reference', sk: 'Referencie', en: 'Client Testimonials', de: 'Kundenstimmen' },
+  section_blog: { cs: 'Nejnovější články', sk: 'Najnovšie články', en: 'Latest Insights', de: 'Neuigkeiten' },
+  section_testimonials: { cs: 'Reference klientů', sk: 'Referencie klientov', en: 'Client Testimonials', de: 'Kundenstimmen' },
   section_faq: { cs: 'Časté dotazy', sk: 'Časté otázky', en: 'FAQ', de: 'Häufige Fragen' },
-  section_gallery: { cs: 'Galerie', sk: 'Galéria', en: 'Our Gallery', de: 'Galerie' },
-  section_contact: { cs: 'Kontakt', sk: 'Kontakt', en: 'Contact Us', de: 'Kontaktieren Sie uns' },
+  section_gallery: { cs: 'Naše galerie', sk: 'Naša galéria', en: 'Our Gallery', de: 'Unsere Galerie' },
+  section_contact: { cs: 'Kontaktujte nás', sk: 'Kontaktujte nás', en: 'Get in Touch', de: 'Kontaktieren Sie uns' },
+  section_map: { cs: 'Kde nás najdete', sk: 'Kde nás nájdete', en: 'Find Us', de: 'So finden Sie uns' },
   cta_services: { cs: 'Naše služby', sk: 'Naše služby', en: 'Our Services', de: 'Unsere Dienste' },
   cta_learn_more: { cs: 'Zjistit více', sk: 'Zistiť viac', en: 'Learn More', de: 'Mehr erfahren' },
   cta_read_more: { cs: 'Číst dále', sk: 'Čítať ďalej', en: 'Read More', de: 'Weiterlesen' },
   cta_contact: { cs: 'Kontaktujte nás', sk: 'Kontaktujte nás', en: 'Contact Us', de: 'Kontakt' },
+  cta_send_message: { cs: 'Odeslat zprávu', sk: 'Odoslať správu', en: 'Send Message', de: 'Nachricht senden' },
   nav_services: { cs: 'Služby', sk: 'Služby', en: 'Services', de: 'Dienstleistungen' },
   nav_about: { cs: 'O nás', sk: 'O nás', en: 'About', de: 'Über uns' },
   nav_blog: { cs: 'Blog', sk: 'Blog', en: 'Blog', de: 'Blog' },
@@ -244,9 +248,38 @@ const TRANSLATIONS: Record<string, Record<string, string>> = {
   label_what_we_do: { cs: 'Co děláme', sk: 'Čo robíme', en: 'What We Do', de: 'Was wir tun' },
   label_latest_updates: { cs: 'Aktuality', sk: 'Aktuality', en: 'Latest Updates', de: 'Neuigkeiten' },
   label_contact_info: { cs: 'Kontaktní údaje', sk: 'Kontaktné údaje', en: 'Contact Information', de: 'Kontaktdaten' },
+  label_phone: { cs: 'Telefon', sk: 'Telefón', en: 'Phone', de: 'Telefon' },
+  label_email: { cs: 'E-mail', sk: 'E-mail', en: 'Email', de: 'E-Mail' },
+  label_address: { cs: 'Adresa', sk: 'Adresa', en: 'Address', de: 'Adresse' },
+  label_send_message: { cs: 'Napište nám', sk: 'Napíšte nám', en: 'Send Us a Message', de: 'Schreiben Sie uns' },
+  label_full_name: { cs: 'Celé jméno', sk: 'Celé meno', en: 'Full Name', de: 'Vollständiger Name' },
+  label_email_address: { cs: 'E-mailová adresa', sk: 'E-mailová adresa', en: 'Email Address', de: 'E-Mail-Adresse' },
+  label_phone_number: { cs: 'Telefonní číslo', sk: 'Telefónne číslo', en: 'Phone Number', de: 'Telefonnummer' },
+  label_subject: { cs: 'Předmět', sk: 'Predmet', en: 'Subject', de: 'Betreff' },
+  label_message: { cs: 'Zpráva', sk: 'Správa', en: 'Message', de: 'Nachricht' },
+  label_quick_links: { cs: 'Rychlé odkazy', sk: 'Rýchle odkazy', en: 'Quick Links', de: 'Schnelllinks' },
+  label_navigation: { cs: 'Navigace', sk: 'Navigácia', en: 'Navigation', de: 'Navigation' },
+  label_connect: { cs: 'Spojte se s námi', sk: 'Spojte sa s nami', en: 'Connect', de: 'Verbinden' },
+  placeholder_name: { cs: 'Vaše celé jméno', sk: 'Vaše celé meno', en: 'Your full name', de: 'Ihr vollständiger Name' },
+  placeholder_email: { cs: 'vas@email.cz', sk: 'vas@email.sk', en: 'your@email.com', de: 'ihre@email.de' },
+  placeholder_phone: { cs: 'Vaše telefonní číslo', sk: 'Vaše telefónne číslo', en: 'Your phone number', de: 'Ihre Telefonnummer' },
+  placeholder_message: { cs: 'Jak vám můžeme pomoci?', sk: 'Ako vám môžeme pomôcť?', en: 'How can we help you?', de: 'Wie können wir Ihnen helfen?' },
+  select_subject: { cs: 'Vyberte předmět', sk: 'Vyberte predmet', en: 'Select a subject', de: 'Betreff wählen' },
+  select_general: { cs: 'Obecný dotaz', sk: 'Všeobecný dotaz', en: 'General Inquiry', de: 'Allgemeine Anfrage' },
+  select_consultation: { cs: 'Konzultace', sk: 'Konzultácia', en: 'Consultation', de: 'Beratung' },
+  select_services: { cs: 'Služby', sk: 'Služby', en: 'Services', de: 'Dienstleistungen' },
+  select_other: { cs: 'Jiné', sk: 'Iné', en: 'Other', de: 'Sonstiges' },
   subtitle_services: { cs: 'Pečlivě připravená řešení pro váš úspěch', sk: 'Starostlivo pripravené riešenia pre váš úspech', en: 'Carefully crafted solutions for your success', de: 'Sorgfältig erarbeitete Lösungen für Ihren Erfolg' },
   subtitle_about: { cs: 'Náš příběh a hodnoty', sk: 'Náš príbeh a hodnoty', en: 'Our story and values', de: 'Unsere Geschichte und Werte' },
   subtitle_blog: { cs: 'Novinky a aktuální informace', sk: 'Novinky a aktuálne informácie', en: 'News and latest updates', de: 'Neuigkeiten und aktuelle Informationen' },
+  subtitle_testimonials: { cs: 'Co o nás říkají naši klienti', sk: 'Čo o nás hovoria naši klienti', en: 'Hear what our clients say about working with us', de: 'Was unsere Kunden über uns sagen' },
+  subtitle_faq: { cs: 'Odpovědi na nejčastější dotazy ohledně našich služeb', sk: 'Odpovede na najčastejšie otázky o našich službách', en: 'Find answers to the most common questions about our services', de: 'Antworten auf die häufigsten Fragen zu unseren Dienstleistungen' },
+  subtitle_gallery: { cs: 'Přehled našich prací a projektů', sk: 'Prehľad našich prác a projektov', en: 'A visual showcase of our work and projects', de: 'Ein visueller Überblick unserer Arbeiten und Projekte' },
+  subtitle_contact: { cs: 'Rádi od vás uslyšíme. Kontaktujte nás a společně najdeme řešení.', sk: 'Radi od vás počujeme. Kontaktujte nás a spoločne nájdeme riešenie.', en: 'We would love to hear from you. Reach out and let us discuss how we can help.', de: 'Wir freuen uns auf Ihre Nachricht. Kontaktieren Sie uns.' },
+  subtitle_map: { cs: 'Navštivte nás nebo si zobrazte trasu na mapě', sk: 'Navštívte nás alebo si zobrazte trasu na mape', en: 'Visit us at our office or get directions using the map below', de: 'Besuchen Sie uns oder nutzen Sie die Karte für die Wegbeschreibung' },
+  cookie_text: { cs: 'Používáme cookies ke zlepšení vašeho zážitku z prohlížení, poskytování personalizovaného obsahu a analýze návštěvnosti. Kliknutím na \u201ePřijmout\u201c souhlasíte s používáním cookies.', sk: 'Používame cookies na zlepšenie vášho zážitku z prehliadania, poskytovanie personalizovaného obsahu a analýzu návštevnosti. Kliknutím na \u201ePrijať\u201c súhlasíte s používaním cookies.', en: 'We use cookies to enhance your browsing experience, serve personalized content, and analyze our traffic. By clicking \u201cAccept\u201d, you consent to our use of cookies.', de: 'Wir verwenden Cookies, um Ihr Browsing-Erlebnis zu verbessern, personalisierte Inhalte bereitzustellen und unseren Datenverkehr zu analysieren. Durch Klicken auf \u201eAkzeptieren\u201c stimmen Sie der Verwendung von Cookies zu.' },
+  cookie_accept: { cs: 'Přijmout', sk: 'Prijať', en: 'Accept', de: 'Akzeptieren' },
+  cookie_decline: { cs: 'Odmítnout', sk: 'Odmietnuť', en: 'Decline', de: 'Ablehnen' },
   footer_rights: { cs: 'Všechna práva vyhrazena.', sk: 'Všetky práva vyhradené.', en: 'All rights reserved.', de: 'Alle Rechte vorbehalten.' },
 };
 
@@ -371,9 +404,40 @@ function fillTemplate(template: string, data: TemplateData): string {
     TEMPLATE_VAR_label_what_we_do: tt('label_what_we_do', lang),
     TEMPLATE_VAR_label_latest_updates: tt('label_latest_updates', lang),
     TEMPLATE_VAR_label_contact_info: tt('label_contact_info', lang),
+    TEMPLATE_VAR_label_phone: tt('label_phone', lang),
+    TEMPLATE_VAR_label_email: tt('label_email', lang),
+    TEMPLATE_VAR_label_address: tt('label_address', lang),
+    TEMPLATE_VAR_label_send_message: tt('label_send_message', lang),
+    TEMPLATE_VAR_label_full_name: tt('label_full_name', lang),
+    TEMPLATE_VAR_label_email_address: tt('label_email_address', lang),
+    TEMPLATE_VAR_label_phone_number: tt('label_phone_number', lang),
+    TEMPLATE_VAR_label_subject: tt('label_subject', lang),
+    TEMPLATE_VAR_label_message: tt('label_message', lang),
+    TEMPLATE_VAR_label_quick_links: tt('label_quick_links', lang),
+    TEMPLATE_VAR_label_navigation: tt('label_navigation', lang),
+    TEMPLATE_VAR_label_connect: tt('label_connect', lang),
+    TEMPLATE_VAR_placeholder_name: tt('placeholder_name', lang),
+    TEMPLATE_VAR_placeholder_email: tt('placeholder_email', lang),
+    TEMPLATE_VAR_placeholder_phone: tt('placeholder_phone', lang),
+    TEMPLATE_VAR_placeholder_message: tt('placeholder_message', lang),
+    TEMPLATE_VAR_select_subject: tt('select_subject', lang),
+    TEMPLATE_VAR_select_general: tt('select_general', lang),
+    TEMPLATE_VAR_select_consultation: tt('select_consultation', lang),
+    TEMPLATE_VAR_select_services: tt('select_services', lang),
+    TEMPLATE_VAR_select_other: tt('select_other', lang),
     TEMPLATE_VAR_subtitle_services: tt('subtitle_services', lang),
     TEMPLATE_VAR_subtitle_about: tt('subtitle_about', lang),
     TEMPLATE_VAR_subtitle_blog: tt('subtitle_blog', lang),
+    TEMPLATE_VAR_subtitle_testimonials: tt('subtitle_testimonials', lang),
+    TEMPLATE_VAR_subtitle_faq: tt('subtitle_faq', lang),
+    TEMPLATE_VAR_subtitle_gallery: tt('subtitle_gallery', lang),
+    TEMPLATE_VAR_subtitle_contact: tt('subtitle_contact', lang),
+    TEMPLATE_VAR_subtitle_map: tt('subtitle_map', lang),
+    TEMPLATE_VAR_section_map: tt('section_map', lang),
+    TEMPLATE_VAR_cta_send_message: tt('cta_send_message', lang),
+    TEMPLATE_VAR_cookie_text: tt('cookie_text', lang),
+    TEMPLATE_VAR_cookie_accept: tt('cookie_accept', lang),
+    TEMPLATE_VAR_cookie_decline: tt('cookie_decline', lang),
     TEMPLATE_VAR_footer_rights: tt('footer_rights', lang),
   };
 

@@ -276,6 +276,11 @@
     "ux": "UX & Design",
     "content": "Obsah",
     "aiVisibility": "AI Viditelnost",
-    "analysisTakingTooLong": "Analýza trvá příliš dlouho. Server pravděpodobně neodpovídá. Zkuste to prosím znovu."
+    "analysisTakingTooLong": "Analýza trvá příliš dlouho. Server pravděpodobně neodpovídá. Zkuste to prosím znovu.",
+    "stepConnect": "Připojení",
+    "stepCrawl": "Procházení",
+    "stepAnalyze": "Analýza",
+    "stepGenerate": "Generování",
+    "stepResults": "Výsledky"
   }
 }
