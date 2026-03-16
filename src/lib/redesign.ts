@@ -9,7 +9,8 @@ export async function generateVariants(
   analysis: AnalysisRow,
   crawledContent: string,
   assets?: ExtractedAssets | null,
-  businessProfile?: BusinessProfile | null
+  businessProfile?: BusinessProfile | null,
+  locale?: string
 ): Promise<DesignVariant[]> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error("Missing ANTHROPIC_API_KEY");
@@ -105,7 +106,7 @@ ${content}
 - Subtle decorative elements: thin horizontal rules, generous letter-spacing on labels
 
 ## RULES
-- DETECT the language of the crawled content (Czech, English, German, Slovak, etc.) — ALL descriptions, layout text, and keyFeatures MUST be written in that SAME language
+- The user's UI language is "${locale || "auto-detect"}". ALL descriptions, layout text, and keyFeatures MUST be written in ${locale === "cs" ? "Czech" : locale === "sk" ? "Slovak" : locale === "de" ? "German" : locale === "en" ? "English" : "the language of the crawled content (Czech, English, German, Slovak, etc.)"}. This is CRITICAL — never output English text when the target language is different
 - descriptions MUST reference "${companyName}" by name and their actual business/industry
 - keyFeatures MUST be specific to THIS site's problems (based on scores above) — mention concrete improvements
 - Each palette must be GENUINELY different — Corporate is cool/blue, Bold is dark/vibrant, Elegant is warm/muted
