@@ -20,6 +20,11 @@ export default function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Skip i18n middleware for all other API routes
+  if (pathname.startsWith("/api/")) {
+    return NextResponse.next();
+  }
+
   // Protect /[locale]/admin/* pages (redirect to login if no cookie)
   const adminPageMatch = pathname.match(/^\/([a-z]{2})\/admin(\/.*)?$/);
   if (adminPageMatch) {
