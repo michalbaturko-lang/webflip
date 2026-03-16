@@ -4,6 +4,7 @@
  */
 
 import * as cheerio from "cheerio";
+import type { Element } from "domhandler";
 
 export interface PreScanData {
   url: string;
@@ -152,7 +153,7 @@ function detectLanguage($: cheerio.CheerioAPI): string {
 function estimatePageCount($: cheerio.CheerioAPI, domain: string): number {
   // Count unique internal navigation links
   const internalLinks = new Set<string>();
-  $("nav a[href], header a[href], .menu a[href], .nav a[href]").each((_: number, el: cheerio.Element) => {
+  $("nav a[href], header a[href], .menu a[href], .nav a[href]").each((_: number, el: Element) => {
     const href = $(el).attr("href") || "";
     if (
       href.startsWith("/") ||
@@ -283,7 +284,7 @@ export async function preScan(inputUrl: string): Promise<PreScanData> {
   // Social links
   base.hasSocialLinks = $("a[href]")
     .toArray()
-    .some((el: cheerio.Element) => {
+    .some((el: Element) => {
       const href = $(el).attr("href") || "";
       return SOCIAL_DOMAINS.some((d) => href.includes(d));
     });
