@@ -92,6 +92,7 @@ export default function ImageReplacer({
       <div className="p-3 space-y-3">
         {/* Current image preview */}
         <div className="rounded-lg overflow-hidden border border-white/10 bg-white/5">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={currentSrc}
             alt="Current"
@@ -188,6 +189,7 @@ export default function ImageReplacer({
         {previewSrc && (
           <div className="space-y-2">
             <div className="rounded-lg overflow-hidden border border-emerald-500/30 bg-white/5">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={previewSrc}
                 alt="Preview"

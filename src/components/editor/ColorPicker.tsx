@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { HexColorPicker, HexColorInput } from "react-colorful";
 
 interface ColorPickerProps {
@@ -44,14 +44,13 @@ function addRecentColor(color: string) {
 
 export default function ColorPicker({ color, onChange, label }: ColorPickerProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [recentColors, setRecentColors] = useState<string[]>([]);
+  const [recentVersion, setRecentVersion] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
 
   const hexColor = rgbToHex(color);
 
-  useEffect(() => {
-    setRecentColors(getRecentColors());
-  }, [isOpen]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const recentColors = useMemo(() => getRecentColors(), [isOpen, recentVersion]);
 
   // Close on outside click
   useEffect(() => {
@@ -71,7 +70,7 @@ export default function ColorPicker({ color, onChange, label }: ColorPickerProps
 
   const handleComplete = (newColor: string) => {
     addRecentColor(newColor);
-    setRecentColors(getRecentColors());
+    setRecentVersion((v) => v + 1);
   };
 
   return (
@@ -128,7 +127,6 @@ export default function ColorPicker({ color, onChange, label }: ColorPickerProps
                     key={c}
                     onClick={() => {
                       onChange(c);
-                      handleComplete(c);
                     }}
                     className="w-5 h-5 rounded border border-white/20 hover:ring-1 hover:ring-indigo-400 transition-all"
                     style={{ background: c }}

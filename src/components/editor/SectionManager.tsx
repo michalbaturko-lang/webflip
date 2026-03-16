@@ -26,13 +26,10 @@ export default function SectionManager({
 
   // Scan sections in iframe
   const scanSections = useCallback(() => {
-    if (editorMode === "browse") {
-      setSections([]);
-      return;
-    }
+    if (editorMode === "browse") return [];
     try {
       const doc = iframeRef.current?.contentDocument;
-      if (!doc) return;
+      if (!doc) return [];
 
       const iRect = iframeRef.current?.getBoundingClientRect();
       if (iRect) setIframeTop(iRect.top);
@@ -55,15 +52,16 @@ export default function SectionManager({
           rect: { top: rect.top, height: rect.height },
         });
       });
-      setSections(infos);
+      return infos;
     } catch {
-      // Cross-origin
+      return [];
     }
   }, [iframeRef, editorMode]);
 
   useEffect(() => {
-    scanSections();
-    const interval = setInterval(scanSections, 2000);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- polling external iframe DOM state is a valid effect side-effect
+    setSections(scanSections());
+    const interval = setInterval(() => setSections(scanSections()), 2000);
     return () => clearInterval(interval);
   }, [scanSections]);
 

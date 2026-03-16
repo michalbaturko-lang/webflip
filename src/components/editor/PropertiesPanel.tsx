@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { X, ChevronDown, ChevronRight, Save } from "lucide-react";
 import type { ElementInfo } from "@/lib/visual-editor/messages";
-import ColorPicker, { rgbToHex } from "./ColorPicker";
+import ColorPicker from "./ColorPicker";
 import SpacingEditor from "./SpacingEditor";
 
 interface PropertiesPanelProps {

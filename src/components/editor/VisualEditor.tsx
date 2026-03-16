@@ -56,23 +56,17 @@ export default function VisualEditor({
     }
   }, [iframeRef]);
 
-  // Inject on mode change to select/edit
+  // Sync editor mode to iframe and clear selection on mode change
   useEffect(() => {
-    if (editorMode === "browse") {
-      // Tell iframe to enter browse mode
-      iframeRef.current?.contentWindow?.postMessage(
-        { type: "wf-cmd-set-mode", mode: "browse" },
-        "*"
-      );
-      setSelectedElement(null);
-      return;
-    }
-
-    injectScript();
     iframeRef.current?.contentWindow?.postMessage(
       { type: "wf-cmd-set-mode", mode: editorMode },
       "*"
     );
+    if (editorMode !== "browse") {
+      injectScript();
+    }
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- clearing selection in response to external mode prop change is intentional
+    if (editorMode === "browse") setSelectedElement(null);
   }, [editorMode, injectScript, iframeRef]);
 
   // Re-inject on iframe load (when srcdoc changes)

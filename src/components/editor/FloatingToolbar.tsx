@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect, useState } from "react";
+import { useRef, useMemo } from "react";
 import {
   Type,
   Palette,
@@ -35,36 +35,27 @@ export default function FloatingToolbar({
   onDelete,
 }: FloatingToolbarProps) {
   const toolbarRef = useRef<HTMLDivElement>(null);
-  const [position, setPosition] = useState({ top: 0, left: 0 });
-  const [visible, setVisible] = useState(false);
 
-  useEffect(() => {
-    if (!element || !iframeRect) {
-      setVisible(false);
-      return;
-    }
+  const position = useMemo(() => {
+    if (!element || !iframeRect) return null;
 
     const er = element.boundingRect;
     const toolbarHeight = 40;
     const toolbarWidth = 260;
 
-    // Calculate position relative to viewport
     let top = iframeRect.top + er.top * scaleFactor - toolbarHeight - 8;
     let left = iframeRect.left + er.left * scaleFactor + (er.width * scaleFactor) / 2 - toolbarWidth / 2;
 
-    // If toolbar goes above viewport, show below element
     if (top < 8) {
       top = iframeRect.top + (er.top + er.height) * scaleFactor + 8;
     }
 
-    // Clamp horizontal position
     left = Math.max(8, Math.min(left, window.innerWidth - toolbarWidth - 8));
 
-    setPosition({ top, left });
-    setVisible(true);
+    return { top, left };
   }, [element, iframeRect, scaleFactor]);
 
-  if (!element || !visible) return null;
+  if (!element || !position) return null;
 
   const isImage = element.isImage;
   const isText = ["h1","h2","h3","h4","h5","h6","p","span","a","button","li","td","th","label","blockquote"].includes(element.tag);
