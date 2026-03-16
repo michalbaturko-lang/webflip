@@ -276,6 +276,11 @@
     "ux": "UX & Design",
     "content": "Content",
     "aiVisibility": "AI Visibility",
-    "analysisTakingTooLong": "Analysis is taking too long. Server is probably not responding. Please try again."
+    "analysisTakingTooLong": "Analysis is taking too long. Server is probably not responding. Please try again.",
+    "stepConnect": "Connect",
+    "stepCrawl": "Crawl",
+    "stepAnalyze": "Analyze",
+    "stepGenerate": "Generate",
+    "stepResults": "Results"
   }
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Globe,
@@ -432,6 +432,8 @@ function StageEmailGate({
 
 export default function AnalysisOrchestrator({ url, token, onStatusChange }: Props) {
   const t = useTranslations("analysis");
+  const locale = useLocale();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [stage, setStage] = useState<Stage>(0);
   const [data, setData] = useState<ApiResponse | null>(null);
@@ -455,7 +457,13 @@ export default function AnalysisOrchestrator({ url, token, onStatusChange }: Pro
     }
 
     onStatusChange?.(apiStatus, data?.variantsCount ?? data?.variants?.length ?? 0, error);
-  }, [data?.status, data?.variantsCount, data?.variants?.length, error, onStatusChange]);
+
+    // Auto-redirect to results page when analysis completes on the homepage
+    if (apiStatus === "complete" && onStatusChange) {
+      const resultToken = data?.token || token;
+      router.push(`/${locale}/analyze/${resultToken}`);
+    }
+  }, [data?.status, data?.variantsCount, data?.variants?.length, error, onStatusChange, data?.token, token, locale, router]);
 
   // Start analysis on mount — check for existing record first
   useEffect(() => {
@@ -503,7 +511,7 @@ export default function AnalysisOrchestrator({ url, token, onStatusChange }: Pro
         const res = await fetch("/api/analyze", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url }),
+          body: JSON.stringify({ url, locale }),
         });
         const result = await res.json();
         if (!res.ok) {
