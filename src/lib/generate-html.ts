@@ -82,8 +82,12 @@ export async function generateHtmlVariants(
         primaryColor: variant.palette.primary,
       };
 
+      // Build dynamic navLinks from sections with actual content
+      variantData.navLinks = buildDynamicNavLinks(variantData);
+
       let html = fillTemplate(template, variantData);
       html = postProcessHtml(html, variant);
+      html = injectTheftProtection(html);
       return validateHtml(html, variantData.companyName);
     } catch (err) {
       console.error(`[generate-html] Template fill failed for ${variant.name}:`, err);
@@ -241,6 +245,9 @@ const TRANSLATIONS: Record<string, Record<string, string>> = {
   label_latest_updates: { cs: 'Aktuality', sk: 'Aktuality', en: 'Latest Updates', de: 'Neuigkeiten' },
   label_contact_info: { cs: 'Kontaktní údaje', sk: 'Kontaktné údaje', en: 'Contact Information', de: 'Kontaktdaten' },
   subtitle_services: { cs: 'Pečlivě připravená řešení pro váš úspěch', sk: 'Starostlivo pripravené riešenia pre váš úspech', en: 'Carefully crafted solutions for your success', de: 'Sorgfältig erarbeitete Lösungen für Ihren Erfolg' },
+  subtitle_about: { cs: 'Náš příběh a hodnoty', sk: 'Náš príbeh a hodnoty', en: 'Our story and values', de: 'Unsere Geschichte und Werte' },
+  subtitle_blog: { cs: 'Novinky a aktuální informace', sk: 'Novinky a aktuálne informácie', en: 'News and latest updates', de: 'Neuigkeiten und aktuelle Informationen' },
+  footer_rights: { cs: 'Všechna práva vyhrazena.', sk: 'Všetky práva vyhradené.', en: 'All rights reserved.', de: 'Alle Rechte vorbehalten.' },
 };
 
 function tt(key: string, lang: string): string {
@@ -365,6 +372,9 @@ function fillTemplate(template: string, data: TemplateData): string {
     TEMPLATE_VAR_label_latest_updates: tt('label_latest_updates', lang),
     TEMPLATE_VAR_label_contact_info: tt('label_contact_info', lang),
     TEMPLATE_VAR_subtitle_services: tt('subtitle_services', lang),
+    TEMPLATE_VAR_subtitle_about: tt('subtitle_about', lang),
+    TEMPLATE_VAR_subtitle_blog: tt('subtitle_blog', lang),
+    TEMPLATE_VAR_footer_rights: tt('footer_rights', lang),
   };
 
   for (const [key, value] of Object.entries(scalarReplacements)) {
@@ -610,6 +620,109 @@ function buildBusinessContext(profile: BusinessProfile): string {
   if (profile.geographicFocus) parts.push(`Geographic Focus: ${profile.geographicFocus}`);
   if (profile.contentThemes.length) parts.push(`Content Themes: ${profile.contentThemes.join("; ")}`);
   return parts.join("\n") + "\n";
+}
+
+// ── Dynamic Navigation Builder ──
+
+/**
+ * Build navLinks dynamically from sections that have content.
+ * This ensures nav links only point to rendered sections (no 404s)
+ * and always use #section-id anchors (never external URLs).
+ */
+function buildDynamicNavLinks(data: TemplateData): TemplateData["navLinks"] {
+  const lang = data.language || "en";
+  const links: TemplateData["navLinks"] = [];
+
+  // Order per TEMPLATE-STANDARDS rule #11:
+  // Services → About → Gallery → Blog → Testimonials → FAQ → Contact
+  if (data.services.length >= 2) {
+    links.push({ text: tt("nav_services", lang), href: "#services" });
+  }
+  if (data.aboutText.trim()) {
+    links.push({ text: tt("nav_about", lang), href: "#about" });
+  }
+  if (data.gallery.length >= 3) {
+    links.push({ text: tt("nav_gallery", lang), href: "#gallery" });
+  }
+  if (data.blogPosts.length >= 2) {
+    links.push({ text: tt("nav_blog", lang), href: "#blog" });
+  }
+  if (data.testimonials.length >= 1) {
+    links.push({ text: tt("nav_testimonials", lang), href: "#testimonials" });
+  }
+  if (data.faqItems.length >= 1) {
+    links.push({ text: tt("nav_faq", lang), href: "#faq" });
+  }
+  // Contact is always shown
+  links.push({ text: tt("nav_contact", lang), href: "#contact" });
+
+  return links;
+}
+
+// ── HTML Theft Protection ──
+
+/**
+ * Inject anti-theft protection into generated HTML previews.
+ * Prevents easy copying of source code and adds a visual watermark.
+ */
+function injectTheftProtection(html: string): string {
+  const protectionCSS = `
+    /* Anti-theft: disable text selection on body */
+    body { -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none; }
+    /* Allow selection inside forms */
+    input, textarea, select { -webkit-user-select: text; -moz-user-select: text; -ms-user-select: text; user-select: text; }
+    /* Watermark overlay */
+    body::after {
+      content: 'PREVIEW';
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) rotate(-30deg);
+      font-size: 8vw;
+      font-weight: 900;
+      color: rgba(0, 0, 0, 0.04);
+      pointer-events: none;
+      z-index: 99999;
+      white-space: nowrap;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+    }`;
+
+  const protectionJS = `
+  <script>
+  (function(){
+    // Disable right-click context menu
+    document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+    // Disable common copy shortcuts
+    document.addEventListener('keydown', function(e){
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'u' || e.key === 'U' || e.key === 's' || e.key === 'S')) {
+        e.preventDefault();
+      }
+    });
+    // Intercept all link clicks to prevent navigation away from preview
+    document.addEventListener('click', function(e){
+      var link = e.target.closest('a');
+      if (!link) return;
+      var href = link.getAttribute('href');
+      if (!href) return;
+      // Allow anchor links (scroll within page)
+      if (href.startsWith('#')) return;
+      // Prevent all other navigation (external URLs, relative paths)
+      e.preventDefault();
+    });
+  })();
+  </script>`;
+
+  // Inject CSS before </style>
+  let result = html;
+  if (result.includes("</style>")) {
+    result = result.replace("</style>", `${protectionCSS}\n  </style>`);
+  }
+
+  // Inject JS and base target before </body>
+  result = result.replace("</body>", `${protectionJS}\n</body>`);
+
+  return result;
 }
 
 // ── Helper Functions ──

@@ -520,7 +520,7 @@
       <div class="footer__grid">
         <div class="footer__brand">
           <p class="footer__brand-name">TEMPLATE_VAR_companyName</p>
-          <p>Dedicated to excellence in every detail. Quality, craft, and an unwavering commitment to our clients.</p>
+          <p>TEMPLATE_VAR_subheadline</p>
         </div>
         <div class="footer__nav">
           <h4>Navigation</h4>
@@ -531,11 +531,11 @@
           </ul>
         </div>
         <div class="footer__nav">
-          <h4>Legal</h4>
+          <h4>TEMPLATE_VAR_nav_services</h4>
           <ul role="list">
-            <li><a href="/privacy">Privacy Policy</a></li>
-            <li><a href="/terms">Terms of Service</a></li>
-            <li><a href="/cookies">Cookie Policy</a></li>
+            <!-- REPEAT:navLinks -->
+            <li><a href="TEMPLATE_VAR_navHref">TEMPLATE_VAR_navText</a></li>
+            <!-- /REPEAT:navLinks -->
           </ul>
         </div>
         <div class="footer__nav">
@@ -550,7 +550,7 @@
         </div>
       </div>
       <div class="footer__bottom">
-        <p>&copy; TEMPLATE_VAR_year TEMPLATE_VAR_companyName. All rights reserved.</p>
+        <p>&copy; TEMPLATE_VAR_year TEMPLATE_VAR_companyName. TEMPLATE_VAR_footer_rights</p>
         <p>TEMPLATE_VAR_companyName &mdash; TEMPLATE_VAR_address</p>
       </div>
     </div>
@@ -559,7 +559,7 @@
   <!-- ===== 13. COOKIE CONSENT BANNER (GDPR) ===== -->
   <div class="cookie-banner" id="cookie-banner" role="dialog" aria-label="Cookie consent" aria-describedby="cookie-text">
     <div class="cookie-banner__inner">
-      <p class="cookie-banner__text" id="cookie-text">We use cookies to enhance your experience and analyze site traffic. By clicking &ldquo;Accept,&rdquo; you consent to our use of cookies per our <a href="/cookies">Cookie Policy</a>.</p>
+      <p class="cookie-banner__text" id="cookie-text">We use cookies to enhance your experience and analyze site traffic. By clicking &ldquo;Accept,&rdquo; you consent to our use of cookies.</p>
       <div class="cookie-banner__actions">
         <button class="cookie-banner__btn cookie-banner__btn--accept" id="cookie-accept">Accept</button>
         <button class="cookie-banner__btn" id="cookie-decline">Decline</button>

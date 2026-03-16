@@ -695,7 +695,7 @@
       <div class="hero-content">
         <h1 class="gradient-text">TEMPLATE_VAR_headline</h1>
         <p>TEMPLATE_VAR_subheadline</p>
-        <a href="#contact" class="btn-primary">Contact Us</a>
+        <a href="#contact" class="btn-primary">TEMPLATE_VAR_cta_contact</a>
       </div>
     </section>
 
@@ -717,7 +717,7 @@
     <section id="services" class="section-padding" aria-labelledby="services-heading">
       <div class="container">
         <h2 id="services-heading" class="section-title">
-          <span class="gradient-text">Services</span>
+          <span class="gradient-text">TEMPLATE_VAR_section_services</span>
         </h2>
         <div class="services-grid">
           <!-- REPEAT:services -->
@@ -738,7 +738,7 @@
           <div class="about-text">
             <h2 id="about-heading" class="gradient-text">TEMPLATE_VAR_companyName</h2>
             <p>TEMPLATE_VAR_aboutText</p>
-            <a href="#contact" class="btn-primary" style="margin-top:1rem;">Contact Us</a>
+            <a href="#contact" class="btn-primary" style="margin-top:1rem;">TEMPLATE_VAR_cta_contact</a>
           </div>
         </div>
       </div>
@@ -748,7 +748,7 @@
     <section id="blog" class="section-padding" aria-labelledby="blog-heading">
       <div class="container">
         <h2 id="blog-heading" class="section-title">
-          <span class="gradient-text">Latest Updates</span>
+          <span class="gradient-text">TEMPLATE_VAR_section_blog</span>
         </h2>
         <div class="blog-grid">
           <!-- REPEAT:blogPosts -->
@@ -766,7 +766,7 @@
     <section id="testimonials" class="section-padding" aria-labelledby="testimonials-heading">
       <div class="container">
         <h2 id="testimonials-heading" class="section-title">
-          <span class="gradient-text">Testimonials</span>
+          <span class="gradient-text">TEMPLATE_VAR_section_testimonials</span>
         </h2>
         <div class="testimonials-grid">
           <!-- REPEAT:testimonials -->
@@ -784,7 +784,7 @@
     <section id="faq" class="section-padding" aria-labelledby="faq-heading">
       <div class="container">
         <h2 id="faq-heading" class="section-title">
-          <span class="gradient-text">FAQ</span>
+          <span class="gradient-text">TEMPLATE_VAR_section_faq</span>
         </h2>
         <div class="faq-list" role="list">
           <!-- REPEAT:faqItems -->
@@ -805,7 +805,7 @@
     <section id="gallery" class="section-padding" aria-labelledby="gallery-heading">
       <div class="container">
         <h2 id="gallery-heading" class="section-title">
-          <span class="gradient-text">Gallery</span>
+          <span class="gradient-text">TEMPLATE_VAR_section_gallery</span>
         </h2>
         <div class="gallery-grid">
           <!-- REPEAT:gallery -->
@@ -840,7 +840,7 @@
     <section id="contact" class="section-padding" aria-labelledby="contact-heading">
       <div class="container">
         <h2 id="contact-heading" class="section-title">
-          <span class="gradient-text">Contact Us</span>
+          <span class="gradient-text">TEMPLATE_VAR_section_contact</span>
         </h2>
         <div class="contact-grid fade-in">
           <div class="contact-info">
@@ -924,23 +924,15 @@
         <div class="footer-links">
           <h4>TEMPLATE_VAR_nav_services</h4>
           <ul>
-            <li><a href="#faq">TEMPLATE_VAR_nav_faq</a></li>
-            <li><a href="#gallery">TEMPLATE_VAR_nav_gallery</a></li>
-            <li><a href="#testimonials">TEMPLATE_VAR_nav_testimonials</a></li>
-          </ul>
-        </div>
-
-        <div class="footer-links">
-          <h4>Legal</h4>
-          <ul>
-            <li><a href="/privacy">Privacy Policy</a></li>
-            <li><a href="/terms">Terms of Service</a></li>
+            <!-- REPEAT:navLinks -->
+            <li><a href="TEMPLATE_VAR_navHref">TEMPLATE_VAR_navText</a></li>
+            <!-- /REPEAT:navLinks -->
           </ul>
         </div>
       </div>
 
       <div class="footer-bottom">
-        <p>&copy; TEMPLATE_VAR_year TEMPLATE_VAR_companyName. All rights reserved.</p>
+        <p>&copy; TEMPLATE_VAR_year TEMPLATE_VAR_companyName. TEMPLATE_VAR_footer_rights</p>
       </div>
     </div>
   </footer>
