@@ -71,6 +71,12 @@ export async function GET(
         response.selectedVariant = analysis.selected_variant;
       }
 
+      // Include enrichment results (available to all)
+      const enrichment = (analysis as any).enrichment_results;
+      if (enrichment) {
+        response.enrichment = enrichment;
+      }
+
       // Only show full results if email is provided (email gate)
       if (analysis.email) {
         response.findings = analysis.findings;
