@@ -8,10 +8,14 @@ import {
   Minimize2,
   Smartphone,
   Monitor,
+  MousePointer2,
+  Hand,
 } from "lucide-react";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import AIEditor from "@/components/editor/AIEditor";
+import VisualEditor from "@/components/editor/VisualEditor";
+import type { EditorMode } from "@/lib/visual-editor/messages";
 
 type ViewMode = "desktop" | "mobile";
 
@@ -24,6 +28,7 @@ export default function PreviewPage() {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isEditorActive, setIsEditorActive] = useState(false);
   const [initialHtml, setInitialHtml] = useState<string | undefined>(undefined);
+  const [editorMode, setEditorMode] = useState<EditorMode>("browse");
 
   const iframeSrc = `/api/analyze/${params.token}/preview/${params.index}`;
   const variantNum = Number(params.index) + 1;
@@ -70,6 +75,29 @@ export default function PreviewPage() {
     }
   }, []);
 
+  // Keyboard shortcut: Escape to exit edit mode
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't intercept if in input/textarea
+      const isInput =
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement ||
+        (e.target instanceof HTMLElement && e.target.isContentEditable);
+      if (isInput) return;
+
+      if (e.key === "Escape" && editorMode !== "browse") {
+        setEditorMode("browse");
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [editorMode]);
+
+  const toggleEditorMode = useCallback(() => {
+    setEditorMode((prev) => (prev === "browse" ? "select" : "browse"));
+  }, []);
+
   return (
     <div
       className="fixed inset-0 flex flex-col"
@@ -103,6 +131,36 @@ export default function PreviewPage() {
             </span>
           </>
         )}
+
+        <div className="w-px h-5 bg-white/10" />
+
+        {/* Edit mode toggle */}
+        <button
+          onClick={toggleEditorMode}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
+            editorMode !== "browse"
+              ? "bg-indigo-500/20 text-indigo-400 ring-1 ring-indigo-500/30"
+              : "hover:bg-white/10"
+          }`}
+          style={
+            editorMode === "browse"
+              ? { color: "var(--text-muted)" }
+              : undefined
+          }
+          title={editorMode === "browse" ? "Enter Edit Mode" : "Exit Edit Mode"}
+        >
+          {editorMode === "browse" ? (
+            <>
+              <MousePointer2 className="h-3.5 w-3.5" />
+              Edit
+            </>
+          ) : (
+            <>
+              <Hand className="h-3.5 w-3.5" />
+              Editing
+            </>
+          )}
+        </button>
 
         <div className="w-px h-5 bg-white/10" />
 
@@ -176,6 +234,7 @@ export default function PreviewPage() {
           ref={iframeRef}
           src={iframeSrc}
           title={t("variant", { num: variantNum })}
+          sandbox="allow-same-origin allow-scripts"
           className="border-0 bg-white rounded-lg shadow-2xl transition-all duration-300"
           style={{
             width: viewMode === "mobile" ? "375px" : "100%",
@@ -184,6 +243,22 @@ export default function PreviewPage() {
           }}
         />
       </div>
+
+      {/* Visual Editor overlay — active when in select/edit mode */}
+      {initialHtml !== undefined && (
+        <VisualEditor
+          token={params.token}
+          variantIndex={Number(params.index)}
+          iframeRef={iframeRef}
+          editorMode={editorMode}
+          onHtmlUpdate={handleHtmlUpdate}
+          onPushSnapshot={(html, label) => {
+            // This will be handled by AIEditor's undo stack too
+            // For now, just update HTML
+            handleHtmlUpdate(html);
+          }}
+        />
+      )}
 
       {/* AI Editor — render only after initial HTML captured */}
       {initialHtml !== undefined && (
