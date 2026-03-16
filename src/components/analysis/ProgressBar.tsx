@@ -2,18 +2,20 @@
 
 import { motion } from "framer-motion";
 import { Globe, Scan, BarChart3, Sparkles, CheckCircle } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 type Stage = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
 const STEPS = [
-  { label: "Connect", icon: Globe },
-  { label: "Crawl", icon: Scan },
-  { label: "Analyze", icon: BarChart3 },
-  { label: "Generate", icon: Sparkles },
-  { label: "Results", icon: CheckCircle },
+  { labelKey: "stepConnect" as const, icon: Globe },
+  { labelKey: "stepCrawl" as const, icon: Scan },
+  { labelKey: "stepAnalyze" as const, icon: BarChart3 },
+  { labelKey: "stepGenerate" as const, icon: Sparkles },
+  { labelKey: "stepResults" as const, icon: CheckCircle },
 ];
 
 export default function ProgressBar({ stage }: { stage: Stage }) {
+  const t = useTranslations("analysis");
   // Map stage to step index (0=connect, 1=crawl, 2=analyze, 3=generating, 4+=results)
   const stepIndex = stage <= 3 ? stage : 4;
 
@@ -26,7 +28,7 @@ export default function ProgressBar({ stage }: { stage: Stage }) {
           const isActive = stepIndex >= i;
           const isCurrent = stepIndex === i;
           return (
-            <div key={step.label} className="flex items-center">
+            <div key={t(step.labelKey)} className="flex items-center">
               <div className="flex flex-col items-center gap-1.5">
                 <motion.div
                   className={`h-9 w-9 rounded-full flex items-center justify-center border-2 transition-colors duration-500 ${
@@ -44,7 +46,7 @@ export default function ProgressBar({ stage }: { stage: Stage }) {
                   <Icon className={`h-4 w-4 transition-colors duration-500 ${isActive ? "text-blue-400" : "text-gray-600"}`} />
                 </motion.div>
                 <span className={`text-[10px] font-medium transition-colors duration-500 ${isActive ? "text-gray-300" : "text-gray-600"}`}>
-                  {step.label}
+                  {t(step.labelKey)}
                 </span>
               </div>
               {i < STEPS.length - 1 && (
@@ -71,7 +73,7 @@ export default function ProgressBar({ stage }: { stage: Stage }) {
           const isActive = stepIndex >= i;
           const isCurrent = stepIndex === i;
           return (
-            <div key={step.label} className="flex items-start">
+            <div key={t(step.labelKey)} className="flex items-start">
               <div className="flex flex-col items-center">
                 <motion.div
                   className={`h-8 w-8 rounded-full flex items-center justify-center border-2 transition-colors duration-500 ${
@@ -106,7 +108,7 @@ export default function ProgressBar({ stage }: { stage: Stage }) {
                   isCurrent ? "text-blue-400" : isActive ? "text-gray-300" : "text-gray-600"
                 }`}
               >
-                {step.label}
+                {t(step.labelKey)}
               </span>
             </div>
           );
