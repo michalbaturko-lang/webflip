@@ -122,6 +122,25 @@ export interface TemplateClusterData {
   contentElements: string[];
 }
 
+export interface SEOSuggestionsData {
+  suggestions: {
+    page_url: string;
+    element: "title" | "meta_description" | "h1" | "content_gap";
+    current_value: string;
+    suggested_value: string;
+    reasoning: string;
+    impact: "high" | "medium" | "low";
+    effort: "easy" | "medium" | "hard";
+  }[];
+  content_strategy: {
+    primary_keywords: string[];
+    secondary_keywords: string[];
+    content_gaps: string[];
+    competitor_angles: string[];
+  };
+  summary: string;
+}
+
 export interface AnalysisRow {
   id: string;
   token: string;
@@ -148,6 +167,7 @@ export interface AnalysisRow {
   edit_history: EditHistoryEntry[] | null;
   enrichment_results: EnrichmentResults | null;
   benchmark_results: BenchmarkResultsData | null;
+  seo_suggestions: SEOSuggestionsData | null;
   link_graph_data: Record<string, unknown> | null;
       template_clusters: TemplateClusterData[] | null;
   created_at: string;

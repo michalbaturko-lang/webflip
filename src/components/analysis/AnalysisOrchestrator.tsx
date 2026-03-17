@@ -30,6 +30,7 @@ import StageCrawling from "./StageCrawling";
 import StageAnalyzing from "./StageAnalyzing";
 import StageGenerating from "./StageGenerating";
 import VariantComparison from "@/components/comparison/VariantComparison";
+import SEOSuggestions from "./SEOSuggestions";
 import { translateFindings } from "@/lib/finding-i18n";
 
 // ---------------------------------------------------------------------------
@@ -71,6 +72,7 @@ interface ApiResponse {
   emailRequired?: boolean;
   error?: string;
   enrichment?: EnrichmentData;
+  seoSuggestions?: SEOSuggestionsData;
   templateClusters?: TemplateClusterInfo[];
 }
 
@@ -126,6 +128,25 @@ interface EnrichmentData {
     healthScoreImprovement: number;
   };
   enrichedFindings: EnrichedFindingData[];
+}
+
+interface SEOSuggestionsData {
+  suggestions: {
+    page_url: string;
+    element: "title" | "meta_description" | "h1" | "content_gap";
+    current_value: string;
+    suggested_value: string;
+    reasoning: string;
+    impact: "high" | "medium" | "low";
+    effort: "easy" | "medium" | "hard";
+  }[];
+  content_strategy: {
+    primary_keywords: string[];
+    secondary_keywords: string[];
+    content_gaps: string[];
+    competitor_angles: string[];
+  };
+  summary: string;
 }
 
 interface Finding {
@@ -306,6 +327,7 @@ function StageResults({
   token,
   url,
   enrichment,
+  seoSuggestions,
   templateClusters,
 }: {
   scores: ApiResponse["scores"];
@@ -314,6 +336,7 @@ function StageResults({
   token: string;
   url: string;
   enrichment?: EnrichmentData;
+  seoSuggestions?: SEOSuggestionsData;
   templateClusters?: TemplateClusterInfo[];
 }) {
   const t = useTranslations("analysis");
@@ -706,6 +729,11 @@ function StageResults({
             ))}
           </div>
         </motion.div>
+      )}
+
+      {/* SEO Content Suggestions */}
+      {seoSuggestions && seoSuggestions.suggestions.length > 0 && (
+        <SEOSuggestions data={seoSuggestions} />
       )}
 
       {/* Redesign Variants Section — powered by VariantComparison */}
@@ -1160,6 +1188,7 @@ export default function AnalysisOrchestrator({ url, token, onStatusChange }: Pro
                   token={data?.token || token}
                   url={url}
                   enrichment={data?.enrichment}
+                  seoSuggestions={data?.seoSuggestions}
                   templateClusters={data?.templateClusters}
                 />
               )}
@@ -1174,6 +1203,7 @@ export default function AnalysisOrchestrator({ url, token, onStatusChange }: Pro
                   token={data?.token || token}
                   url={url}
                   enrichment={data?.enrichment}
+                  seoSuggestions={data?.seoSuggestions}
                   templateClusters={data?.templateClusters}
                 />
               )}

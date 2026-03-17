@@ -17,7 +17,13 @@ import { calculateScores, mapToLegacyScores } from "@/lib/scoring";
 import { runDeepAnalysis } from "@/lib/checks";
 import { calculateBenchmarks } from "@/lib/benchmarks";
 import { detectTemplates } from "@/lib/template-detector";
-import type { Finding, BusinessProfile, EnrichmentResults } from "@/lib/supabase";
+import { buildLinkGraph } from "@/lib/link-graph";
+import { analyzeLinkGraph } from "@/lib/analyzers/link-analysis";
+import { prioritizeFindings } from "@/lib/prioritizer";
+import { applyBusinessContext } from "@/lib/business-context";
+import { generateExplanations } from "@/lib/llm-explainer";
+import { generateSEOSuggestions } from "@/lib/seo-suggestions";
+import type { Finding, BusinessProfile, EnrichmentResults, SEOSuggestionsData } from "@/lib/supabase";
 
 // Vercel Pro supports up to 300s. Pipeline needs time for crawl+analyze+generate.
 export const maxDuration = 300;
@@ -303,6 +309,7 @@ async function runPipeline(url: string, token: string, locale?: string) {
     await updateAnalysis(token, { findings: liveFindings }).catch(() => {});
   } catch (err) {
     console.error(`[pipeline:${token}] Link graph analysis failed (non-fatal):`, err);
+  }
   // ─── Stage 2.6: Template & DOM Clustering Detection ───
   console.log(`[pipeline:${token}] Running template detection...`);
   let templateClusters: ReturnType<typeof detectTemplates>["clusters"] = [];
@@ -327,6 +334,23 @@ async function runPipeline(url: string, token: string, locale?: string) {
     } as any).catch(() => {});
   } catch (err) {
     console.error(`[pipeline:${token}] Template detection failed (non-fatal):`, err);
+  }
+
+  // ─── Stage 2.8: LLM SEO Content Suggestions ───
+  console.log(`[pipeline:${token}] Stage 2.8: Generating SEO suggestions...`);
+  let seoSuggestions: SEOSuggestionsData | null = null;
+  try {
+    const seoResult = await generateSEOSuggestions(
+      crawledPages,
+      businessProfile,
+      liveFindings,
+      url
+    );
+    seoSuggestions = seoResult;
+    console.log(`[pipeline:${token}] SEO suggestions: ${seoResult.suggestions.length} suggestions generated`);
+    await updateAnalysis(token, { seo_suggestions: seoSuggestions } as any).catch(() => {});
+  } catch (err) {
+    console.error(`[pipeline:${token}] SEO suggestions failed (non-fatal):`, err);
   }
 
   // Calculate overall score (weighted)

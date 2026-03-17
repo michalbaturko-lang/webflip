@@ -253,6 +253,17 @@
     "step4Detail": "100% yours",
     "viewResults": "View Results"
   },
+  "seoSuggestions": {
+    "title": "SEO Recommendations",
+    "keywords": "Keywords",
+    "suggestedChanges": "Suggested Changes",
+    "contentGaps": "Content Gaps",
+    "copy": "Copy",
+    "copied": "Copied",
+    "impact_high": "High Impact",
+    "impact_medium": "Medium Impact",
+    "impact_low": "Low Impact"
+  },
   "analysis": {
     "connectingTo": "Connecting to {domain}",
     "somethingWentWrong": "Something went wrong",

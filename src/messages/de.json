@@ -253,6 +253,17 @@
     "step4Detail": "100% Ihres",
     "viewResults": "Ergebnisse anzeigen"
   },
+  "seoSuggestions": {
+    "title": "SEO-Empfehlungen",
+    "keywords": "Schlüsselwörter",
+    "suggestedChanges": "Vorgeschlagene Änderungen",
+    "contentGaps": "Inhaltslücken",
+    "copy": "Kopieren",
+    "copied": "Kopiert",
+    "impact_high": "Hohe Auswirkung",
+    "impact_medium": "Mittlere Auswirkung",
+    "impact_low": "Geringe Auswirkung"
+  },
   "analysis": {
     "connectingTo": "Verbinde mit {domain}",
     "somethingWentWrong": "Etwas ist schiefgelaufen",
