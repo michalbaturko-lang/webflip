@@ -461,11 +461,19 @@ async function runPipeline(url: string, token: string, locale?: string, email?: 
       accessibility: { score: scores.accessibility ?? 50, findings: liveFindings.filter(f => f.category === "Přístupnost") },
     },
     findings: liveFindings,
-    benchmark_results: benchmarkResults as any,
     variant_progress: { current: 0, total: 3, message: "Preparing variant generation..." },
   };
+  if (benchmarkResults) stageUpdate.benchmark_results = benchmarkResults as any;
   if (linkGraphData) stageUpdate.link_graph_data = linkGraphData;
-  await updateAnalysis(token, stageUpdate as any);
+
+  // Try full update; if a column is missing, retry without optional JSONB fields
+  try {
+    await updateAnalysis(token, stageUpdate as any);
+  } catch (err) {
+    console.warn(`[pipeline:${token}] Full stage update failed, retrying without optional fields:`, err);
+    const { benchmark_results, link_graph_data, ...safeUpdate } = stageUpdate as any;
+    await updateAnalysis(token, safeUpdate as any);
+  }
 
   // ─── Stage 2.75: Enrichment — prioritize, apply business context, generate explanations ───
   console.log(`[pipeline:${token}] Stage 2.75: Enriching findings...`);
