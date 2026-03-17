@@ -14,7 +14,10 @@ import { interpretBusiness } from "@/lib/business-interpretation";
 import { analyzePage, analyzeSite, generateFindings } from "@/lib/analysis-engine";
 import { calculateScores, mapToLegacyScores } from "@/lib/scoring";
 import { runDeepAnalysis } from "@/lib/checks";
-import type { Finding, BusinessProfile } from "@/lib/supabase";
+import { prioritizeFindings } from "@/lib/prioritizer";
+import { applyBusinessContext } from "@/lib/business-context";
+import { generateExplanations } from "@/lib/llm-explainer";
+import type { Finding, BusinessProfile, EnrichmentResults } from "@/lib/supabase";
 
 // Vercel Pro supports up to 300s. Pipeline needs time for crawl+analyze+generate.
 export const maxDuration = 300;
@@ -297,6 +300,60 @@ async function runPipeline(url: string, token: string, locale?: string) {
     findings: liveFindings,
     variant_progress: { current: 0, total: 3, message: "Preparing variant generation..." },
   });
+
+  // ─── Stage 2.75: Enrichment — prioritize, apply business context, generate explanations ───
+  console.log(`[pipeline:${token}] Stage 2.75: Enriching findings...`);
+  let enrichmentResults: EnrichmentResults | null = null;
+  try {
+    // 1. Prioritize findings (pure algorithmic, no LLM)
+    const prioritizationResult = prioritizeFindings(liveFindings);
+    console.log(`[pipeline:${token}] Prioritized ${prioritizationResult.prioritized.length} findings. Quick wins: ${prioritizationResult.quickWins.length}`);
+
+    // 2. Apply business context (deterministic)
+    const businessContext = applyBusinessContext(
+      prioritizationResult,
+      liveFindings,
+      extractedAssets,
+      businessProfile
+    );
+    console.log(`[pipeline:${token}] Business type: ${businessContext.businessType}. Recommendations: ${businessContext.recommendations.length}`);
+
+    // 3. Generate LLM explanations for top findings
+    const explanationResult = await generateExplanations(
+      businessContext.adjustedFindings,
+      businessContext.businessType,
+      25
+    );
+    console.log(`[pipeline:${token}] Generated ${explanationResult.enrichedFindings.length} explanations`);
+
+    // Merge into enrichment results
+    const adjustedMap = new Map(
+      businessContext.adjustedFindings.map((af) => [af.findingId, af])
+    );
+
+    enrichmentResults = {
+      businessType: businessContext.businessType,
+      letterGrade: businessContext.letterGrade,
+      healthScore: businessContext.healthScore,
+      executiveSummary: prioritizationResult.executiveSummary,
+      recommendations: businessContext.recommendations,
+      impactEstimates: businessContext.impactEstimates,
+      enrichedFindings: explanationResult.enrichedFindings.map((ef) => {
+        const adjusted = adjustedMap.get(ef.findingId);
+        return {
+          ...ef,
+          businessValueScore: adjusted?.businessValueScore ?? 0,
+          effortScore: adjusted?.effortScore ?? 3,
+          roi: adjusted?.roi ?? 0,
+          category: adjusted?.category ?? "low-priority",
+        };
+      }),
+    };
+
+    await updateAnalysis(token, { enrichment_results: enrichmentResults } as any).catch(() => {});
+  } catch (err) {
+    console.error(`[pipeline:${token}] Enrichment failed (non-fatal):`, err);
+  }
 
   // ─── Stage 3: Generate variants (with progress) ───
   console.log(`[pipeline:${token}] Stage 3: Generating variant concepts...`);

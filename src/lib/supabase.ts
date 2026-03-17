@@ -134,6 +134,7 @@ export interface AnalysisRow {
   business_profile: BusinessProfile | null;
   variant_progress: VariantProgress | null;
   edit_history: EditHistoryEntry[] | null;
+  enrichment_results: EnrichmentResults | null;
   created_at: string;
   updated_at: string;
   completed_at: string | null;
@@ -168,6 +169,46 @@ export interface DesignVariant {
   typography: { heading: string; body: string };
   layout: string;
   keyFeatures: string[];
+}
+
+export interface EnrichmentResults {
+  businessType: string;
+  letterGrade: string;
+  healthScore: number;
+  executiveSummary: {
+    overallScore: number;
+    letterGrade: string;
+    criticalCount: number;
+    warningCount: number;
+    topRecommendations: string[];
+    quickWinCount: number;
+    estimatedImprovementPotential: number;
+  };
+  recommendations: {
+    title: string;
+    description: string;
+    impact: "high" | "medium" | "low";
+    category: string;
+  }[];
+  impactEstimates: {
+    trafficImprovement: number;
+    conversionImprovement: number;
+    accessibilityCompliance: number;
+    healthScoreImprovement: number;
+  };
+  enrichedFindings: {
+    findingId: string;
+    finding: Finding;
+    explanation: string;
+    howToFix: string;
+    expectedImprovement: string;
+    priorityScore: number;
+    businessImpact: string;
+    businessValueScore: number;
+    effortScore: number;
+    roi: number;
+    category: "quick-win" | "strategic" | "low-priority" | "complex";
+  }[];
 }
 
 // Server-side client (service role — full access)
