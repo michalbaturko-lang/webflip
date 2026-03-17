@@ -466,12 +466,12 @@ async function runPipeline(url: string, token: string, locale?: string, email?: 
   if (benchmarkResults) stageUpdate.benchmark_results = benchmarkResults as any;
   if (linkGraphData) stageUpdate.link_graph_data = linkGraphData;
 
-  // Try full update; if a column is missing, retry without optional JSONB fields
+  // Try full update; if a column is missing, retry without optional fields
   try {
     await updateAnalysis(token, stageUpdate as any);
   } catch (err) {
     console.warn(`[pipeline:${token}] Full stage update failed, retrying without optional fields:`, err);
-    const { benchmark_results, link_graph_data, ...safeUpdate } = stageUpdate as any;
+    const { benchmark_results, link_graph_data, score_accessibility, template_clusters, ...safeUpdate } = stageUpdate as any;
     await updateAnalysis(token, safeUpdate as any);
   }
 
