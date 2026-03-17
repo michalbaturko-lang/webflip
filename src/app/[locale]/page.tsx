@@ -24,7 +24,9 @@ export default function HomePage() {
   const [variantCount, setVariantCount] = useState(0);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
 
-  const handleAnalyze = useCallback((url: string) => {
+  const [analysisEmail, setAnalysisEmail] = useState<string | undefined>();
+
+  const handleAnalyze = useCallback((url: string, email?: string) => {
     let normalizedUrl = url.trim();
     if (!/^https?:\/\//i.test(normalizedUrl)) {
       normalizedUrl = `https://${normalizedUrl}`;
@@ -34,6 +36,7 @@ export default function HomePage() {
       Date.now().toString(36);
 
     setAnalysis({ url: normalizedUrl, token });
+    setAnalysisEmail(email);
     setAnalysisStatus("pending");
     setVariantCount(0);
     setAnalysisError(null);
@@ -61,6 +64,7 @@ export default function HomePage() {
           <AnalysisOrchestrator
             url={analysis.url}
             token={analysis.token}
+            email={analysisEmail}
             onStatusChange={handleStatusChange}
           />
         </div>

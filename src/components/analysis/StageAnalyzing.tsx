@@ -9,10 +9,12 @@ import {
   Monitor,
   FileText,
   Bot,
+  Accessibility,
   CheckCircle,
   AlertTriangle,
   XCircle,
 } from "lucide-react";
+import CoreWebVitals, { type PageSpeedMetricsProps } from "./CoreWebVitals";
 
 interface Finding {
   category: string;
@@ -28,6 +30,7 @@ interface Scores {
   ux: number | null;
   content: number | null;
   aiVisibility: number | null;
+  accessibility: number | null;
   overall: number | null;
 }
 
@@ -35,6 +38,7 @@ interface Props {
   url: string;
   scores: Scores | undefined;
   liveFindings: Finding[];
+  pagespeedMetrics?: PageSpeedMetricsProps;
 }
 
 const CATEGORY_CONFIG = [
@@ -44,6 +48,7 @@ const CATEGORY_CONFIG = [
   { key: "ux", label: "UX & Design", icon: Monitor, color: "text-orange-400", gradient: "from-orange-500 to-red-500" },
   { key: "content", label: "Content", icon: FileText, color: "text-blue-400", gradient: "from-blue-500 to-cyan-500" },
   { key: "aiVisibility", label: "AI Visibility", icon: Bot, color: "text-purple-400", gradient: "from-purple-500 to-pink-500" },
+  { key: "accessibility", label: "Přístupnost", icon: Accessibility, color: "text-violet-400", gradient: "from-violet-500 to-purple-500" },
 ] as const;
 
 function getScoreColor(score: number) {
@@ -95,7 +100,7 @@ function AnimatedScore({ score, delay }: { score: number; delay: number }) {
   return <span>{displayed}</span>;
 }
 
-export default function StageAnalyzing({ url, scores, liveFindings }: Props) {
+export default function StageAnalyzing({ url, scores, liveFindings, pagespeedMetrics }: Props) {
   const domain = getDomainFromUrl(url);
 
   const categories = CATEGORY_CONFIG.map((cat) => {
@@ -124,7 +129,7 @@ export default function StageAnalyzing({ url, scores, liveFindings }: Props) {
           Analyzujeme {domain}
         </h2>
         <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-          Kontrolujeme 50+ parametrů v 6 kategoriích
+          Kontrolujeme 50+ parametrů v 7 kategoriích
         </p>
       </div>
 
@@ -193,6 +198,13 @@ export default function StageAnalyzing({ url, scores, liveFindings }: Props) {
           );
         })}
       </div>
+
+      {/* Core Web Vitals */}
+      {pagespeedMetrics && (
+        <div className="mb-4">
+          <CoreWebVitals metrics={pagespeedMetrics} />
+        </div>
+      )}
 
       {/* Live findings ticker/feed */}
       {displayFindings.length > 0 && (

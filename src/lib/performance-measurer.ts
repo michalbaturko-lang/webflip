@@ -7,6 +7,8 @@
  */
 
 import * as cheerio from "cheerio";
+import type { PageSpeedResult } from "./pagespeed";
+import type { Finding } from "./supabase";
 
 // ─── Types ───
 
@@ -790,4 +792,87 @@ function analyzeCompression($: cheerio.CheerioAPI, html: string): CompressionDet
   }
 
   return { textCompression, minifiedCss, minifiedJs, totalUncompressedSize, details };
+}
+
+// ─── Merge Real PageSpeed Metrics with HTML Estimation ───
+
+/**
+ * Merges real Lighthouse PageSpeed data with HTML-based performance estimation.
+ * Real metrics take PRIORITY, but HTML-based findings (image optimization,
+ * font loading, third-party detection) are still valuable.
+ * Deduplicates findings by title.
+ */
+export function mergeWithRealMetrics(
+  htmlMeasurement: PerformanceMeasurement,
+  psData: PageSpeedResult,
+  htmlFindings: Finding[]
+): { score: number; findings: Finding[] } {
+  const findings: Finding[] = [];
+
+  // ── Real Lighthouse audit findings (PRIORITY) ──
+  for (const audit of psData.audits) {
+    const severity: Finding["severity"] =
+      audit.score !== null && audit.score < 0.5 ? "critical" :
+      audit.score !== null && audit.score < 0.9 ? "warning" : "info";
+
+    findings.push({
+      category: "performance",
+      severity,
+      title: audit.titleCz,
+      description: audit.displayValue
+        ? `${audit.title}: ${audit.displayValue}`
+        : audit.title,
+    });
+  }
+
+  // ── Core Web Vitals findings from real data ──
+  const m = psData.metrics;
+
+  if (m.lcp > 4000) {
+    findings.push({ category: "performance", severity: "critical", title: "Pomalý LCP", description: `Largest Contentful Paint: ${(m.lcp / 1000).toFixed(1)}s. Cíl: pod 2.5s.` });
+  } else if (m.lcp > 2500) {
+    findings.push({ category: "performance", severity: "warning", title: "LCP potřebuje zlepšení", description: `LCP: ${(m.lcp / 1000).toFixed(1)}s. Cíl: pod 2.5s.` });
+  } else {
+    findings.push({ category: "performance", severity: "ok", title: "Dobrý LCP", description: `LCP: ${(m.lcp / 1000).toFixed(1)}s — rychlé.` });
+  }
+
+  if (m.cls > 0.25) {
+    findings.push({ category: "performance", severity: "critical", title: "Vysoký posun obsahu (CLS)", description: `CLS: ${m.cls.toFixed(3)}. Cíl: pod 0.1.` });
+  } else if (m.cls > 0.1) {
+    findings.push({ category: "performance", severity: "warning", title: "CLS potřebuje zlepšení", description: `CLS: ${m.cls.toFixed(3)}. Cíl: pod 0.1.` });
+  }
+
+  if (m.fcp > 3000) {
+    findings.push({ category: "performance", severity: "warning", title: "Pomalý First Paint", description: `FCP: ${(m.fcp / 1000).toFixed(1)}s. Uživatel vidí prázdnou stránku příliš dlouho.` });
+  }
+
+  if (m.tbt > 600) {
+    findings.push({ category: "performance", severity: "warning", title: "Vysoký Total Blocking Time", description: `TBT: ${Math.round(m.tbt)}ms. Stránka působí neresponzivně.` });
+  }
+
+  // ── HTML-based findings that real Lighthouse doesn't cover well ──
+  // Image optimization details, font loading, third-party detection
+  const realTitles = new Set(findings.map(f => f.title));
+
+  // Categories unique to HTML analysis
+  const valuableHtmlCategories = new Set([
+    // Image details from HTML analysis
+    "imageOptimization",
+    "fontOptimization",
+    "thirdPartyImpact",
+  ]);
+
+  for (const hf of htmlFindings) {
+    if (realTitles.has(hf.title)) continue; // Skip duplicates
+    // Keep HTML-based findings from valuable categories or if they have unique titles
+    if (valuableHtmlCategories.has(hf.category) || !realTitles.has(hf.title)) {
+      realTitles.add(hf.title);
+      findings.push(hf);
+    }
+  }
+
+  // Score: 70% real Lighthouse, 30% HTML estimation
+  const score = Math.round(psData.score * 0.7 + htmlMeasurement.performanceScore.overall * 0.3);
+
+  return { score, findings };
 }

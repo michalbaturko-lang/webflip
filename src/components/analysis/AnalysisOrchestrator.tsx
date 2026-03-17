@@ -18,6 +18,7 @@ import {
   Monitor,
   FileText,
   Bot,
+  Accessibility,
   Layers,
   ExternalLink,
 } from "lucide-react";
@@ -29,6 +30,7 @@ import ProgressBar from "./ProgressBar";
 import StageCrawling from "./StageCrawling";
 import StageAnalyzing from "./StageAnalyzing";
 import StageGenerating from "./StageGenerating";
+import CoreWebVitals from "./CoreWebVitals";
 import VariantComparison from "@/components/comparison/VariantComparison";
 import SEOSuggestions from "./SEOSuggestions";
 import { translateFindings } from "@/lib/finding-i18n";
@@ -42,6 +44,7 @@ type Stage = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 interface Props {
   url: string;
   token: string;
+  email?: string;
   onStatusChange?: (status: string, variantCount: number, error: string | null) => void;
 }
 
@@ -58,6 +61,7 @@ interface ApiResponse {
     ux: number | null;
     content: number | null;
     aiVisibility: number | null;
+    accessibility: number | null;
     overall: number | null;
   };
   liveFindings?: Finding[];
@@ -74,6 +78,25 @@ interface ApiResponse {
   enrichment?: EnrichmentData;
   seoSuggestions?: SEOSuggestionsData;
   templateClusters?: TemplateClusterInfo[];
+  pagespeedMetrics?: {
+    fcp: number;
+    lcp: number;
+    tbt: number;
+    cls: number;
+    si: number;
+    tti: number;
+    fieldData: {
+      fcpP75: number | null;
+      lcpP75: number | null;
+      clsP75: number | null;
+      fidP75: number | null;
+      inpP75: number | null;
+      ttfbP75: number | null;
+    } | null;
+    lighthouseScore: number;
+    accessibilityScore: number;
+    source: "lighthouse" | "estimation";
+  };
 }
 
 interface TemplateClusterInfo {
@@ -290,6 +313,7 @@ const CATEGORY_CARDS = [
   { key: "ux", labelKey: "ux" as const, icon: Monitor, color: "text-orange-400", gradient: "from-orange-500 to-amber-400" },
   { key: "content", labelKey: "content" as const, icon: FileText, color: "text-blue-400", gradient: "from-blue-500 to-cyan-400" },
   { key: "aiVisibility", labelKey: "aiVisibility" as const, icon: Bot, color: "text-purple-400", gradient: "from-purple-500 to-violet-400" },
+  { key: "accessibility", labelKey: "accessibility" as const, icon: Accessibility, color: "text-violet-400", gradient: "from-violet-500 to-purple-400" },
 ] as const;
 
 const EFFORT_LABELS: Record<number, string> = {
@@ -329,6 +353,7 @@ function StageResults({
   enrichment,
   seoSuggestions,
   templateClusters,
+  pagespeedMetrics,
 }: {
   scores: ApiResponse["scores"];
   findings: Finding[];
@@ -338,6 +363,7 @@ function StageResults({
   enrichment?: EnrichmentData;
   seoSuggestions?: SEOSuggestionsData;
   templateClusters?: TemplateClusterInfo[];
+  pagespeedMetrics?: ApiResponse["pagespeedMetrics"];
 }) {
   const t = useTranslations("analysis");
   const locale = useLocale();
@@ -494,6 +520,9 @@ function StageResults({
           );
         })}
       </div>
+
+      {/* Core Web Vitals */}
+      <CoreWebVitals metrics={pagespeedMetrics} />
 
       {/* Tab selector: Findings vs Recommendations */}
       {enrichment && (
@@ -854,6 +883,7 @@ function StageEmailGate({
     { key: "ux", labelKey: "ux" as const, color: "text-orange-400" },
     { key: "content", labelKey: "content" as const, color: "text-blue-400" },
     { key: "aiVisibility", labelKey: "aiVisibility" as const, color: "text-purple-400" },
+    { key: "accessibility", labelKey: "accessibility" as const, color: "text-violet-400" },
   ] as const;
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -939,7 +969,7 @@ function StageEmailGate({
 // Orchestrator
 // ---------------------------------------------------------------------------
 
-export default function AnalysisOrchestrator({ url, token, onStatusChange }: Props) {
+export default function AnalysisOrchestrator({ url, token, email, onStatusChange }: Props) {
   const t = useTranslations("analysis");
   const locale = useLocale();
   const router = useRouter();
@@ -1020,7 +1050,7 @@ export default function AnalysisOrchestrator({ url, token, onStatusChange }: Pro
         const res = await fetch("/api/analyze", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url, locale }),
+          body: JSON.stringify({ url, locale, ...(email ? { email } : {}) }),
         });
         const result = await res.json();
         if (!res.ok) {
@@ -1175,6 +1205,7 @@ export default function AnalysisOrchestrator({ url, token, onStatusChange }: Pro
                   url={url}
                   scores={data?.scores}
                   liveFindings={data?.liveFindings || []}
+                  pagespeedMetrics={data?.pagespeedMetrics}
                 />
               )}
               {stage === 3 && (
@@ -1189,6 +1220,7 @@ export default function AnalysisOrchestrator({ url, token, onStatusChange }: Pro
                   url={url}
                   enrichment={data?.enrichment}
                   seoSuggestions={data?.seoSuggestions}
+                  pagespeedMetrics={data?.pagespeedMetrics}
                   templateClusters={data?.templateClusters}
                 />
               )}
