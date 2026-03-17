@@ -14,6 +14,7 @@ import {
   AlertTriangle,
   XCircle,
 } from "lucide-react";
+import CoreWebVitals, { type PageSpeedMetricsProps } from "./CoreWebVitals";
 
 interface Finding {
   category: string;
@@ -37,6 +38,7 @@ interface Props {
   url: string;
   scores: Scores | undefined;
   liveFindings: Finding[];
+  pagespeedMetrics?: PageSpeedMetricsProps;
 }
 
 const CATEGORY_CONFIG = [
@@ -98,7 +100,7 @@ function AnimatedScore({ score, delay }: { score: number; delay: number }) {
   return <span>{displayed}</span>;
 }
 
-export default function StageAnalyzing({ url, scores, liveFindings }: Props) {
+export default function StageAnalyzing({ url, scores, liveFindings, pagespeedMetrics }: Props) {
   const domain = getDomainFromUrl(url);
 
   const categories = CATEGORY_CONFIG.map((cat) => {
@@ -196,6 +198,13 @@ export default function StageAnalyzing({ url, scores, liveFindings }: Props) {
           );
         })}
       </div>
+
+      {/* Core Web Vitals */}
+      {pagespeedMetrics && (
+        <div className="mb-4">
+          <CoreWebVitals metrics={pagespeedMetrics} />
+        </div>
+      )}
 
       {/* Live findings ticker/feed */}
       {displayFindings.length > 0 && (
