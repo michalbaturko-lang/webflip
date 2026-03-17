@@ -251,7 +251,8 @@
     /* 2. Hero */
     .hero {
       position: relative;
-      min-height: 65vh;
+      min-height: 100vh;
+      width: 100%;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -259,6 +260,7 @@
       background: linear-gradient(135deg, var(--bg-dark) 0%, #1E1B4B 50%, var(--bg-dark) 100%);
       overflow: hidden;
     }
+    .hero__overlay { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.7) 100%); z-index: 1; }
     .hero::before {
       content: '';
       position: absolute;
@@ -679,7 +681,7 @@
 <body>
 
   <!-- Skip to Content -->
-  <a href="#main-content" class="skip-to-content">Skip to content</a>
+  <a href="#main-content" class="skip-to-content">TEMPLATE_VAR_skip_to_content</a>
 
   <!-- 1. Navigation -->
   <nav class="navbar" role="navigation" aria-label="Main navigation">
@@ -715,6 +717,7 @@
 
     <!-- 2. Hero Section -->
     <section class="hero hero--with-image" aria-label="Hero" data-hero-image="TEMPLATE_VAR_heroImageUrl">
+      <div class="hero__overlay"></div>
       <div class="hero-content">
         <h1 class="gradient-text">TEMPLATE_VAR_headline</h1>
         <p>TEMPLATE_VAR_subheadline</p>
@@ -723,6 +726,7 @@
     </section>
 
     <!-- 3. Stats / Trust Bar -->
+    <!-- IF:stats -->
     <section class="stats-bar section-padding" aria-label="Statistics">
       <div class="container">
         <div class="stats-grid fade-in">
@@ -735,8 +739,10 @@
         </div>
       </div>
     </section>
+    <!-- /IF:stats -->
 
     <!-- 4. Services / Products -->
+    <!-- IF:services -->
     <section id="services" class="section-padding" aria-labelledby="services-heading">
       <div class="container">
         <h2 id="services-heading" class="section-title">
@@ -753,6 +759,7 @@
         </div>
       </div>
     </section>
+    <!-- /IF:services -->
 
     <!-- Products Section -->
     <!-- IF:products -->
@@ -792,6 +799,7 @@
     </section>
 
     <!-- 6. Blog / Aktuality -->
+    <!-- IF:blogPosts -->
     <section id="blog" class="section-padding" aria-labelledby="blog-heading">
       <div class="container">
         <h2 id="blog-heading" class="section-title">
@@ -809,8 +817,10 @@
         </div>
       </div>
     </section>
+    <!-- /IF:blogPosts -->
 
     <!-- 7. Testimonials -->
+    <!-- IF:testimonials -->
     <section id="testimonials" class="section-padding" aria-labelledby="testimonials-heading">
       <div class="container">
         <h2 id="testimonials-heading" class="section-title">
@@ -827,8 +837,10 @@
         </div>
       </div>
     </section>
+    <!-- /IF:testimonials -->
 
     <!-- 8. FAQ Accordion -->
+    <!-- IF:faqItems -->
     <section id="faq" class="section-padding" aria-labelledby="faq-heading">
       <div class="container">
         <h2 id="faq-heading" class="section-title">
@@ -848,8 +860,10 @@
         </div>
       </div>
     </section>
+    <!-- /IF:faqItems -->
 
     <!-- 9. Gallery / References -->
+    <!-- IF:gallery -->
     <section id="gallery" class="section-padding" aria-labelledby="gallery-heading">
       <div class="container">
         <h2 id="gallery-heading" class="section-title">
@@ -864,6 +878,7 @@
         </div>
       </div>
     </section>
+    <!-- /IF:gallery -->
 
     <!-- 10. Google Maps -->
     <!-- IF:address -->
