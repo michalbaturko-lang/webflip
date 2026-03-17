@@ -135,11 +135,71 @@ export interface AnalysisRow {
   variant_progress: VariantProgress | null;
   edit_history: EditHistoryEntry[] | null;
   enrichment_results: EnrichmentResults | null;
+  benchmark_results: BenchmarkResultsData | null;
   created_at: string;
   updated_at: string;
   completed_at: string | null;
   error_message: string | null;
   selected_variant?: number | null;
+}
+
+/** Serializable benchmark results stored in Supabase JSONB column. */
+export interface BenchmarkResultsData {
+  industryType: string;
+  industryLabel: string;
+  percentileRanks: {
+    metric: string;
+    score: number;
+    percentile: number;
+    industryMedian: number;
+    delta: number;
+    label: string;
+  }[];
+  categoryGrades: {
+    metric: string;
+    grade: string;
+    score: number;
+    percentile: number;
+    label: string;
+  }[];
+  improvements: {
+    metric: string;
+    currentScore: number;
+    targetScore: number;
+    potentialGain: number;
+    priority: string;
+    description: string;
+  }[];
+  executiveDashboard: {
+    overallHealthScore: number;
+    overallGrade: string;
+    radarChart: { axis: string; value: number; benchmark: number }[];
+    quickWins: {
+      title: string;
+      category: string;
+      impact: number;
+      effort: string;
+      description: string;
+    }[];
+    competitorComparison: {
+      industryType: string;
+      industryLabel: string;
+      overallPercentile: number;
+      summary: string;
+    };
+    trendIndicators: {
+      metric: string;
+      direction: string;
+      label: string;
+    }[];
+    categoryGrades: {
+      metric: string;
+      grade: string;
+      score: number;
+      percentile: number;
+      label: string;
+    }[];
+  };
 }
 
 export interface BusinessProfile {
