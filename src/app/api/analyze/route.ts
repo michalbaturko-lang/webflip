@@ -13,6 +13,7 @@ import { generateHtmlVariants } from "@/lib/generate-html";
 import { interpretBusiness } from "@/lib/business-interpretation";
 import { analyzePage, analyzeSite, generateFindings } from "@/lib/analysis-engine";
 import { calculateScores, mapToLegacyScores } from "@/lib/scoring";
+import { runDeepAnalysis } from "@/lib/checks";
 import type { Finding, BusinessProfile } from "@/lib/supabase";
 
 // Vercel Pro supports up to 300s. Pipeline needs time for crawl+analyze+generate.
@@ -230,14 +231,48 @@ async function runPipeline(url: string, token: string, locale?: string) {
   const newEngineFindings = engineFindings.filter(f => !existingTitles.has(f.title));
   liveFindings = [...liveFindings, ...newEngineFindings];
 
+  // ─── Stage 2.5: Deep Analysis Checks ───
+  console.log(`[pipeline:${token}] Running deep analysis checks...`);
+  try {
+    const $ = await import("cheerio").then((m) => m.load(mainPage.html));
+    const deepResult = runDeepAnalysis({
+      pages: crawledPages,
+      siteUrl: url,
+      mainPageTitle: $("title").text().trim(),
+      mainPageH1: $("h1").first().text().trim(),
+      mainPageMetaDesc: $('meta[name="description"]').attr("content")?.trim() || "",
+      existingScores: scores,
+    });
+
+    // Merge deep analysis findings into live findings
+    liveFindings = [...liveFindings, ...deepResult.findings];
+
+    // Update scores with merged values
+    scores.performance = deepResult.scores.performance;
+    scores.seo = deepResult.scores.seo;
+    scores.security = deepResult.scores.security;
+    scores.ux = deepResult.scores.accessibility;
+    scores.content = deepResult.scores.content;
+    scores.aiVisibility = deepResult.scores.aiVisibility;
+
+    console.log(`[pipeline:${token}] Deep analysis: ${deepResult.findings.length} additional findings, site type: ${deepResult.siteType}`);
+
+    // Persist deep analysis metadata alongside business profile
+    await updateAnalysis(token, {
+      findings: liveFindings,
+    }).catch(() => {});
+  } catch (err) {
+    console.error(`[pipeline:${token}] Deep analysis failed (non-fatal):`, err);
+  }
+
   // Calculate overall score (weighted)
   const overall = Math.round(
-    (scores.performance ?? 50) * 0.2 +
-      (scores.seo ?? 50) * 0.2 +
-      (scores.security ?? 50) * 0.15 +
-      (scores.ux ?? 50) * 0.2 +
-      (scores.content ?? 50) * 0.15 +
-      (scores.aiVisibility ?? 50) * 0.1
+    (scores.performance ?? 50) * 0.15 +
+      (scores.seo ?? 50) * 0.25 +
+      (scores.security ?? 50) * 0.10 +
+      (scores.ux ?? 50) * 0.15 +
+      (scores.content ?? 50) * 0.20 +
+      (scores.aiVisibility ?? 50) * 0.15
   );
 
   console.log(`[pipeline:${token}] Analyzers done. Scores:`, scores, `Overall: ${overall}`);
