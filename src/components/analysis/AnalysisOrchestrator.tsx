@@ -68,6 +68,49 @@ interface ApiResponse {
   htmlVariantsCount?: number;
   emailRequired?: boolean;
   error?: string;
+  enrichment?: EnrichmentData;
+}
+
+interface EnrichedFindingData {
+  findingId: string;
+  finding: Finding;
+  explanation: string;
+  howToFix: string;
+  expectedImprovement: string;
+  priorityScore: number;
+  businessImpact: string;
+  businessValueScore: number;
+  effortScore: number;
+  roi: number;
+  category: "quick-win" | "strategic" | "low-priority" | "complex";
+}
+
+interface EnrichmentData {
+  businessType: string;
+  letterGrade: string;
+  healthScore: number;
+  executiveSummary: {
+    overallScore: number;
+    letterGrade: string;
+    criticalCount: number;
+    warningCount: number;
+    topRecommendations: string[];
+    quickWinCount: number;
+    estimatedImprovementPotential: number;
+  };
+  recommendations: {
+    title: string;
+    description: string;
+    impact: "high" | "medium" | "low";
+    category: string;
+  }[];
+  impactEstimates: {
+    trafficImprovement: number;
+    conversionImprovement: number;
+    accessibilityCompliance: number;
+    healthScoreImprovement: number;
+  };
+  enrichedFindings: EnrichedFindingData[];
 }
 
 interface Finding {
@@ -213,26 +256,77 @@ const CATEGORY_CARDS = [
   { key: "aiVisibility", labelKey: "aiVisibility" as const, icon: Bot, color: "text-purple-400", gradient: "from-purple-500 to-violet-400" },
 ] as const;
 
+const EFFORT_LABELS: Record<number, string> = {
+  1: "Snadné",
+  2: "Jednoduché",
+  3: "Střední",
+  4: "Náročné",
+  5: "Složité",
+};
+
+const CATEGORY_LABELS: Record<string, string> = {
+  "quick-win": "Rychlá výhra",
+  strategic: "Strategické",
+  "low-priority": "Nízká priorita",
+  complex: "Složité",
+};
+
+const CATEGORY_COLORS: Record<string, { bg: string; border: string; text: string }> = {
+  "quick-win": { bg: "bg-green-400/10", border: "border-green-400/20", text: "text-green-400" },
+  strategic: { bg: "bg-blue-400/10", border: "border-blue-400/20", text: "text-blue-400" },
+  "low-priority": { bg: "bg-gray-400/10", border: "border-gray-400/20", text: "text-gray-400" },
+  complex: { bg: "bg-orange-400/10", border: "border-orange-400/20", text: "text-orange-400" },
+};
+
+const IMPACT_COLORS: Record<string, string> = {
+  high: "text-red-400",
+  medium: "text-yellow-400",
+  low: "text-gray-400",
+};
+
 function StageResults({
   scores,
   findings,
   variants,
   token,
   url,
+  enrichment,
 }: {
   scores: ApiResponse["scores"];
   findings: Finding[];
   variants: Variant[];
   token: string;
   url: string;
+  enrichment?: EnrichmentData;
 }) {
   const t = useTranslations("analysis");
   const locale = useLocale();
   const translatedFindings = translateFindings(findings, locale);
   const overallScore = scores?.overall ?? 0;
   const criticalCount = translatedFindings.filter((f) => f.severity === "critical").length;
-  const displayFindings = translatedFindings.slice(0, 12);
   const domain = getDomainFromUrl(url);
+  const [activeTab, setActiveTab] = useState<"findings" | "recommendations">("findings");
+  const [expandedFinding, setExpandedFinding] = useState<string | null>(null);
+
+  // Build enriched finding map for quick lookup
+  const enrichedMap = new Map<string, EnrichedFindingData>();
+  if (enrichment) {
+    for (const ef of enrichment.enrichedFindings) {
+      enrichedMap.set(ef.finding.title, ef);
+    }
+  }
+
+  // Group enriched findings by priority category
+  const quickWins = enrichment?.enrichedFindings.filter((ef) => ef.category === "quick-win" && ef.businessValueScore > 0) || [];
+  const strategicFindings = enrichment?.enrichedFindings.filter((ef) => ef.category === "strategic" && ef.businessValueScore > 0) || [];
+  const otherFindings = enrichment?.enrichedFindings.filter(
+    (ef) => (ef.category === "low-priority" || ef.category === "complex") && ef.businessValueScore > 0
+  ) || [];
+
+  // Fallback to old display if no enrichment
+  const displayFindings = enrichment
+    ? [] // handled by enriched sections
+    : translatedFindings.slice(0, 12);
 
   return (
     <motion.div
@@ -242,12 +336,33 @@ function StageResults({
       exit={{ opacity: 0 }}
       className="w-full max-w-5xl mx-auto space-y-10"
     >
-      {/* Header + Overall Score */}
+      {/* Header + Overall Score + Letter Grade */}
       <div className="text-center">
         <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.6 }}>
           <h2 className="text-2xl font-bold mb-1" style={{ color: "var(--text-primary)" }}>{t("analysisCompleteFor", { domain })}</h2>
           <p className="text-sm mb-6" style={{ color: "var(--text-muted)" }}>{t("resultsSubtitle")}</p>
-          <ScoreGauge score={overallScore} />
+          <div className="flex items-center justify-center gap-6">
+            <ScoreGauge score={overallScore} />
+            {enrichment && (
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.8 }}
+                className="text-left"
+              >
+                <div className={`text-6xl font-black ${getScoreColor(overallScore)}`}>
+                  {enrichment.letterGrade}
+                </div>
+                <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
+                  {enrichment.businessType === "e-commerce" ? "E-shop" :
+                   enrichment.businessType === "saas" ? "SaaS" :
+                   enrichment.businessType === "portfolio" ? "Portfolio" :
+                   enrichment.businessType === "blog" ? "Blog" :
+                   enrichment.businessType === "catalog" ? "Katalog" : "Firemní web"}
+                </p>
+              </motion.div>
+            )}
+          </div>
           {criticalCount > 0 && (
             <motion.div
               initial={{ opacity: 0, y: 8 }}
@@ -261,6 +376,53 @@ function StageResults({
           )}
         </motion.div>
       </div>
+
+      {/* Executive Summary */}
+      {enrichment && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="glass rounded-xl p-6"
+        >
+          <h3 className="text-lg font-bold mb-4" style={{ color: "var(--text-primary)" }}>
+            Shrnutí analýzy
+          </h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-green-400">{enrichment.executiveSummary.quickWinCount}</div>
+              <div className="text-xs" style={{ color: "var(--text-muted)" }}>Rychlých výher</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-yellow-400">+{enrichment.impactEstimates.trafficImprovement}%</div>
+              <div className="text-xs" style={{ color: "var(--text-muted)" }}>Potenciál návštěvnosti</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-blue-400">+{enrichment.impactEstimates.conversionImprovement}%</div>
+              <div className="text-xs" style={{ color: "var(--text-muted)" }}>Potenciál konverzí</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-purple-400">+{enrichment.impactEstimates.healthScoreImprovement}</div>
+              <div className="text-xs" style={{ color: "var(--text-muted)" }}>Bodů ke zlepšení</div>
+            </div>
+          </div>
+          {enrichment.executiveSummary.topRecommendations.length > 0 && (
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wider mb-2" style={{ color: "var(--text-muted)" }}>
+                Top 5 priorit
+              </p>
+              <div className="flex flex-col gap-1">
+                {enrichment.executiveSummary.topRecommendations.map((rec, i) => (
+                  <div key={i} className="flex items-center gap-2 text-sm" style={{ color: "var(--text-secondary)" }}>
+                    <span className="text-xs font-bold text-blue-400 w-5">{i + 1}.</span>
+                    {rec}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </motion.div>
+      )}
 
       {/* 6 Category Score Cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -293,8 +455,156 @@ function StageResults({
         })}
       </div>
 
-      {/* Findings List */}
-      {displayFindings.length > 0 && (
+      {/* Tab selector: Findings vs Recommendations */}
+      {enrichment && (
+        <div className="flex gap-2">
+          <button
+            onClick={() => setActiveTab("findings")}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              activeTab === "findings"
+                ? "bg-blue-500 text-white"
+                : "glass"
+            }`}
+            style={activeTab !== "findings" ? { color: "var(--text-secondary)" } : {}}
+          >
+            Nálezy ({(quickWins.length + strategicFindings.length + otherFindings.length)})
+          </button>
+          <button
+            onClick={() => setActiveTab("recommendations")}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              activeTab === "recommendations"
+                ? "bg-blue-500 text-white"
+                : "glass"
+            }`}
+            style={activeTab !== "recommendations" ? { color: "var(--text-secondary)" } : {}}
+          >
+            Doporučení ({enrichment.recommendations.length})
+          </button>
+        </div>
+      )}
+
+      {/* Enriched Findings (grouped by priority) */}
+      {enrichment && activeTab === "findings" && (
+        <div className="space-y-8">
+          {/* Quick Wins */}
+          {quickWins.length > 0 && (
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <Sparkles className="h-4 w-4 text-green-400" />
+                <h3 className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>
+                  Rychlé výhry
+                </h3>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-green-400/10 border border-green-400/20 text-green-400">
+                  {quickWins.length} nálezů
+                </span>
+              </div>
+              <p className="text-xs mb-3" style={{ color: "var(--text-muted)" }}>
+                Vysoký dopad, nízká náročnost — začněte těmito
+              </p>
+              <div className="flex flex-col gap-2">
+                {quickWins.map((ef, i) => (
+                  <EnrichedFindingCard
+                    key={ef.findingId}
+                    ef={ef}
+                    index={i}
+                    expanded={expandedFinding === ef.findingId}
+                    onToggle={() => setExpandedFinding(expandedFinding === ef.findingId ? null : ef.findingId)}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Strategic */}
+          {strategicFindings.length > 0 && (
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <ArrowRight className="h-4 w-4 text-blue-400" />
+                <h3 className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>
+                  Strategická zlepšení
+                </h3>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-blue-400/10 border border-blue-400/20 text-blue-400">
+                  {strategicFindings.length} nálezů
+                </span>
+              </div>
+              <p className="text-xs mb-3" style={{ color: "var(--text-muted)" }}>
+                Vysoký dopad, vyšší náročnost — naplánujte tyto
+              </p>
+              <div className="flex flex-col gap-2">
+                {strategicFindings.map((ef, i) => (
+                  <EnrichedFindingCard
+                    key={ef.findingId}
+                    ef={ef}
+                    index={i}
+                    expanded={expandedFinding === ef.findingId}
+                    onToggle={() => setExpandedFinding(expandedFinding === ef.findingId ? null : ef.findingId)}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Other findings */}
+          {otherFindings.length > 0 && (
+            <div>
+              <h3 className="text-lg font-bold mb-3" style={{ color: "var(--text-primary)" }}>
+                Ostatní nálezy
+              </h3>
+              <div className="flex flex-col gap-2">
+                {otherFindings.slice(0, 8).map((ef, i) => (
+                  <EnrichedFindingCard
+                    key={ef.findingId}
+                    ef={ef}
+                    index={i}
+                    expanded={expandedFinding === ef.findingId}
+                    onToggle={() => setExpandedFinding(expandedFinding === ef.findingId ? null : ef.findingId)}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Recommendations tab */}
+      {enrichment && activeTab === "recommendations" && (
+        <div className="space-y-3">
+          <h3 className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>
+            Akční plán doporučení
+          </h3>
+          {enrichment.recommendations.map((rec, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: i * 0.08 }}
+              className="glass rounded-xl p-4"
+            >
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0 h-8 w-8 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
+                  <span className="text-sm font-bold text-blue-400">{i + 1}</span>
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+                      {rec.title}
+                    </span>
+                    <span className={`text-xs font-medium ${IMPACT_COLORS[rec.impact]}`}>
+                      {rec.impact === "high" ? "Vysoký dopad" : rec.impact === "medium" ? "Střední dopad" : "Nízký dopad"}
+                    </span>
+                  </div>
+                  <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+                    {rec.description}
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      )}
+
+      {/* Fallback findings (when no enrichment) */}
+      {!enrichment && displayFindings.length > 0 && (
         <div>
           <h3 className="text-lg font-bold mb-4" style={{ color: "var(--text-primary)" }}>{t("findings")}</h3>
           <div className="flex flex-col gap-2">
@@ -325,6 +635,100 @@ function StageResults({
       {variants.length > 0 && (
         <VariantComparison variants={variants} token={token} />
       )}
+    </motion.div>
+  );
+}
+
+/** Single enriched finding card with expandable details */
+function EnrichedFindingCard({
+  ef,
+  index,
+  expanded,
+  onToggle,
+}: {
+  ef: EnrichedFindingData;
+  index: number;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  const config = severityConfig[ef.finding.severity] || severityConfig.info;
+  const Icon = config.icon;
+  const catColors = CATEGORY_COLORS[ef.category] || CATEGORY_COLORS["low-priority"];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: 20 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ delay: 0.1 + index * 0.05 }}
+      className={`rounded-lg border ${config.border} ${config.bg} overflow-hidden`}
+    >
+      <button
+        onClick={onToggle}
+        className="w-full text-left p-3 flex items-start gap-3"
+      >
+        <Icon className={`h-4 w-4 ${config.color} shrink-0 mt-0.5`} />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
+              {ef.finding.title}
+            </span>
+            <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${catColors.border} ${catColors.bg} ${catColors.text}`}>
+              {CATEGORY_LABELS[ef.category]}
+            </span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-white/5 border border-white/10" style={{ color: "var(--text-muted)" }}>
+              {EFFORT_LABELS[ef.effortScore] || "Střední"}
+            </span>
+          </div>
+          {ef.explanation && (
+            <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
+              {ef.explanation}
+            </p>
+          )}
+        </div>
+        <motion.div
+          animate={{ rotate: expanded ? 180 : 0 }}
+          className="shrink-0 mt-1"
+        >
+          <ArrowRight className="h-3.5 w-3.5 rotate-90" style={{ color: "var(--text-muted)" }} />
+        </motion.div>
+      </button>
+
+      <AnimatePresence>
+        {expanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="px-3 pb-3 pt-0 ml-7 space-y-2 border-t border-white/5 pt-2">
+              {ef.howToFix && (
+                <div>
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-blue-400">Jak opravit</span>
+                  <p className="text-xs mt-0.5" style={{ color: "var(--text-secondary)" }}>{ef.howToFix}</p>
+                </div>
+              )}
+              {ef.expectedImprovement && (
+                <div>
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-green-400">Očekávané zlepšení</span>
+                  <p className="text-xs mt-0.5" style={{ color: "var(--text-secondary)" }}>{ef.expectedImprovement}</p>
+                </div>
+              )}
+              {ef.businessImpact && (
+                <div>
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-purple-400">Dopad na podnikání</span>
+                  <p className="text-xs mt-0.5" style={{ color: "var(--text-secondary)" }}>{ef.businessImpact}</p>
+                </div>
+              )}
+              <div className="flex items-center gap-3 text-[10px] pt-1" style={{ color: "var(--text-muted)" }}>
+                <span>Priorita: {ef.priorityScore}/10</span>
+                <span>Hodnota: {ef.businessValueScore}/100</span>
+                <span>ROI: {ef.roi}</span>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
@@ -678,6 +1082,7 @@ export default function AnalysisOrchestrator({ url, token, onStatusChange }: Pro
                   variants={[]}
                   token={data?.token || token}
                   url={url}
+                  enrichment={data?.enrichment}
                 />
               )}
               {stage === 5 && (
@@ -690,6 +1095,7 @@ export default function AnalysisOrchestrator({ url, token, onStatusChange }: Pro
                   variants={data?.variants || []}
                   token={data?.token || token}
                   url={url}
+                  enrichment={data?.enrichment}
                 />
               )}
             </AnimatePresence>

@@ -11,7 +11,13 @@ import { analyzeAIVisibility } from "@/lib/analyzers/ai-visibility";
 import { generateVariants } from "@/lib/redesign";
 import { generateHtmlVariants } from "@/lib/generate-html";
 import { interpretBusiness } from "@/lib/business-interpretation";
-import type { Finding, BusinessProfile } from "@/lib/supabase";
+import { analyzePage, analyzeSite, generateFindings } from "@/lib/analysis-engine";
+import { calculateScores, mapToLegacyScores } from "@/lib/scoring";
+import { runDeepAnalysis } from "@/lib/checks";
+import { prioritizeFindings } from "@/lib/prioritizer";
+import { applyBusinessContext } from "@/lib/business-context";
+import { generateExplanations } from "@/lib/llm-explainer";
+import type { Finding, BusinessProfile, EnrichmentResults } from "@/lib/supabase";
 
 // Vercel Pro supports up to 300s. Pipeline needs time for crawl+analyze+generate.
 export const maxDuration = 300;
@@ -189,14 +195,87 @@ async function runPipeline(url: string, token: string, locale?: string) {
     ),
   ]);
 
+  // ─── Stage 2b: Comprehensive Analysis Engine (150+ data points) ───
+  console.log(`[pipeline:${token}] Running comprehensive analysis engine...`);
+  let engineFindings: Finding[] = [];
+  try {
+    // Run the new analysis engine on all crawled pages
+    const pageAnalyses = crawledPages.map((p) => analyzePage(p.html, p.url));
+    const siteAnalysis = analyzeSite(pageAnalyses);
+    const rawEngineFindings = generateFindings(siteAnalysis);
+
+    // Calculate new comprehensive scores
+    const scoringResult = calculateScores(siteAnalysis, rawEngineFindings);
+    const legacyScores = mapToLegacyScores(scoringResult);
+
+    // Map engine findings to legacy Finding format for backward compatibility
+    engineFindings = rawEngineFindings.map((ef) => ({
+      category: ef.category === "ai-visibility" ? "aiVisibility" : ef.category === "images" ? "performance" : ef.category === "structure" ? "ux" : ef.category,
+      severity: ef.severity === "error" ? "critical" : ef.severity === "notice" ? "info" : ef.severity,
+      title: ef.title,
+      description: ef.description,
+    }));
+
+    // Merge engine scores with existing analyzer scores (engine takes priority for categories it covers)
+    scores.performance = scores.performance ?? legacyScores.score_performance;
+    scores.seo = scores.seo ?? legacyScores.score_seo;
+    scores.security = scores.security ?? legacyScores.score_security;
+    scores.ux = scores.ux ?? legacyScores.score_ux;
+    scores.content = scores.content ?? legacyScores.score_content;
+    scores.aiVisibility = scores.aiVisibility ?? legacyScores.score_ai_visibility;
+
+    console.log(`[pipeline:${token}] Engine produced ${rawEngineFindings.length} findings, grade: ${scoringResult.grade}`);
+  } catch (err) {
+    console.error(`[pipeline:${token}] Analysis engine error (non-fatal):`, err);
+  }
+
+  // Merge engine findings with existing findings (deduplicate by title)
+  const existingTitles = new Set(liveFindings.map(f => f.title));
+  const newEngineFindings = engineFindings.filter(f => !existingTitles.has(f.title));
+  liveFindings = [...liveFindings, ...newEngineFindings];
+
+  // ─── Stage 2.5: Deep Analysis Checks ───
+  console.log(`[pipeline:${token}] Running deep analysis checks...`);
+  try {
+    const $ = await import("cheerio").then((m) => m.load(mainPage.html));
+    const deepResult = runDeepAnalysis({
+      pages: crawledPages,
+      siteUrl: url,
+      mainPageTitle: $("title").text().trim(),
+      mainPageH1: $("h1").first().text().trim(),
+      mainPageMetaDesc: $('meta[name="description"]').attr("content")?.trim() || "",
+      existingScores: scores,
+    });
+
+    // Merge deep analysis findings into live findings
+    liveFindings = [...liveFindings, ...deepResult.findings];
+
+    // Update scores with merged values
+    scores.performance = deepResult.scores.performance;
+    scores.seo = deepResult.scores.seo;
+    scores.security = deepResult.scores.security;
+    scores.ux = deepResult.scores.accessibility;
+    scores.content = deepResult.scores.content;
+    scores.aiVisibility = deepResult.scores.aiVisibility;
+
+    console.log(`[pipeline:${token}] Deep analysis: ${deepResult.findings.length} additional findings, site type: ${deepResult.siteType}`);
+
+    // Persist deep analysis metadata alongside business profile
+    await updateAnalysis(token, {
+      findings: liveFindings,
+    }).catch(() => {});
+  } catch (err) {
+    console.error(`[pipeline:${token}] Deep analysis failed (non-fatal):`, err);
+  }
+
   // Calculate overall score (weighted)
   const overall = Math.round(
-    (scores.performance ?? 50) * 0.2 +
-      (scores.seo ?? 50) * 0.2 +
-      (scores.security ?? 50) * 0.15 +
-      (scores.ux ?? 50) * 0.2 +
-      (scores.content ?? 50) * 0.15 +
-      (scores.aiVisibility ?? 50) * 0.1
+    (scores.performance ?? 50) * 0.15 +
+      (scores.seo ?? 50) * 0.25 +
+      (scores.security ?? 50) * 0.10 +
+      (scores.ux ?? 50) * 0.15 +
+      (scores.content ?? 50) * 0.20 +
+      (scores.aiVisibility ?? 50) * 0.15
   );
 
   console.log(`[pipeline:${token}] Analyzers done. Scores:`, scores, `Overall: ${overall}`);
@@ -221,6 +300,60 @@ async function runPipeline(url: string, token: string, locale?: string) {
     findings: liveFindings,
     variant_progress: { current: 0, total: 3, message: "Preparing variant generation..." },
   });
+
+  // ─── Stage 2.75: Enrichment — prioritize, apply business context, generate explanations ───
+  console.log(`[pipeline:${token}] Stage 2.75: Enriching findings...`);
+  let enrichmentResults: EnrichmentResults | null = null;
+  try {
+    // 1. Prioritize findings (pure algorithmic, no LLM)
+    const prioritizationResult = prioritizeFindings(liveFindings);
+    console.log(`[pipeline:${token}] Prioritized ${prioritizationResult.prioritized.length} findings. Quick wins: ${prioritizationResult.quickWins.length}`);
+
+    // 2. Apply business context (deterministic)
+    const businessContext = applyBusinessContext(
+      prioritizationResult,
+      liveFindings,
+      extractedAssets,
+      businessProfile
+    );
+    console.log(`[pipeline:${token}] Business type: ${businessContext.businessType}. Recommendations: ${businessContext.recommendations.length}`);
+
+    // 3. Generate LLM explanations for top findings
+    const explanationResult = await generateExplanations(
+      businessContext.adjustedFindings,
+      businessContext.businessType,
+      25
+    );
+    console.log(`[pipeline:${token}] Generated ${explanationResult.enrichedFindings.length} explanations`);
+
+    // Merge into enrichment results
+    const adjustedMap = new Map(
+      businessContext.adjustedFindings.map((af) => [af.findingId, af])
+    );
+
+    enrichmentResults = {
+      businessType: businessContext.businessType,
+      letterGrade: businessContext.letterGrade,
+      healthScore: businessContext.healthScore,
+      executiveSummary: prioritizationResult.executiveSummary,
+      recommendations: businessContext.recommendations,
+      impactEstimates: businessContext.impactEstimates,
+      enrichedFindings: explanationResult.enrichedFindings.map((ef) => {
+        const adjusted = adjustedMap.get(ef.findingId);
+        return {
+          ...ef,
+          businessValueScore: adjusted?.businessValueScore ?? 0,
+          effortScore: adjusted?.effortScore ?? 3,
+          roi: adjusted?.roi ?? 0,
+          category: adjusted?.category ?? "low-priority",
+        };
+      }),
+    };
+
+    await updateAnalysis(token, { enrichment_results: enrichmentResults } as any).catch(() => {});
+  } catch (err) {
+    console.error(`[pipeline:${token}] Enrichment failed (non-fatal):`, err);
+  }
 
   // ─── Stage 3: Generate variants (with progress) ───
   console.log(`[pipeline:${token}] Stage 3: Generating variant concepts...`);
