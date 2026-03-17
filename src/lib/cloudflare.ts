@@ -193,8 +193,16 @@ function detectSiteType(pageTypes: Record<string, PageType>): SiteType {
 }
 
 /**
- * Crawl a website via Cloudflare Browser Rendering /crawl endpoint.
- * Enhanced with intelligent prioritization, page classification, and rich extraction.
+ * Smart crawl: homepage-first strategy with targeted subpage fetching.
+ *
+ * Instead of blindly letting Cloudflare /crawl follow random links (which wastes
+ * budget on language variants), we:
+ *   1. Fetch the homepage via /content to get full HTML
+ *   2. Extract all internal links from the homepage
+ *   3. Filter out language variants, duplicates, and low-value URLs
+ *   4. Prioritize links by page type (services > products > about > blog > …)
+ *   5. Fetch top N subpages in parallel via /content
+ *   6. Report progress via onProgress callback
  */
 export async function crawlWebsite(url: string, options?: CrawlOptions): Promise<CrawlResult> {
   const apiToken = process.env.CLOUDFLARE_API_TOKEN;
@@ -205,162 +213,98 @@ export async function crawlWebsite(url: string, options?: CrawlOptions): Promise
     throw new Error("Missing CLOUDFLARE_API_TOKEN or CLOUDFLARE_ACCOUNT_ID");
   }
 
-  const baseUrl = `https://api.cloudflare.com/client/v4/accounts/${accountId}/browser-rendering`;
+  const cfBase = `https://api.cloudflare.com/client/v4/accounts/${accountId}/browser-rendering`;
   const headers = {
     Authorization: `Bearer ${apiToken}`,
     "Content-Type": "application/json",
   };
 
   try {
-    // Step 1: Start crawl job with increased limit
-    console.log(`[crawl] Starting crawl for ${url} (limit: ${CRAWL_PAGE_LIMIT})`);
-    const startResponse = await fetch(`${baseUrl}/crawl`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({ url, limit: CRAWL_PAGE_LIMIT }),
-    });
-
-    const startBody = await startResponse.text();
-    console.log(`[crawl] Start response status=${startResponse.status}, body=${startBody.slice(0, 500)}`);
-
-    if (!startResponse.ok) {
-      return {
-        success: false,
-        pages: [],
-        error: `Cloudflare API error ${startResponse.status}: ${startBody}`,
-      };
+    // ── Step 1: Fetch homepage ──
+    console.log(`[crawl] Step 1: Fetching homepage ${url}`);
+    const homePage = await fetchSinglePage(url, headers, cfBase);
+    if (!homePage) {
+      return { success: false, pages: [], error: "Failed to fetch homepage" };
     }
+    console.log(`[crawl] Homepage fetched: "${homePage.title}" (${homePage.html.length} chars)`);
 
-    let startData: Record<string, unknown>;
-    try {
-      startData = JSON.parse(startBody);
-    } catch {
-      return { success: false, pages: [], error: `Invalid JSON from crawl API: ${startBody.slice(0, 200)}` };
-    }
+    const pages: CrawledPage[] = [homePage];
+    if (options?.onProgress) options.onProgress([...pages]);
 
-    if (!startData.success) {
-      const errors = startData.errors as Array<{ message?: string }> | undefined;
-      console.error("[crawl] API returned success=false:", errors);
-      return {
-        success: false,
-        pages: [],
-        error: errors?.[0]?.message || "Failed to start crawl",
-      };
-    }
+    // ── Step 2: Extract & prioritize internal links ──
+    let siteBase: URL;
+    try { siteBase = new URL(url); } catch { siteBase = new URL("https://example.com"); }
 
-    const jobId = startData.result;
-    console.log(`[crawl] Job started, jobId=${jobId}, type=${typeof jobId}`);
+    const internalLinks = extractInternalLinks(homePage.html, siteBase);
+    console.log(`[crawl] Found ${internalLinks.length} internal links on homepage`);
 
-    if (!jobId || typeof jobId !== "string") {
-      // Some CF API versions return the result directly (not a job ID)
-      if (startData.result && typeof startData.result === "object") {
-        console.log("[crawl] Result is an object, checking for inline data:", JSON.stringify(startData.result).slice(0, 300));
-        const resultObj = startData.result as Record<string, unknown>;
-        const inlineRecords = (resultObj.records || resultObj.pages || []) as Record<string, unknown>[];
-        if (Array.isArray(inlineRecords) && inlineRecords.length > 0) {
-          const pages = deduplicateLanguageVariants(extractPagesFromRecords(inlineRecords, url), url);
-          if (pages.length > 0) {
-            console.log(`[crawl] Got ${pages.length} unique pages from inline result`);
-            const assets = extractAllAssets(pages, url);
-            return { success: true, pages, assets };
-          }
-        }
-      }
-      return {
-        success: false,
-        pages: [],
-        error: `No job ID returned from crawl API. Result type: ${typeof startData.result}, value: ${JSON.stringify(startData.result).slice(0, 200)}`,
-      };
-    }
+    // Filter out language variants and low-value URLs
+    const filteredLinks = filterAndPrioritizeLinks(internalLinks, siteBase);
+    console.log(`[crawl] After filtering: ${filteredLinks.length} unique, high-value links`);
 
-    // Step 2: Poll for results (max ~200s, every 4s)
-    const maxAttempts = 50;
-    const pollInterval = 4000;
-    for (let attempt = 0; attempt < maxAttempts; attempt++) {
-      await new Promise((r) => setTimeout(r, pollInterval));
-
-      let pollResponse: Response;
-      try {
-        const controller = new AbortController();
-        setTimeout(() => controller.abort(), 10000);
-        pollResponse = await fetch(`${baseUrl}/crawl/${jobId}`, { headers, signal: controller.signal });
-      } catch (err) {
-        console.warn(`[crawl] Poll attempt ${attempt + 1} network error:`, err);
-        continue;
-      }
-
-      const pollBody = await pollResponse.text();
-      console.log(`[crawl] Poll attempt ${attempt + 1}: status=${pollResponse.status}, body=${pollBody.slice(0, 300)}`);
-
-      if (!pollResponse.ok) continue;
-
-      let pollData: Record<string, unknown>;
-      try {
-        pollData = JSON.parse(pollBody);
-      } catch {
-        console.warn(`[crawl] Poll returned invalid JSON`);
-        continue;
-      }
-      if (!pollData.success) continue;
-
-      const result = pollData.result as Record<string, unknown> | undefined;
-      if (!result) continue;
-
-      console.log(`[crawl] Poll result status=${result.status}, records=${((result.records as unknown[]) || []).length}`);
-
-      // Extract any available records for progress reporting
-      const records = (result.records || []) as Record<string, unknown>[];
-      if (records.length > 0 && options?.onProgress) {
-        const partialPages = deduplicateLanguageVariants(extractPagesFromRecords(records, url), url);
-        if (partialPages.length > 0) {
-          options.onProgress(partialPages);
-        }
-      }
-
-      if (result.status !== "completed") continue;
-
-      // Final extraction from completed results
-      const rawPages = extractPagesFromRecords(records, url);
-      console.log(`[crawl] Completed. Raw pages with content: ${rawPages.length}`);
-
-      // Deduplicate language variants (e.g. /fr/page, /de/page, /es/page → keep root version)
-      const pages = deduplicateLanguageVariants(rawPages, url);
-      console.log(`[crawl] After language dedup: ${pages.length} unique pages`);
-
-      if (pages.length === 0) {
-        return {
-          success: false,
-          pages: [],
-          error: "Crawl completed but no pages with content found",
-        };
-      }
-
-      // Sort pages by priority (homepage first, then nav pages, etc.)
-      pages.sort((a, b) => {
-        const aPriority = getPagePriority(a.url, a.pageType || "other");
-        const bPriority = getPagePriority(b.url, b.pageType || "other");
-        return aPriority - bPriority;
-      });
-
-      // Extract assets from ALL pages
+    if (filteredLinks.length === 0) {
       const assets = extractAllAssets(pages, url);
       return { success: true, pages, assets };
     }
 
-    console.error(`[crawl] Timed out after ${maxAttempts} poll attempts (~${maxAttempts * pollInterval / 1000}s)`);
-    // Fallback: try to at least fetch the homepage directly
-    console.log(`[crawl] Attempting fallback: direct fetch of ${url}`);
-    const fallbackPages = await fallbackDirectFetch(url, headers, baseUrl);
-    if (fallbackPages.length > 0) {
-      console.log(`[crawl] Fallback succeeded with ${fallbackPages.length} page(s)`);
-      const assets = extractAllAssets(fallbackPages, url);
-      return { success: true, pages: fallbackPages, assets };
+    // ── Step 3: Fetch subpages in parallel batches ──
+    const maxSubpages = Math.min(filteredLinks.length, CRAWL_PAGE_LIMIT - 1);
+    const linksToFetch = filteredLinks.slice(0, maxSubpages);
+    console.log(`[crawl] Step 3: Fetching ${linksToFetch.length} subpages...`);
+
+    // Fetch in batches of 5 to avoid overwhelming the API
+    const BATCH_SIZE = 5;
+    const fetchedUrls = new Set<string>([normalizeUrl(url)]);
+    let langVariantsFound = 0;
+
+    for (let i = 0; i < linksToFetch.length; i += BATCH_SIZE) {
+      const batch = linksToFetch.slice(i, i + BATCH_SIZE);
+      const batchPromises = batch
+        .filter(link => !fetchedUrls.has(normalizeUrl(link)))
+        .map(async (link) => {
+          fetchedUrls.add(normalizeUrl(link));
+          return fetchSinglePage(link, headers, cfBase);
+        });
+
+      const results = await Promise.allSettled(batchPromises);
+      for (const result of results) {
+        if (result.status === "fulfilled" && result.value) {
+          pages.push(result.value);
+        }
+      }
+
+      console.log(`[crawl] Batch ${Math.floor(i / BATCH_SIZE) + 1}: ${pages.length} pages total`);
+      if (options?.onProgress) options.onProgress([...pages]);
     }
-    return {
-      success: false,
-      pages: [],
-      error: `Crawl timed out after ${maxAttempts * pollInterval / 1000} seconds`,
-    };
+
+    // ── Step 4: Detect language variants from the pages we have ──
+    // Scan all pages for language variant links to report them
+    for (const page of pages) {
+      const pageLinks = extractInternalLinks(page.html, siteBase);
+      for (const link of pageLinks) {
+        try {
+          const linkPath = new URL(link).pathname;
+          if (LANG_PREFIX_PATTERN.test(linkPath)) {
+            langVariantsFound++;
+          }
+        } catch { /* ignore */ }
+      }
+    }
+    if (langVariantsFound > 0) {
+      console.log(`[crawl] Detected ${langVariantsFound} language variant links (skipped)`);
+    }
+
+    // Sort by page type priority
+    pages.sort((a, b) => {
+      const aPriority = getPagePriority(a.url, a.pageType || "other");
+      const bPriority = getPagePriority(b.url, b.pageType || "other");
+      return aPriority - bPriority;
+    });
+
+    console.log(`[crawl] Done. ${pages.length} unique pages crawled.`);
+    const assets = extractAllAssets(pages, url);
+    return { success: true, pages, assets };
+
   } catch (err) {
     console.error("[crawl] Unexpected error:", err);
     return {
@@ -371,55 +315,143 @@ export async function crawlWebsite(url: string, options?: CrawlOptions): Promise
   }
 }
 
-/**
- * Fallback: fetch a single page directly via Cloudflare Browser Rendering /content endpoint.
- * Used when /crawl times out — at least we get the homepage.
- */
-async function fallbackDirectFetch(url: string, headers: Record<string, string>, cfBaseUrl: string): Promise<CrawledPage[]> {
+// ── Helper: Fetch a single page via Cloudflare /content endpoint ──
+
+async function fetchSinglePage(
+  pageUrl: string,
+  headers: Record<string, string>,
+  cfBase: string,
+): Promise<CrawledPage | null> {
   try {
-    const response = await fetch(`${cfBaseUrl}/content`, {
+    const controller = new AbortController();
+    setTimeout(() => controller.abort(), 15000);
+
+    const response = await fetch(`${cfBase}/content`, {
       method: "POST",
       headers,
-      body: JSON.stringify({ url }),
+      body: JSON.stringify({ url: pageUrl }),
+      signal: controller.signal,
     });
 
     if (!response.ok) {
-      console.warn(`[crawl:fallback] /content returned ${response.status}`);
-      return [];
+      console.warn(`[crawl] /content ${pageUrl} → ${response.status}`);
+      return null;
     }
 
     const body = await response.text();
-    let data: Record<string, unknown>;
+    let html: string;
+
     try {
-      data = JSON.parse(body);
+      const data = JSON.parse(body);
+      // CF returns { success, result: "<html>..." } or { html: "..." }
+      html = (typeof data.result === "string" ? data.result : "") || (data.html as string) || "";
     } catch {
-      // If response is raw HTML (some CF versions), use it directly
-      if (body.includes("<html") || body.includes("<!DOCTYPE")) {
-        return [{
-          url,
-          title: extractTitle(body),
-          markdown: htmlToSimpleMarkdown(body),
-          html: body,
-          pageType: classifyPageType(url, body),
-        }];
+      // Raw HTML response
+      if (body.includes("<html") || body.includes("<!DOCTYPE") || body.includes("<head")) {
+        html = body;
+      } else {
+        return null;
       }
-      return [];
     }
 
-    // Handle structured response
-    const html = (data.result as string) || (data.html as string) || "";
-    if (!html) return [];
+    if (!html || html.length < 100) return null;
 
-    return [{
-      url,
+    return {
+      url: pageUrl,
       title: extractTitle(html),
       markdown: htmlToSimpleMarkdown(html),
       html,
-      pageType: classifyPageType(url, html),
-    }];
+      pageType: classifyPageType(pageUrl, html),
+    };
   } catch (err) {
-    console.warn("[crawl:fallback] Direct fetch failed:", err);
-    return [];
+    console.warn(`[crawl] Failed to fetch ${pageUrl}:`, (err as Error).message || err);
+    return null;
+  }
+}
+
+// ── Helper: Extract internal links from HTML ──
+
+function extractInternalLinks(html: string, base: URL): string[] {
+  const linkRegex = /<a\b[^>]*\bhref=["']([^"'#]+)["'][^>]*>/gi;
+  const links = new Set<string>();
+  let match;
+
+  while ((match = linkRegex.exec(html)) !== null) {
+    const href = match[1].trim();
+    if (!href || href.startsWith("javascript:") || href.startsWith("mailto:") || href.startsWith("tel:")) continue;
+
+    try {
+      const resolved = new URL(href, base);
+      // Only same-domain links
+      if (resolved.hostname !== base.hostname) continue;
+      // Strip hash and query for cleaner URLs
+      resolved.hash = "";
+      const clean = resolved.toString();
+      links.add(clean);
+    } catch { /* ignore malformed URLs */ }
+  }
+
+  return Array.from(links);
+}
+
+// ── Helper: Filter out language variants and prioritize links ──
+
+function filterAndPrioritizeLinks(links: string[], base: URL): string[] {
+  const seen = new Set<string>();
+  const scoredLinks: { url: string; priority: number }[] = [];
+
+  // Always skip these patterns
+  const SKIP_PATTERNS = [
+    /\/wp-content\//i, /\/wp-admin\//i, /\/wp-includes\//i,
+    /\/feed\/?$/i, /\/xmlrpc\.php/i, /\/wp-json\//i,
+    /\/tag\//i, /\/author\//i, /\/page\/\d+/i,
+    /\.(jpg|jpeg|png|gif|svg|webp|pdf|zip|css|js)$/i,
+    /\/\?/,  // Query-string URLs
+    /\/cart\/?$/i, /\/checkout\/?$/i, /\/login\/?$/i, /\/register\/?$/i,
+    /\/privacy/i, /\/terms/i, /\/cookie/i, /\/gdpr/i, /\/impressum/i,
+    /\/sitemap/i, /\/search/i,
+  ];
+
+  for (const link of links) {
+    try {
+      const linkUrl = new URL(link);
+      const path = linkUrl.pathname;
+
+      // Skip language variants
+      if (LANG_PREFIX_PATTERN.test(path)) continue;
+
+      // Skip known low-value patterns
+      if (SKIP_PATTERNS.some(p => p.test(path))) continue;
+
+      // Skip homepage (already fetched)
+      if (path === "/" || path === "" || path === "/index.html" || path === "/index.php") continue;
+
+      // Normalize for dedup
+      const normalized = normalizeUrl(link);
+      if (seen.has(normalized)) continue;
+      seen.add(normalized);
+
+      // Score by page type
+      const pageType = classifyPageType(link, "");
+      const priority = getPagePriority(link, pageType);
+
+      scoredLinks.push({ url: link, priority });
+    } catch { /* ignore */ }
+  }
+
+  // Sort by priority (lower = more important)
+  scoredLinks.sort((a, b) => a.priority - b.priority);
+
+  return scoredLinks.map(l => l.url);
+}
+
+function normalizeUrl(url: string): string {
+  try {
+    const u = new URL(url);
+    // Remove trailing slash, lowercase host, strip hash
+    return `${u.protocol}//${u.hostname}${u.pathname.replace(/\/+$/, '') || '/'}`;
+  } catch {
+    return url;
   }
 }
 
