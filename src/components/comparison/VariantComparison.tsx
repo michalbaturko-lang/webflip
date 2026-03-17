@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion } from "framer-motion";
-import { Shuffle, ChevronLeft, ChevronRight, Loader2, AlertCircle } from "lucide-react";
+import { Shuffle, Columns3, ChevronLeft, ChevronRight, Loader2, AlertCircle } from "lucide-react";
 import { useTranslations, useLocale } from "next-intl";
 import VariantCard from "./VariantCard";
 import RemixModal from "./RemixModal";
+import VariantComparisonModal from "./VariantComparisonModal";
 import type { RecommendBadgeProps } from "./RecommendBadge";
 import type { DesignVariant, RecommendationResponse } from "@/types/design";
 
@@ -26,6 +27,7 @@ export default function VariantComparison({
     useState<RecommendationResponse | null>(null);
   const [recommendLoading, setRecommendLoading] = useState(true);
   const [isRemixOpen, setIsRemixOpen] = useState(false);
+  const [isCompareOpen, setIsCompareOpen] = useState(false);
   const [mobileIndex, setMobileIndex] = useState(0);
   const [selectedVariant, setSelectedVariant] = useState<number | null>(null);
   const [selectError, setSelectError] = useState<string | null>(null);
@@ -200,14 +202,24 @@ export default function VariantComparison({
           </div>
         )}
 
-        <button
-          onClick={() => setIsRemixOpen(true)}
-          aria-label={t("remixButton")}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all hover:scale-105 border border-purple-400/30 bg-purple-500/10 text-purple-300 hover:bg-purple-500/20"
-        >
-          <Shuffle className="h-4 w-4" />
-          {t("remixButton")}
-        </button>
+        <div className="flex items-center justify-center gap-3 flex-wrap">
+          <button
+            onClick={() => setIsCompareOpen(true)}
+            aria-label={t("compareVariants")}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all hover:scale-105 border border-blue-400/30 bg-blue-500/10 text-blue-300 hover:bg-blue-500/20"
+          >
+            <Columns3 className="h-4 w-4" />
+            {t("compareVariants")}
+          </button>
+          <button
+            onClick={() => setIsRemixOpen(true)}
+            aria-label={t("remixButton")}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all hover:scale-105 border border-purple-400/30 bg-purple-500/10 text-purple-300 hover:bg-purple-500/20"
+          >
+            <Shuffle className="h-4 w-4" />
+            {t("remixButton")}
+          </button>
+        </div>
       </motion.div>
 
       {/* Desktop: 3-column grid */}
@@ -304,6 +316,16 @@ export default function VariantComparison({
         variants={variants}
         token={token}
         onRemixComplete={handleRemixComplete}
+      />
+
+      {/* Compare Modal */}
+      <VariantComparisonModal
+        isOpen={isCompareOpen}
+        onClose={() => setIsCompareOpen(false)}
+        variants={variants}
+        token={token}
+        selectedVariant={selectedVariant}
+        onSelectVariant={handleSelectVariant}
       />
     </div>
   );

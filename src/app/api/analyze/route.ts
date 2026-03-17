@@ -3,12 +3,16 @@ import { waitUntil } from "@vercel/functions";
 import { createAnalysis, updateAnalysis } from "@/lib/supabase";
 import { crawlWebsite } from "@/lib/cloudflare";
 import { getPageSpeedData } from "@/lib/pagespeed";
+import type { PageSpeedResult } from "@/lib/pagespeed";
+import { mergeWithRealMetrics } from "@/lib/performance-measurer";
+import { measurePerformance } from "@/lib/performance-measurer";
 import { analyzeSEO } from "@/lib/analyzers/seo";
 import { analyzeSecurity } from "@/lib/analyzers/security";
 import { analyzeUX } from "@/lib/analyzers/ux";
 import { analyzeContent } from "@/lib/analyzers/content";
 import { analyzeAIVisibility } from "@/lib/analyzers/ai-visibility";
 import { analyzePerformance } from "@/lib/analyzers/performance";
+import { analyzeAccessibility } from "@/lib/analyzers/accessibility";
 import { generateVariants } from "@/lib/redesign";
 import { generateHtmlVariants } from "@/lib/generate-html";
 import { interpretBusiness } from "@/lib/business-interpretation";
@@ -17,13 +21,10 @@ import { calculateScores, mapToLegacyScores } from "@/lib/scoring";
 import { runDeepAnalysis } from "@/lib/checks";
 import { calculateBenchmarks } from "@/lib/benchmarks";
 import { detectTemplates } from "@/lib/template-detector";
-import { buildLinkGraph } from "@/lib/link-graph";
-import { analyzeLinkGraph } from "@/lib/analyzers/link-analysis";
 import { prioritizeFindings } from "@/lib/prioritizer";
 import { applyBusinessContext } from "@/lib/business-context";
-import { generateExplanations } from "@/lib/llm-explainer";
-import type { Finding, BusinessProfile, EnrichmentResults } from "@/lib/supabase";
 import { sendAnalysisEmail } from "@/lib/email";
+import type { Finding, BusinessProfile, EnrichmentResults, PageSpeedMetricsData } from "@/lib/supabase";
 
 // Vercel Pro supports up to 300s. Pipeline needs time for crawl+analyze+generate.
 export const maxDuration = 300;
@@ -180,27 +181,64 @@ async function runPipeline(url: string, token: string, locale?: string, email?: 
     if (category === "ux") update.score_ux = result.score;
     if (category === "content") update.score_content = result.score;
     if (category === "aiVisibility") update.score_ai_visibility = result.score;
+    if (category === "accessibility") update.score_accessibility = result.score;
     await updateAnalysis(token, update as any).catch(() => {});
   };
 
-  console.log(`[pipeline:${token}] Running 7 analyzers in parallel...`);
+  // ── Start PageSpeed API call in parallel with analyzers ──
+  let psResult: PageSpeedResult | null = null;
+  let pagespeedMetrics: PageSpeedMetricsData | null = null;
+
+  console.log(`[pipeline:${token}] Running 7 analyzers + PageSpeed API in parallel...`);
   // Run analyzers in parallel, but update DB as each completes
   await Promise.allSettled([
     // PageSpeed API + HTML-based performance measurer merged together
     (async () => {
       const htmlPerf = analyzePerformance(mainPage.html, url);
-      try {
-        const psData = await getPageSpeedData(url);
-        const psFindings = performanceFindings(psData);
-        // Merge: use PageSpeed score as primary, augment with HTML-based findings
-        const existingTitles = new Set(psFindings.map(f => f.title));
-        const uniqueHtmlFindings = htmlPerf.findings.filter(f => !existingTitles.has(f.title));
-        const mergedScore = Math.round(psData.score * 0.6 + htmlPerf.score * 0.4);
-        await pushFindings("performance", { score: mergedScore, findings: [...psFindings, ...uniqueHtmlFindings] });
-      } catch {
-        // PageSpeed unavailable — use HTML-based analysis alone
+      const htmlMeasurement = measurePerformance(mainPage.html, url);
+
+      // getPageSpeedData returns null on error — never throws
+      psResult = await getPageSpeedData(url);
+
+      if (psResult) {
+        console.log(`[pipeline:${token}] PageSpeed API: score=${psResult.score}, LCP=${psResult.metrics.lcp}ms, CLS=${psResult.metrics.cls}`);
+        // Use mergeWithRealMetrics for combined scoring
+        const merged = mergeWithRealMetrics(htmlMeasurement, psResult, htmlPerf.findings);
+        await pushFindings("performance", merged);
+
+        // Store real metrics for the UI
+        pagespeedMetrics = {
+          fcp: psResult.metrics.fcp,
+          lcp: psResult.metrics.lcp,
+          tbt: psResult.metrics.tbt,
+          cls: psResult.metrics.cls,
+          si: psResult.metrics.si,
+          tti: psResult.metrics.tti,
+          fieldData: psResult.fieldData,
+          lighthouseScore: psResult.scores.performance,
+          accessibilityScore: psResult.scores.accessibility,
+          source: "lighthouse",
+        };
+      } else {
+        console.log(`[pipeline:${token}] PageSpeed API unavailable — using HTML-based analysis`);
+        // Fallback to HTML-based analysis with estimated metrics
         await pushFindings("performance", htmlPerf);
+        pagespeedMetrics = {
+          fcp: htmlMeasurement.performanceScore.estimatedFCP,
+          lcp: htmlMeasurement.performanceScore.estimatedLCP,
+          tbt: htmlMeasurement.performanceScore.estimatedTBT,
+          cls: htmlMeasurement.performanceScore.estimatedCLS,
+          si: htmlMeasurement.performanceScore.estimatedSI,
+          tti: 0,
+          fieldData: null,
+          lighthouseScore: htmlMeasurement.performanceScore.overall,
+          accessibilityScore: 0,
+          source: "estimation",
+        };
       }
+
+      // Persist pagespeed metrics immediately
+      await updateAnalysis(token, { pagespeed_metrics: pagespeedMetrics } as any).catch(() => {});
     })(),
     Promise.resolve(analyzeSEO(mainPage.html, url)).then(
       (r) => pushFindings("seo", r),
@@ -221,6 +259,10 @@ async function runPipeline(url: string, token: string, locale?: string, email?: 
     Promise.resolve(analyzeAIVisibility(mainPage.html)).then(
       (r) => pushFindings("aiVisibility", r),
       () => pushFindings("aiVisibility", { score: 50, findings: [] })
+    ),
+    Promise.resolve(analyzeAccessibility(crawledPages)).then(
+      (r) => pushFindings("accessibility", r),
+      () => pushFindings("accessibility", { score: 50, findings: [] })
     ),
   ]);
 
@@ -317,11 +359,10 @@ async function runPipeline(url: string, token: string, locale?: string, email?: 
 
     console.log(`[pipeline:${token}] Link graph: ${graphResult.summary.totalPages} pages, ${graphResult.summary.totalInternalLinks} links, ${graphResult.orphanPages.length} orphans`);
 
-    await updateAnalysis(token, { findings: liveFindings }).catch(() => {});
+  }
   } catch (err) {
     console.error(`[pipeline:${token}] Link graph analysis failed (non-fatal):`, err);
-  }
-
+    }
   // ─── Stage 2.6: Template & DOM Clustering Detection ───
   console.log(`[pipeline:${token}] Running template detection...`);
   let templateClusters: ReturnType<typeof detectTemplates>["clusters"] = [];
@@ -350,12 +391,13 @@ async function runPipeline(url: string, token: string, locale?: string, email?: 
 
   // Calculate overall score (weighted)
   const overall = Math.round(
-    (scores.performance ?? 50) * 0.15 +
-      (scores.seo ?? 50) * 0.25 +
+    (scores.performance ?? 50) * 0.13 +
+      (scores.seo ?? 50) * 0.22 +
       (scores.security ?? 50) * 0.10 +
-      (scores.ux ?? 50) * 0.15 +
-      (scores.content ?? 50) * 0.20 +
-      (scores.aiVisibility ?? 50) * 0.15
+      (scores.ux ?? 50) * 0.13 +
+      (scores.content ?? 50) * 0.17 +
+      (scores.aiVisibility ?? 50) * 0.13 +
+      (scores.accessibility ?? 50) * 0.12
   );
 
   console.log(`[pipeline:${token}] Analyzers done. Scores:`, scores, `Overall: ${overall}`);
@@ -385,6 +427,7 @@ async function runPipeline(url: string, token: string, locale?: string, email?: 
     score_ux: scores.ux ?? 50,
     score_content: scores.content ?? 50,
     score_ai_visibility: scores.aiVisibility ?? 50,
+    score_accessibility: scores.accessibility ?? 50,
     score_overall: overall,
     analysis_results: {
       performance: { score: scores.performance ?? 50, findings: liveFindings.filter(f => f.category === "performance") },
@@ -393,6 +436,7 @@ async function runPipeline(url: string, token: string, locale?: string, email?: 
       ux: { score: scores.ux ?? 50, findings: liveFindings.filter(f => f.category === "ux") },
       content: { score: scores.content ?? 50, findings: liveFindings.filter(f => f.category === "content") },
       aiVisibility: { score: scores.aiVisibility ?? 50, findings: liveFindings.filter(f => f.category === "aiVisibility") },
+      accessibility: { score: scores.accessibility ?? 50, findings: liveFindings.filter(f => f.category === "Přístupnost") },
     },
     findings: liveFindings,
     benchmark_results: benchmarkResults as any,
@@ -560,58 +604,3 @@ async function runPipeline(url: string, token: string, locale?: string, email?: 
   }
 }
 
-/**
- * Convert PageSpeed data into findings.
- */
-function performanceFindings(data: Awaited<ReturnType<typeof getPageSpeedData>>): Finding[] {
-  const findings: Finding[] = [];
-
-  // Core Web Vitals
-  if (data.metrics.lcp > 4000) {
-    findings.push({ category: "performance", severity: "critical", title: "Slow LCP", description: `Largest Contentful Paint is ${(data.metrics.lcp / 1000).toFixed(1)}s. Should be under 2.5s.` });
-  } else if (data.metrics.lcp > 2500) {
-    findings.push({ category: "performance", severity: "warning", title: "LCP needs improvement", description: `LCP is ${(data.metrics.lcp / 1000).toFixed(1)}s. Target: under 2.5s.` });
-  } else {
-    findings.push({ category: "performance", severity: "ok", title: "Good LCP", description: `LCP is ${(data.metrics.lcp / 1000).toFixed(1)}s — fast.` });
-  }
-
-  if (data.metrics.cls > 0.25) {
-    findings.push({ category: "performance", severity: "critical", title: "High layout shift", description: `CLS is ${data.metrics.cls.toFixed(3)}. Should be under 0.1.` });
-  } else if (data.metrics.cls > 0.1) {
-    findings.push({ category: "performance", severity: "warning", title: "CLS needs improvement", description: `CLS is ${data.metrics.cls.toFixed(3)}. Target: under 0.1.` });
-  }
-
-  if (data.metrics.fcp > 3000) {
-    findings.push({ category: "performance", severity: "warning", title: "Slow First Paint", description: `FCP is ${(data.metrics.fcp / 1000).toFixed(1)}s. Users see blank screen too long.` });
-  }
-
-  if (data.metrics.tbt > 600) {
-    findings.push({ category: "performance", severity: "warning", title: "High blocking time", description: `Total Blocking Time is ${Math.round(data.metrics.tbt)}ms. Page feels unresponsive.` });
-  }
-
-  // Page size
-  const sizeMB = data.totalSize / (1024 * 1024);
-  if (sizeMB > 5) {
-    findings.push({ category: "performance", severity: "critical", title: "Very large page", description: `Page is ${sizeMB.toFixed(1)}MB. Should be under 3MB for mobile.` });
-  } else if (sizeMB > 3) {
-    findings.push({ category: "performance", severity: "warning", title: "Large page size", description: `Page is ${sizeMB.toFixed(1)}MB. Consider optimizing assets.` });
-  }
-
-  // Optimization checks
-  if (!data.usesCompression) {
-    findings.push({ category: "performance", severity: "warning", title: "No text compression", description: "Enable gzip/brotli compression to reduce transfer size." });
-  }
-  if (!data.usesWebP) {
-    findings.push({ category: "performance", severity: "warning", title: "No modern image formats", description: "Use WebP/AVIF instead of JPEG/PNG for smaller image sizes." });
-  }
-  if (!data.hasLazyImages) {
-    findings.push({ category: "performance", severity: "info", title: "No lazy loading", description: "Offscreen images could be lazy loaded to speed up initial load." });
-  }
-
-  // Opportunities from PageSpeed
-  for (const opp of data.opportunities.slice(0, 3)) {
-    findings.push({ category: "performance", severity: "info", title: opp.title, description: `${opp.description} (potential saving: ${opp.savings})` });
-  }
-
-  return findings;
-}
