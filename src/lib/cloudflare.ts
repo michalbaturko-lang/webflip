@@ -22,7 +22,7 @@ export interface CrawlOptions {
   onProgress?: (pages: CrawledPage[]) => void;
 }
 
-const CRAWL_PAGE_LIMIT = 50;
+const CRAWL_PAGE_LIMIT = 20;
 
 // ── Language variant deduplication ──
 // Common language prefixes in URL paths (ISO 639-1 codes and common variants)
@@ -273,8 +273,8 @@ export async function crawlWebsite(url: string, options?: CrawlOptions): Promise
       };
     }
 
-    // Step 2: Poll for results (max ~120s, every 4s)
-    const maxAttempts = 30;
+    // Step 2: Poll for results (max ~200s, every 4s)
+    const maxAttempts = 50;
     const pollInterval = 4000;
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       await new Promise((r) => setTimeout(r, pollInterval));
@@ -348,6 +348,14 @@ export async function crawlWebsite(url: string, options?: CrawlOptions): Promise
     }
 
     console.error(`[crawl] Timed out after ${maxAttempts} poll attempts (~${maxAttempts * pollInterval / 1000}s)`);
+    // Fallback: try to at least fetch the homepage directly
+    console.log(`[crawl] Attempting fallback: direct fetch of ${url}`);
+    const fallbackPages = await fallbackDirectFetch(url, headers, baseUrl);
+    if (fallbackPages.length > 0) {
+      console.log(`[crawl] Fallback succeeded with ${fallbackPages.length} page(s)`);
+      const assets = extractAllAssets(fallbackPages, url);
+      return { success: true, pages: fallbackPages, assets };
+    }
     return {
       success: false,
       pages: [],
@@ -360,6 +368,58 @@ export async function crawlWebsite(url: string, options?: CrawlOptions): Promise
       pages: [],
       error: err instanceof Error ? err.message : "Unknown crawl error",
     };
+  }
+}
+
+/**
+ * Fallback: fetch a single page directly via Cloudflare Browser Rendering /content endpoint.
+ * Used when /crawl times out — at least we get the homepage.
+ */
+async function fallbackDirectFetch(url: string, headers: Record<string, string>, cfBaseUrl: string): Promise<CrawledPage[]> {
+  try {
+    const response = await fetch(`${cfBaseUrl}/content`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ url }),
+    });
+
+    if (!response.ok) {
+      console.warn(`[crawl:fallback] /content returned ${response.status}`);
+      return [];
+    }
+
+    const body = await response.text();
+    let data: Record<string, unknown>;
+    try {
+      data = JSON.parse(body);
+    } catch {
+      // If response is raw HTML (some CF versions), use it directly
+      if (body.includes("<html") || body.includes("<!DOCTYPE")) {
+        return [{
+          url,
+          title: extractTitle(body),
+          markdown: htmlToSimpleMarkdown(body),
+          html: body,
+          pageType: classifyPageType(url, body),
+        }];
+      }
+      return [];
+    }
+
+    // Handle structured response
+    const html = (data.result as string) || (data.html as string) || "";
+    if (!html) return [];
+
+    return [{
+      url,
+      title: extractTitle(html),
+      markdown: htmlToSimpleMarkdown(html),
+      html,
+      pageType: classifyPageType(url, html),
+    }];
+  } catch (err) {
+    console.warn("[crawl:fallback] Direct fetch failed:", err);
+    return [];
   }
 }
 
