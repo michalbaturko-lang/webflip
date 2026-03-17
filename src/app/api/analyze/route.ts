@@ -17,7 +17,13 @@ import { calculateScores, mapToLegacyScores } from "@/lib/scoring";
 import { runDeepAnalysis } from "@/lib/checks";
 import { calculateBenchmarks } from "@/lib/benchmarks";
 import { detectTemplates } from "@/lib/template-detector";
+import { buildLinkGraph } from "@/lib/link-graph";
+import { analyzeLinkGraph } from "@/lib/analyzers/link-analysis";
+import { prioritizeFindings } from "@/lib/prioritizer";
+import { applyBusinessContext } from "@/lib/business-context";
+import { generateExplanations } from "@/lib/llm-explainer";
 import type { Finding, BusinessProfile, EnrichmentResults } from "@/lib/supabase";
+import { sendAnalysisEmail } from "@/lib/email";
 
 // Vercel Pro supports up to 300s. Pipeline needs time for crawl+analyze+generate.
 export const maxDuration = 300;
@@ -25,7 +31,13 @@ export const maxDuration = 300;
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { url, locale } = body;
+    const { url, locale, email: rawEmail } = body;
+
+    // Validate and normalize email (optional)
+    const email =
+      typeof rawEmail === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawEmail.trim())
+        ? rawEmail.trim()
+        : null;
 
     if (!url || typeof url !== "string") {
       return NextResponse.json({ error: "URL is required" }, { status: 400 });
@@ -48,11 +60,11 @@ export async function POST(request: Request) {
 
     // Create DB record
     await createAnalysis(normalizedUrl, token);
-    await updateAnalysis(token, { status: "crawling" });
+    await updateAnalysis(token, { status: "crawling", ...(email ? { email } : {}) });
 
     // Start async pipeline — waitUntil keeps the function alive after response is sent
     waitUntil(
-      runPipeline(normalizedUrl, token, locale).catch(async (err) => {
+      runPipeline(normalizedUrl, token, locale, email).catch(async (err) => {
         console.error(`Pipeline error for ${token}:`, err);
         try {
           await updateAnalysis(token, {
@@ -78,7 +90,7 @@ export async function POST(request: Request) {
 /**
  * Full analysis pipeline — runs async after returning the token.
  */
-async function runPipeline(url: string, token: string, locale?: string) {
+async function runPipeline(url: string, token: string, locale?: string, email?: string | null) {
   try {
   // ─── Stage 1: Crawl ───
   console.log(`[pipeline:${token}] Stage 1: Starting crawl for ${url}`);
@@ -119,6 +131,11 @@ async function runPipeline(url: string, token: string, locale?: string) {
   const extractedAssets = crawlResult.assets || null;
 
   const allMarkdown = crawledPages.map((p) => p.markdown).join("\n\n---\n\n");
+
+  // Fire-and-forget: send analysis-started email
+  if (email) {
+    sendAnalysisEmail({ to: email, type: "analysis-started", token, url }).catch(() => {});
+  }
 
   // ─── Stage 1.5: Business Interpretation ───
   // Build a deep business profile from crawled content BEFORE analysis/generation.
@@ -303,6 +320,8 @@ async function runPipeline(url: string, token: string, locale?: string) {
     await updateAnalysis(token, { findings: liveFindings }).catch(() => {});
   } catch (err) {
     console.error(`[pipeline:${token}] Link graph analysis failed (non-fatal):`, err);
+  }
+
   // ─── Stage 2.6: Template & DOM Clustering Detection ───
   console.log(`[pipeline:${token}] Running template detection...`);
   let templateClusters: ReturnType<typeof detectTemplates>["clusters"] = [];
@@ -505,14 +524,39 @@ async function runPipeline(url: string, token: string, locale?: string) {
     variant_progress: null,
     completed_at: new Date().toISOString(),
   });
+  // Fire-and-forget: send analysis-complete email
+  if (email) {
+    sendAnalysisEmail({
+      to: email,
+      type: "analysis-complete",
+      token,
+      url,
+      scores: {
+        performance: scores.performance ?? 50,
+        seo: scores.seo ?? 50,
+        security: scores.security ?? 50,
+        ux: scores.ux ?? 50,
+        content: scores.content ?? 50,
+        aiVisibility: scores.aiVisibility ?? 50,
+      },
+      variantCount: htmlVariants.filter(Boolean).length,
+    }).catch(() => {});
+  }
+
   console.log(`[pipeline:${token}] Pipeline completed successfully!`);
 
   } catch (err) {
     console.error(`[pipeline:${token}] FATAL pipeline error:`, err);
+    const errorMsg = err instanceof Error ? err.message : "Pipeline failed unexpectedly";
     await updateAnalysis(token, {
       status: "error",
-      error_message: err instanceof Error ? err.message : "Pipeline failed unexpectedly",
+      error_message: errorMsg,
     }).catch(console.error);
+
+    // Fire-and-forget: send analysis-error email
+    if (email) {
+      sendAnalysisEmail({ to: email, type: "analysis-error", token, url, errorMessage: errorMsg }).catch(() => {});
+    }
   }
 }
 

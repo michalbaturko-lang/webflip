@@ -19,6 +19,8 @@
     "inputPlaceholder": "Zadajte URL vášho webu...",
     "cta": "Redizajnovať môj web",
     "ctaLoading": "Analyzujem...",
+    "emailPlaceholder": "Váš email (voliteľné)",
+    "emailHint": "Pošleme vám výsledky na email.",
     "socialProof": "2 400+ redizajnovaných webov",
     "trusted": "Dôverujú nám firmy v 12 krajinách"
   },

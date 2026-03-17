@@ -3,15 +3,16 @@
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowRight, Globe, Shield, Sparkles } from "lucide-react";
+import { ArrowRight, Globe, Mail, Shield, Sparkles } from "lucide-react";
 
 interface HeroProps {
-  onAnalyze?: (url: string) => void;
+  onAnalyze?: (url: string, email?: string) => void;
 }
 
 export default function Hero({ onAnalyze }: HeroProps) {
   const t = useTranslations("hero");
   const [url, setUrl] = useState("");
+  const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -19,7 +20,7 @@ export default function Hero({ onAnalyze }: HeroProps) {
     if (!url.trim()) return;
     setIsLoading(true);
     if (onAnalyze) {
-      onAnalyze(url);
+      onAnalyze(url, email.trim() || undefined);
       // Reset after a short delay so user can submit again
       setTimeout(() => setIsLoading(false), 1000);
     }
@@ -123,6 +124,21 @@ export default function Hero({ onAnalyze }: HeroProps) {
               )}
             </button>
           </div>
+          {/* Email input */}
+          <div className="flex items-center gap-3 mt-3 px-4">
+            <Mail className="h-4 w-4 shrink-0" style={{ color: "var(--text-faint)" }} />
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder={t("emailPlaceholder")}
+              className="w-full bg-transparent outline-none text-sm py-2"
+              style={{ color: "var(--text-primary)" }}
+            />
+          </div>
+          <p className="text-xs mt-1 px-4" style={{ color: "var(--text-faint)" }}>
+            {t("emailHint")}
+          </p>
         </motion.form>
 
         {/* Social proof */}
