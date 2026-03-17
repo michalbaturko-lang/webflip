@@ -83,6 +83,12 @@ export async function GET(
         response.enrichment = enrichment;
       }
 
+      // Include SEO suggestions (available to all)
+      const seoSuggestions = (analysis as any).seo_suggestions;
+      if (seoSuggestions) {
+        response.seoSuggestions = seoSuggestions;
+      }
+
       // Include template clusters (available to all)
       const templateClusters = (analysis as any).template_clusters;
       if (templateClusters && templateClusters.length > 0) {

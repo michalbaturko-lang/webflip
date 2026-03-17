@@ -259,6 +259,17 @@
     "step4Detail": "100% vaše",
     "viewResults": "Zobraziť výsledky"
   },
+  "seoSuggestions": {
+    "title": "SEO odporúčania",
+    "keywords": "Kľúčové slová",
+    "suggestedChanges": "Navrhované zmeny",
+    "contentGaps": "Medzery v obsahu",
+    "copy": "Kopírovať",
+    "copied": "Skopírované",
+    "impact_high": "Vysoký dopad",
+    "impact_medium": "Stredný dopad",
+    "impact_low": "Nízky dopad"
+  },
   "analysis": {
     "connectingTo": "Pripájame sa k {domain}",
     "somethingWentWrong": "Niečo sa pokazilo",
