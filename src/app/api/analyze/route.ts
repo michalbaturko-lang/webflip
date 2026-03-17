@@ -17,6 +17,7 @@ import { runDeepAnalysis } from "@/lib/checks";
 import { prioritizeFindings } from "@/lib/prioritizer";
 import { applyBusinessContext } from "@/lib/business-context";
 import { generateExplanations } from "@/lib/llm-explainer";
+import { detectTemplates } from "@/lib/template-detector";
 import type { Finding, BusinessProfile, EnrichmentResults } from "@/lib/supabase";
 
 // Vercel Pro supports up to 300s. Pipeline needs time for crawl+analyze+generate.
@@ -266,6 +267,32 @@ async function runPipeline(url: string, token: string, locale?: string) {
     }).catch(() => {});
   } catch (err) {
     console.error(`[pipeline:${token}] Deep analysis failed (non-fatal):`, err);
+  }
+
+  // ─── Stage 2.6: Template & DOM Clustering Detection ───
+  console.log(`[pipeline:${token}] Running template detection...`);
+  let templateClusters: ReturnType<typeof detectTemplates>["clusters"] = [];
+  try {
+    const templateResult = detectTemplates({
+      pages: crawledPages.map((p) => ({ url: p.url, html: p.html })),
+      findings: liveFindings,
+    });
+
+    templateClusters = templateResult.clusters;
+
+    // Replace findings with deduplicated version
+    if (templateResult.templateFindingsCount > 0) {
+      liveFindings = templateResult.deduplicatedFindings;
+    }
+
+    console.log(`[pipeline:${token}] Template detection: ${templateClusters.length} clusters found, ${templateResult.templateFindingsCount} findings deduplicated`);
+
+    await updateAnalysis(token, {
+      template_clusters: templateClusters,
+      findings: liveFindings,
+    } as any).catch(() => {});
+  } catch (err) {
+    console.error(`[pipeline:${token}] Template detection failed (non-fatal):`, err);
   }
 
   // Calculate overall score (weighted)
