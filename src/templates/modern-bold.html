@@ -248,37 +248,33 @@
       align-items: center;
     }
     .mobile-menu a:hover { background: var(--bg-card); color: var(--text-white); }
-    /* 2. Hero */
-    .hero {
+    /* 2. Hero — cinematic image-based, bottom-to-top dark gradient */
+    .hero--cinematic {
       position: relative;
       min-height: 100vh;
       width: 100%;
       display: flex;
-      align-items: center;
+      align-items: flex-end;
       justify-content: center;
       text-align: center;
       background: linear-gradient(135deg, var(--bg-dark) 0%, #1E1B4B 50%, var(--bg-dark) 100%);
       overflow: hidden;
+      padding-bottom: 5rem;
     }
-    .hero__overlay { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.7) 100%); z-index: 1; }
-    .hero::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px);
-      background-size: 30px 30px;
-      opacity: 0.5;
-      pointer-events: none;
-    }
-    .hero-content { position: relative; z-index: 2; max-width: 800px; padding: 3rem 1.25rem; }
-    .hero h1 {
-      font-size: clamp(2rem, 5vw + 0.5rem, 4.5rem);
+    .hero__image-container { position: absolute; inset: 0; z-index: 0; }
+    .hero__image-container img { width: 100%; height: 100%; object-fit: cover; object-position: center; }
+    .hero__gradient { position: absolute; inset: 0; z-index: 1; background: linear-gradient(0deg, var(--bg-dark) 0%, rgba(15,23,42,0.85) 30%, rgba(15,23,42,0.4) 60%, rgba(15,23,42,0.15) 80%, transparent 100%); }
+    .hero--cinematic:not(:has(.hero__image-container img)) .hero__gradient { background: linear-gradient(135deg, var(--bg-dark) 0%, #1E1B4B 50%, var(--bg-dark) 100%); }
+    .hero-content { position: relative; z-index: 10; max-width: 900px; padding: 3rem 1.25rem; }
+    .hero-content h1 {
+      font-size: clamp(2.25rem, 5vw + 0.5rem, 5rem);
       font-weight: 900;
-      line-height: 1.1;
+      line-height: 1.05;
       margin-bottom: 1.25rem;
       letter-spacing: -0.03em;
+      text-transform: uppercase;
     }
-    .hero p {
+    .hero-content p {
       font-size: clamp(1rem, 0.5vw + 0.875rem, 1.25rem);
       color: var(--text-light-gray);
       margin-bottom: 2rem;
@@ -286,6 +282,10 @@
       max-width: 600px;
       margin-left: auto;
       margin-right: auto;
+    }
+    @media (max-width: 768px) {
+      .hero--cinematic { min-height: 80vh; padding-bottom: 4rem; }
+      .hero-content h1 { font-size: clamp(1.75rem, 5vw + 0.5rem, 3rem); }
     }
     /* 3. Stats */
     .stats-bar {
@@ -337,8 +337,7 @@
     .blog-card h3 { font-size: 1.15rem; font-weight: 800; margin-bottom: 0.75rem; color: var(--text-white); }
     .blog-card p { color: var(--text-gray); font-size: 0.925rem; line-height: 1.7; }
     .blog-card__image { width: 100%; height: 200px; object-fit: cover; border-radius: 0.75rem 0.75rem 0 0; margin: -2rem -2rem 1rem -2rem; width: calc(100% + 4rem); }
-    /* Hero with image */
-    .hero--with-image { background-size: cover; background-position: center; }
+    /* Hero legacy compat */
     /* Products */
     .products-grid { display: grid; grid-template-columns: 1fr; gap: 1.5rem; }
     .product-card { display: flex; flex-direction: column; overflow: hidden; }
@@ -715,9 +714,12 @@
   <!-- Main Content -->
   <main id="main-content">
 
-    <!-- 2. Hero Section -->
-    <section class="hero hero--with-image" aria-label="Hero" data-hero-image="TEMPLATE_VAR_heroImageUrl">
-      <div class="hero__overlay"></div>
+    <!-- 2. Hero Section — cinematic image-based -->
+    <section class="hero--cinematic" aria-label="Hero" data-hero-image="TEMPLATE_VAR_heroImageUrl">
+      <div class="hero__image-container">
+        <!-- HERO_IMAGE -->
+      </div>
+      <div class="hero__gradient"></div>
       <div class="hero-content">
         <h1 class="gradient-text">TEMPLATE_VAR_headline</h1>
         <p>TEMPLATE_VAR_subheadline</p>

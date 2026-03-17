@@ -50,6 +50,7 @@ export async function GET(
         ux: analysis.score_ux,
         content: analysis.score_content,
         aiVisibility: analysis.score_ai_visibility,
+        accessibility: analysis.score_accessibility,
         overall: analysis.score_overall,
       };
       // Live findings — show top findings during analysis/generating
