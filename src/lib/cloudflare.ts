@@ -22,7 +22,7 @@ export interface CrawlOptions {
   onProgress?: (pages: CrawledPage[]) => void;
 }
 
-const CRAWL_PAGE_LIMIT = 20;
+const CRAWL_PAGE_LIMIT = 25;
 
 // ── Language variant deduplication ──
 // Common language prefixes in URL paths (ISO 639-1 codes and common variants)
@@ -395,22 +395,31 @@ function extractInternalLinks(html: string, base: URL): string[] {
 }
 
 // ── Helper: Filter out language variants and prioritize links ──
+// Uses breadth-first coverage: ensure every site section is represented
+// before going deep into any one section.
+
+const SKIP_PATTERNS = [
+  /\/wp-content\//i, /\/wp-admin\//i, /\/wp-includes\//i,
+  /\/feed\/?$/i, /\/xmlrpc\.php/i, /\/wp-json\//i,
+  /\/tag\//i, /\/author\//i, /\/page\/\d+/i,
+  /\.(jpg|jpeg|png|gif|svg|webp|pdf|zip|css|js)$/i,
+  /\/\?/,  // Query-string URLs
+  /\/cart\/?$/i, /\/checkout\/?$/i, /\/login\/?$/i, /\/register\/?$/i,
+  /\/privacy/i, /\/terms/i, /\/cookie/i, /\/gdpr/i, /\/impressum/i,
+  /\/sitemap/i, /\/search/i,
+];
+
+interface ScoredLink {
+  url: string;
+  section: string;
+  pageType: PageType;
+  priority: number;
+  depth: number; // URL path depth (fewer segments = shallower = more important)
+}
 
 function filterAndPrioritizeLinks(links: string[], base: URL): string[] {
   const seen = new Set<string>();
-  const scoredLinks: { url: string; priority: number }[] = [];
-
-  // Always skip these patterns
-  const SKIP_PATTERNS = [
-    /\/wp-content\//i, /\/wp-admin\//i, /\/wp-includes\//i,
-    /\/feed\/?$/i, /\/xmlrpc\.php/i, /\/wp-json\//i,
-    /\/tag\//i, /\/author\//i, /\/page\/\d+/i,
-    /\.(jpg|jpeg|png|gif|svg|webp|pdf|zip|css|js)$/i,
-    /\/\?/,  // Query-string URLs
-    /\/cart\/?$/i, /\/checkout\/?$/i, /\/login\/?$/i, /\/register\/?$/i,
-    /\/privacy/i, /\/terms/i, /\/cookie/i, /\/gdpr/i, /\/impressum/i,
-    /\/sitemap/i, /\/search/i,
-  ];
+  const allLinks: ScoredLink[] = [];
 
   for (const link of links) {
     try {
@@ -431,18 +440,93 @@ function filterAndPrioritizeLinks(links: string[], base: URL): string[] {
       if (seen.has(normalized)) continue;
       seen.add(normalized);
 
-      // Score by page type
+      // Classify
       const pageType = classifyPageType(link, "");
       const priority = getPagePriority(link, pageType);
 
-      scoredLinks.push({ url: link, priority });
+      // Determine section = first meaningful path segment
+      const section = getSectionFromPath(path);
+
+      // Depth = number of path segments (shallower pages are more structural)
+      const segments = path.split("/").filter(Boolean);
+      const depth = segments.length;
+
+      allLinks.push({ url: link, section, pageType, priority, depth });
     } catch { /* ignore */ }
   }
 
-  // Sort by priority (lower = more important)
-  scoredLinks.sort((a, b) => a.priority - b.priority);
+  console.log(`[crawl] All candidate links: ${allLinks.length} across ${new Set(allLinks.map(l => l.section)).size} sections`);
 
-  return scoredLinks.map(l => l.url);
+  // ── Breadth-first selection ──
+  // Group links by section
+  const sectionMap = new Map<string, ScoredLink[]>();
+  for (const link of allLinks) {
+    const existing = sectionMap.get(link.section) || [];
+    existing.push(link);
+    sectionMap.set(link.section, existing);
+  }
+
+  // Sort each section: shallower pages first (landing pages), then by priority
+  for (const [, sectionLinks] of sectionMap) {
+    sectionLinks.sort((a, b) => {
+      // Shallower pages first (e.g., /products/ before /products/detail-xyz)
+      if (a.depth !== b.depth) return a.depth - b.depth;
+      // Then by page type priority
+      return a.priority - b.priority;
+    });
+  }
+
+  // Sort sections by the priority of their best (first) link
+  const sortedSections = Array.from(sectionMap.entries())
+    .sort(([, a], [, b]) => a[0].priority - b[0].priority);
+
+  // Round-robin: pick 1 from each section, then repeat
+  const selected: string[] = [];
+  const sectionCounters = new Map<string, number>();
+
+  // Phase 1: Breadth — 1 page from each section (ensures coverage)
+  for (const [section, sectionLinks] of sortedSections) {
+    if (sectionLinks.length > 0) {
+      selected.push(sectionLinks[0].url);
+      sectionCounters.set(section, 1);
+    }
+  }
+  console.log(`[crawl] Breadth phase: ${selected.length} sections covered`);
+
+  // Phase 2: Depth — round-robin additional pages from each section
+  const MAX_PER_SECTION = 3; // Don't go deeper than 3 per section
+  let added = true;
+  while (added && selected.length < CRAWL_PAGE_LIMIT - 1) {
+    added = false;
+    for (const [section, sectionLinks] of sortedSections) {
+      if (selected.length >= CRAWL_PAGE_LIMIT - 1) break;
+      const idx = sectionCounters.get(section) || 0;
+      if (idx >= sectionLinks.length || idx >= MAX_PER_SECTION) continue;
+      selected.push(sectionLinks[idx].url);
+      sectionCounters.set(section, idx + 1);
+      added = true;
+    }
+  }
+
+  console.log(`[crawl] Final selection: ${selected.length} pages from ${sectionCounters.size} sections`);
+  for (const [section, count] of sectionCounters) {
+    console.log(`[crawl]   ${section}: ${count} page(s)`);
+  }
+
+  return selected;
+}
+
+/** Extract the first meaningful path segment as "section" name */
+function getSectionFromPath(path: string): string {
+  const segments = path.split("/").filter(Boolean);
+  if (segments.length === 0) return "root";
+
+  // Use first segment, but for /category/X/Y use "category/X"
+  const first = segments[0].toLowerCase();
+  if ((first === "category" || first === "kategorie" || first === "cat") && segments.length > 1) {
+    return `${first}/${segments[1].toLowerCase()}`;
+  }
+  return first;
 }
 
 function normalizeUrl(url: string): string {
