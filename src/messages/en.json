@@ -19,6 +19,8 @@
     "inputPlaceholder": "Enter your website URL...",
     "cta": "Redesign My Website",
     "ctaLoading": "Analyzing...",
+    "emailPlaceholder": "Your email (optional)",
+    "emailHint": "We'll send you the results via email.",
     "socialProof": "2,400+ websites redesigned",
     "trusted": "Trusted by businesses in 12 countries"
   },

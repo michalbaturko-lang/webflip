@@ -19,6 +19,8 @@
     "inputPlaceholder": "Ihre Website-URL eingeben...",
     "cta": "Website redesignen",
     "ctaLoading": "Wird analysiert...",
+    "emailPlaceholder": "Ihre E-Mail (optional)",
+    "emailHint": "Wir senden Ihnen die Ergebnisse per E-Mail.",
     "socialProof": "2.400+ Websites redesignt",
     "trusted": "Vertrauen von Unternehmen in 12 Ländern"
   },

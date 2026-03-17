@@ -43,6 +43,7 @@ type Stage = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 interface Props {
   url: string;
   token: string;
+  email?: string;
   onStatusChange?: (status: string, variantCount: number, error: string | null) => void;
 }
 
@@ -940,7 +941,7 @@ function StageEmailGate({
 // Orchestrator
 // ---------------------------------------------------------------------------
 
-export default function AnalysisOrchestrator({ url, token, onStatusChange }: Props) {
+export default function AnalysisOrchestrator({ url, token, email, onStatusChange }: Props) {
   const t = useTranslations("analysis");
   const locale = useLocale();
   const router = useRouter();
@@ -1021,7 +1022,7 @@ export default function AnalysisOrchestrator({ url, token, onStatusChange }: Pro
         const res = await fetch("/api/analyze", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url, locale }),
+          body: JSON.stringify({ url, locale, ...(email ? { email } : {}) }),
         });
         const result = await res.json();
         if (!res.ok) {
