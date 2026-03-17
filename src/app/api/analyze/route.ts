@@ -11,6 +11,8 @@ import { analyzeAIVisibility } from "@/lib/analyzers/ai-visibility";
 import { generateVariants } from "@/lib/redesign";
 import { generateHtmlVariants } from "@/lib/generate-html";
 import { interpretBusiness } from "@/lib/business-interpretation";
+import { analyzePage, analyzeSite, generateFindings } from "@/lib/analysis-engine";
+import { calculateScores, mapToLegacyScores } from "@/lib/scoring";
 import type { Finding, BusinessProfile } from "@/lib/supabase";
 
 // Vercel Pro supports up to 300s. Pipeline needs time for crawl+analyze+generate.
@@ -188,6 +190,45 @@ async function runPipeline(url: string, token: string, locale?: string) {
       () => pushFindings("aiVisibility", { score: 50, findings: [] })
     ),
   ]);
+
+  // ─── Stage 2b: Comprehensive Analysis Engine (150+ data points) ───
+  console.log(`[pipeline:${token}] Running comprehensive analysis engine...`);
+  let engineFindings: Finding[] = [];
+  try {
+    // Run the new analysis engine on all crawled pages
+    const pageAnalyses = crawledPages.map((p) => analyzePage(p.html, p.url));
+    const siteAnalysis = analyzeSite(pageAnalyses);
+    const rawEngineFindings = generateFindings(siteAnalysis);
+
+    // Calculate new comprehensive scores
+    const scoringResult = calculateScores(siteAnalysis, rawEngineFindings);
+    const legacyScores = mapToLegacyScores(scoringResult);
+
+    // Map engine findings to legacy Finding format for backward compatibility
+    engineFindings = rawEngineFindings.map((ef) => ({
+      category: ef.category === "ai-visibility" ? "aiVisibility" : ef.category === "images" ? "performance" : ef.category === "structure" ? "ux" : ef.category,
+      severity: ef.severity === "error" ? "critical" : ef.severity === "notice" ? "info" : ef.severity,
+      title: ef.title,
+      description: ef.description,
+    }));
+
+    // Merge engine scores with existing analyzer scores (engine takes priority for categories it covers)
+    scores.performance = scores.performance ?? legacyScores.score_performance;
+    scores.seo = scores.seo ?? legacyScores.score_seo;
+    scores.security = scores.security ?? legacyScores.score_security;
+    scores.ux = scores.ux ?? legacyScores.score_ux;
+    scores.content = scores.content ?? legacyScores.score_content;
+    scores.aiVisibility = scores.aiVisibility ?? legacyScores.score_ai_visibility;
+
+    console.log(`[pipeline:${token}] Engine produced ${rawEngineFindings.length} findings, grade: ${scoringResult.grade}`);
+  } catch (err) {
+    console.error(`[pipeline:${token}] Analysis engine error (non-fatal):`, err);
+  }
+
+  // Merge engine findings with existing findings (deduplicate by title)
+  const existingTitles = new Set(liveFindings.map(f => f.title));
+  const newEngineFindings = engineFindings.filter(f => !existingTitles.has(f.title));
+  liveFindings = [...liveFindings, ...newEngineFindings];
 
   // Calculate overall score (weighted)
   const overall = Math.round(
