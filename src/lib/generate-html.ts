@@ -146,9 +146,7 @@ INSTRUCTIONS:
 CRITICAL LANGUAGE RULE: ${businessProfile ? `The detected language is "${businessProfile.language}".` : "Detect the website language (cs/en/de/sk)."} Every single piece of text you output — headlines, descriptions, blog titles, FAQ questions and answers, testimonial quotes, stat labels, navLink texts — MUST be in that language. ZERO English text is acceptable when the language is not "en". This includes ALL generated content like blog posts, FAQ items, and testimonials.
 
 1. Extract ALL real content from the crawled data — NEVER invent placeholder text for services/about/stats
-2. Generate 3 Blog/Aktuality posts — ${businessProfile
-  ? `use these seed topics grounded in the business's actual expertise: ${businessProfile.blogSeedTopics.slice(0, 4).join("; ")}. Write posts that demonstrate "${companyName}"'s knowledge of ${businessProfile.industry}/${businessProfile.industrySegment} and would attract their target audience (${businessProfile.targetAudience.slice(0, 2).join(", ")})`
-  : "relevant to the detected industry, written in the detected language"}. Use RECENT dates within the last 2-3 months from today (${new Date().toISOString().slice(0, 10)}). Never use dates older than 6 months.
+2. Blog posts: Extract ONLY real blog posts/articles found in the crawled content. If no real articles exist, return an EMPTY blogPosts array []. NEVER generate fictional blog posts — only use real articles from the crawled website.
 3. Generate 5-8 FAQ items — ${businessProfile
   ? `use these seed topics based on real customer questions: ${businessProfile.faqSeedTopics.slice(0, 6).join("; ")}. Answers MUST reference "${companyName}"'s actual services (${businessProfile.coreServices.slice(0, 3).map(s => s.name).join(", ")}) and value propositions (${businessProfile.valuePropositions.slice(0, 2).join("; ")}). Address pain points: ${businessProfile.painPointsSolved.slice(0, 3).join("; ")}`
   : "relevant to the company's services, in the detected language"}
@@ -159,8 +157,8 @@ CRITICAL LANGUAGE RULE: ${businessProfile ? `The detected language is "${busines
 8. navLinks must include anchor links to ALL sections present on the page (services, about, gallery, blog, testimonials, faq, contact). Use #section-id format. The text of each navLink MUST be in the detected language.
 ${businessProfile ? `9. The headline/subheadline should reflect the core value proposition: ${businessProfile.valuePropositions[0] || businessProfile.summary}` : ""}
 
-8b. Extract real products if the site has them (name, description, price, image URL)
-8c. For blog posts, include imageUrl (featured image URL) when available from crawled content
+8b. Extract real products if the site has them (name, description, price, image URL). Only include REAL products found in the crawled content.
+8c. For blog posts: ONLY extract real articles found in the crawled content. Return empty blogPosts[] if no real articles exist. NEVER generate fictional articles.
 
 Return ONLY valid JSON (no markdown fences, no explanation) with this exact structure:
 {
@@ -202,24 +200,17 @@ Return ONLY valid JSON (no markdown fences, no explanation) with this exact stru
     return buildFallbackTemplateData(url, "", assets);
   }
 
-  // Use real blog posts from crawled data if available
+  // Use ONLY real blog posts from crawled data — never generated content
   let blogPosts: TemplateData["blogPosts"] = [];
-  if (assets?.blogPosts && assets.blogPosts.length > 0) {
-    // Use REAL blog posts from crawl
+  if (assets?.blogPosts && assets.blogPosts.length >= 2) {
     blogPosts = assets.blogPosts.slice(0, 6).map(bp => ({
       title: bp.title,
       excerpt: bp.excerpt || "",
       date: bp.date || new Date().toISOString().slice(0, 10),
       imageUrl: bp.featuredImage || "",
     }));
-  } else if (Array.isArray(parsed.blogPosts)) {
-    blogPosts = (parsed.blogPosts as Array<Record<string, string>>).map(bp => ({
-      title: bp.title || "",
-      excerpt: bp.excerpt || "",
-      date: bp.date || new Date().toISOString().slice(0, 10),
-      imageUrl: bp.imageUrl || "",
-    }));
   }
+  // If no real blog posts from crawl, blog section will be hidden via IF:blogPosts
 
   // Use real products from crawled data if available
   let products: TemplateData["products"] = [];
@@ -331,6 +322,8 @@ const TRANSLATIONS: Record<string, Record<string, string>> = {
   cookie_accept: { cs: 'Přijmout', sk: 'Prijať', en: 'Accept', de: 'Akzeptieren' },
   cookie_decline: { cs: 'Odmítnout', sk: 'Odmietnuť', en: 'Decline', de: 'Ablehnen' },
   footer_rights: { cs: 'Všechna práva vyhrazena.', sk: 'Všetky práva vyhradené.', en: 'All rights reserved.', de: 'Alle Rechte vorbehalten.' },
+  skip_to_content: { cs: 'Přeskočit na obsah', sk: 'Preskočiť na obsah', en: 'Skip to main content', de: 'Zum Inhalt springen' },
+  scroll_down: { cs: 'Posunout dolů', sk: 'Posunúť nadol', en: 'Scroll down', de: 'Nach unten scrollen' },
 };
 
 function tt(key: string, lang: string): string {
@@ -349,7 +342,13 @@ function fillTemplate(template: string, data: TemplateData): string {
   const conditionalFields: Record<string, string> = {
     address: data.address,
     heroImage: data.heroImageUrl,
-    products: data.products.length > 0 ? "true" : "",
+    products: data.products.length >= 2 ? "true" : "",
+    blogPosts: data.blogPosts.length >= 2 ? "true" : "",
+    stats: data.stats.length >= 1 ? "true" : "",
+    testimonials: data.testimonials.length >= 1 ? "true" : "",
+    faqItems: data.faqItems.length >= 1 ? "true" : "",
+    gallery: data.gallery.length >= 3 ? "true" : "",
+    services: data.services.length >= 2 ? "true" : "",
   };
   for (const [field, value] of Object.entries(conditionalFields)) {
     const ifRegex = new RegExp(`<!-- IF:${field} -->([\\s\\S]*?)<!-- /IF:${field} -->`, "g");
@@ -498,6 +497,8 @@ function fillTemplate(template: string, data: TemplateData): string {
     TEMPLATE_VAR_subtitle_map: tt('subtitle_map', lang),
     TEMPLATE_VAR_section_map: tt('section_map', lang),
     TEMPLATE_VAR_cta_send_message: tt('cta_send_message', lang),
+    TEMPLATE_VAR_skip_to_content: tt('skip_to_content', lang),
+    TEMPLATE_VAR_scroll_down: tt('scroll_down', lang),
     TEMPLATE_VAR_cookie_text: tt('cookie_text', lang),
     TEMPLATE_VAR_cookie_accept: tt('cookie_accept', lang),
     TEMPLATE_VAR_cookie_decline: tt('cookie_decline', lang),
@@ -513,7 +514,7 @@ function fillTemplate(template: string, data: TemplateData): string {
     // Add hero background image as inline style on the hero section
     html = html.replace(
       /data-hero-image="[^"]*"/,
-      `style="background-image: linear-gradient(180deg, rgba(27,42,74,0.5) 0%, rgba(27,42,74,0.7) 100%), url('${escapeAttr(data.heroImageUrl)}'); background-size: cover; background-position: center;"`
+      `style="background-image: url('${escapeAttr(data.heroImageUrl)}'); background-size: cover; background-position: center;"`
     );
     // Add class for hero-with-image styling
     html = html.replace(

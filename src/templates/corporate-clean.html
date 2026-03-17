@@ -118,15 +118,14 @@
     .navbar__mobile-links a { display: flex; align-items: center; padding: 1rem 1.25rem; font-weight: 600; font-size: 1rem; color: var(--text); border-radius: var(--radius-sm); border-left: 3px solid transparent; transition: all var(--transition); min-height: 48px; }
     .navbar__mobile-links a:hover { background: var(--bg-alt); border-left-color: var(--accent); color: var(--primary); }
     /* 2. Hero */
-    .hero { min-height: 70vh; display: flex; align-items: center; justify-content: center; text-align: center; background: linear-gradient(155deg, var(--primary) 0%, var(--primary-light) 50%, #3a5280 100%); color: var(--bg); padding: 5rem 1.25rem; position: relative; overflow: hidden; }
+    .hero { min-height: 100vh; width: 100%; display: flex; align-items: center; justify-content: center; text-align: center; background: linear-gradient(155deg, var(--primary) 0%, var(--primary-light) 50%, #3a5280 100%); color: var(--bg); padding: 5rem 1.25rem; position: relative; overflow: hidden; }
     .hero--with-image { background-size: cover; background-position: center center; background-repeat: no-repeat; }
     .hero::before { content: ''; position: absolute; inset: 0; background-image: radial-gradient(circle, rgba(255,255,255,0.08) 1px, transparent 1px); background-size: 28px 28px; z-index: 1; pointer-events: none; }
     .hero--with-image::before { background-image: none; }
-    .hero__overlay { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(27,42,74,0.3) 0%, rgba(27,42,74,0.6) 100%); z-index: 2; }
+    .hero__overlay { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.65) 100%); z-index: 2; }
     .hero__content { position: relative; z-index: 3; max-width: 860px; animation: fadeInUp 1s cubic-bezier(0.4,0,0.2,1) forwards; }
-    .hero__badge { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1.25rem; background: rgba(200,169,110,0.15); border: 1px solid rgba(200,169,110,0.3); border-radius: 100px; font-size: 0.8125rem; font-weight: 600; color: var(--accent-light); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 1.5rem; }
-    .hero__headline { color: var(--bg); margin-bottom: 1.25rem; font-weight: 700; letter-spacing: -0.02em; }
-    .hero__subheadline { font-size: clamp(1.0625rem, 1.5vw + 0.25rem, 1.3125rem); color: rgba(255,255,255,0.8); margin-bottom: 2.5rem; font-family: var(--font-body); line-height: 1.7; max-width: 640px; margin-left: auto; margin-right: auto; }
+    .hero__headline { color: #fff; margin-bottom: 1.25rem; font-weight: 700; letter-spacing: -0.02em; text-shadow: 0 2px 16px rgba(0,0,0,0.3); }
+    .hero__subheadline { font-size: clamp(1.0625rem, 1.5vw + 0.25rem, 1.3125rem); color: rgba(255,255,255,0.85); margin-bottom: 2.5rem; font-family: var(--font-body); line-height: 1.7; max-width: 640px; margin-left: auto; margin-right: auto; }
     .hero__actions { display: flex; flex-wrap: wrap; gap: 1rem; justify-content: center; }
     .hero__scroll-indicator { position: absolute; bottom: 2rem; left: 50%; transform: translateX(-50%); z-index: 3; color: rgba(255,255,255,0.5); animation: pulse 2s ease-in-out infinite; font-size: 1.5rem; text-decoration: none; }
     /* 3. Stats */
@@ -284,7 +283,7 @@
     @media (min-width: 768px) {
       .container { padding: 0 2rem; }
       .section { padding: 5.5rem 0; }
-      .hero { min-height: 75vh; padding: 6rem 2rem; }
+      .hero { min-height: 100vh; padding: 6rem 2rem; }
       .stats__grid { grid-template-columns: repeat(4, 1fr); }
       .about__grid { grid-template-columns: 1fr 1fr; gap: 3rem; }
       .testimonials__grid { grid-template-columns: repeat(2, 1fr); }
@@ -297,7 +296,7 @@
       .section { padding: 6.5rem 0; }
       .navbar__links { display: flex; }
       .navbar__hamburger { display: none; }
-      .hero { min-height: 80vh; }
+      .hero { min-height: 100vh; }
       .services__grid { grid-template-columns: repeat(3, 1fr); gap: 2rem; }
       .blog__grid { grid-template-columns: repeat(3, 1fr); gap: 2rem; }
       .testimonials__grid { grid-template-columns: repeat(3, 1fr); gap: 2rem; }
@@ -325,7 +324,7 @@
   </style>
 </head>
 <body>
-  <a href="#main-content" class="skip-link">Skip to main content</a>
+  <a href="#main-content" class="skip-link">TEMPLATE_VAR_skip_to_content</a>
 
   <!-- 1. Navigation -->
   <header class="navbar" role="banner">
@@ -359,19 +358,18 @@
   <section class="hero" id="hero" aria-label="Hero banner" data-hero-image="TEMPLATE_VAR_heroImageUrl">
     <div class="hero__overlay"></div>
     <div class="hero__content">
-      <div class="hero__badge">TEMPLATE_VAR_companyName</div>
       <h1 class="hero__headline">TEMPLATE_VAR_headline</h1>
       <p class="hero__subheadline">TEMPLATE_VAR_subheadline</p>
       <div class="hero__actions">
         <a href="#contact" class="btn btn--primary">TEMPLATE_VAR_cta_contact</a>
-        <a href="#services" class="btn btn--white">TEMPLATE_VAR_cta_services</a>
       </div>
     </div>
-    <a href="#main-content" class="hero__scroll-indicator" aria-label="Scroll down">&#8595;</a>
+    <a href="#main-content" class="hero__scroll-indicator" aria-label="TEMPLATE_VAR_scroll_down">&#8595;</a>
   </section>
 
   <main id="main-content">
     <!-- 3. Stats -->
+    <!-- IF:stats -->
     <section class="stats" aria-label="Key statistics">
       <div class="container">
         <div class="stats__grid">
@@ -384,8 +382,10 @@
         </div>
       </div>
     </section>
+    <!-- /IF:stats -->
 
     <!-- 4. Services -->
+    <!-- IF:services -->
     <section class="section section--alt" id="services" aria-labelledby="services-title">
       <div class="container">
         <div class="section-header">
@@ -403,6 +403,7 @@
         </div>
       </div>
     </section>
+    <!-- /IF:services -->
 
     <!-- 4b. Products (conditional) -->
     <!-- IF:products -->
@@ -449,6 +450,7 @@
     </section>
 
     <!-- 6. Blog -->
+    <!-- IF:blogPosts -->
     <section class="section section--alt" id="blog" aria-labelledby="blog-title">
       <div class="container">
         <div class="section-header">
@@ -470,8 +472,10 @@
         </div>
       </div>
     </section>
+    <!-- /IF:blogPosts -->
 
     <!-- 7. Testimonials -->
+    <!-- IF:testimonials -->
     <section class="section" id="testimonials" aria-labelledby="testimonials-title">
       <div class="container">
         <div class="section-header">
@@ -495,8 +499,10 @@
         </div>
       </div>
     </section>
+    <!-- /IF:testimonials -->
 
     <!-- 8. FAQ -->
+    <!-- IF:faqItems -->
     <section class="section section--alt" id="faq" aria-labelledby="faq-title">
       <div class="container">
         <div class="section-header">
@@ -520,8 +526,10 @@
         </div>
       </div>
     </section>
+    <!-- /IF:faqItems -->
 
     <!-- 9. Gallery -->
+    <!-- IF:gallery -->
     <section class="section" id="gallery" aria-labelledby="gallery-title">
       <div class="container">
         <div class="section-header">
@@ -537,6 +545,7 @@
         </div>
       </div>
     </section>
+    <!-- /IF:gallery -->
 
     <!-- 10. Google Maps -->
     <!-- IF:address -->

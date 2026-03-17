@@ -106,13 +106,16 @@
     .nav__mobile a:hover { color: var(--accent, var(--accent-fb)); }
 
     /* === 2. HERO === */
-    .hero { min-height: 65vh; display: flex; align-items: center; justify-content: center; text-align: center; padding: 100px 20px 80px; background: linear-gradient(180deg, var(--bg) 0%, var(--bg-warm) 100%); border-bottom: 1px solid var(--border); }
-    .hero__content { max-width: 700px; }
-    .hero__label { display: inline-block; font-family: var(--sans); font-size: 0.6875rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted-lt); margin-bottom: 28px; }
+    .hero { min-height: 100vh; width: 100%; display: flex; align-items: center; justify-content: center; text-align: center; padding: 100px 20px 80px; position: relative; overflow: hidden; background: linear-gradient(180deg, var(--bg) 0%, var(--bg-warm) 100%); border-bottom: 1px solid var(--border); color: var(--text); }
+    .hero--with-image { background-size: cover; background-position: center; color: #fff; border-bottom: none; }
+    .hero__overlay { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.55) 100%); z-index: 1; display: none; }
+    .hero--with-image .hero__overlay { display: block; }
+    .hero__content { max-width: 700px; position: relative; z-index: 2; }
     .hero__headline { font-size: clamp(2.5rem, 6vw + 0.5rem, 4.75rem); line-height: 1.08; margin-bottom: 28px; font-weight: 600; letter-spacing: -0.02em; }
+    .hero--with-image .hero__headline { color: #fff; text-shadow: 0 2px 20px rgba(0,0,0,0.3); }
     .hero__subheadline { font-size: clamp(1rem, 0.5vw + 0.875rem, 1.1875rem); color: var(--muted); line-height: 1.8; margin-bottom: 48px; max-width: 520px; margin-left: auto; margin-right: auto; }
+    .hero--with-image .hero__subheadline { color: rgba(255,255,255,0.85); }
     .hero__actions { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
-    .hero--with-image { background-size: cover; background-position: center; }
 
     /* === 3. STATS === */
     .stats { padding: 64px 0; border-bottom: 1px solid var(--border); }
@@ -268,7 +271,7 @@
     @media (min-width: 768px) {
       :root { --sec-pad: 100px; --card-pad: 44px; }
       .nav__inner { height: 72px; }
-      .hero { min-height: 68vh; padding: 120px 28px 100px; }
+      .hero { min-height: 100vh; padding: 120px 28px 100px; }
       .services__grid { grid-template-columns: repeat(2, 1fr); gap: 28px; }
       .products__grid { grid-template-columns: repeat(2, 1fr); gap: 28px; }
       .about__grid { grid-template-columns: 1fr 1fr; gap: 56px; }
@@ -296,7 +299,7 @@
     }
     @media (min-width: 1280px) {
       :root { --sec-pad: 140px; }
-      .hero { min-height: 70vh; }
+      .hero { min-height: 100vh; }
       .about__image img { max-height: 500px; }
       .map__frame { height: 460px; }
     }
@@ -305,7 +308,7 @@
 <body>
 
   <!-- Skip to Content -->
-  <a href="#main-content" class="skip-link">Skip to content</a>
+  <a href="#main-content" class="skip-link">TEMPLATE_VAR_skip_to_content</a>
 
   <!-- ===== 1. NAVIGATION ===== -->
   <header class="nav" role="banner">
@@ -339,18 +342,18 @@
 
     <!-- ===== 2. HERO ===== -->
     <section class="hero" aria-label="Hero" data-hero-image="TEMPLATE_VAR_heroImageUrl">
+      <div class="hero__overlay"></div>
       <div class="hero__content fade-in">
-        <span class="hero__label">TEMPLATE_VAR_companyName</span>
         <h1 class="hero__headline">TEMPLATE_VAR_headline</h1>
         <p class="hero__subheadline">TEMPLATE_VAR_subheadline</p>
         <div class="hero__actions">
           <a href="#contact" class="btn btn--accent">TEMPLATE_VAR_cta_contact</a>
-          <a href="#services" class="btn">TEMPLATE_VAR_cta_services</a>
         </div>
       </div>
     </section>
 
     <!-- ===== 3. STATS / TRUST BAR ===== -->
+    <!-- IF:stats -->
     <section class="stats" aria-label="Key statistics">
       <div class="container container--wide">
         <div class="stats__grid fade-in">
@@ -363,8 +366,10 @@
         </div>
       </div>
     </section>
+    <!-- /IF:stats -->
 
     <!-- ===== 4. SERVICES ===== -->
+    <!-- IF:services -->
     <section class="section" id="services" aria-labelledby="services-heading">
       <div class="container">
         <hr class="section-rule">
@@ -382,6 +387,7 @@
         </div>
       </div>
     </section>
+    <!-- /IF:services -->
 
     <!-- ===== PRODUCTS ===== -->
     <!-- IF:products -->
@@ -424,6 +430,7 @@
     </section>
 
     <!-- ===== 6. BLOG / AKTUALITY ===== -->
+    <!-- IF:blogPosts -->
     <section class="section" id="blog" aria-labelledby="blog-heading">
       <div class="container">
         <hr class="section-rule">
@@ -443,8 +450,10 @@
         </div>
       </div>
     </section>
+    <!-- /IF:blogPosts -->
 
     <!-- ===== 7. TESTIMONIALS ===== -->
+    <!-- IF:testimonials -->
     <section class="section section--warm" id="testimonials" aria-labelledby="testimonials-heading">
       <div class="container">
         <hr class="section-rule">
@@ -464,8 +473,10 @@
         </div>
       </div>
     </section>
+    <!-- /IF:testimonials -->
 
     <!-- ===== 8. FAQ ACCORDION ===== -->
+    <!-- IF:faqItems -->
     <section class="section" id="faq" aria-labelledby="faq-heading">
       <div class="container">
         <hr class="section-rule">
@@ -487,8 +498,10 @@
         </div>
       </div>
     </section>
+    <!-- /IF:faqItems -->
 
     <!-- ===== 9. GALLERY ===== -->
+    <!-- IF:gallery -->
     <section class="section section--warm" id="gallery" aria-labelledby="gallery-heading">
       <div class="container container--wide">
         <hr class="section-rule">
@@ -504,6 +517,7 @@
         </div>
       </div>
     </section>
+    <!-- /IF:gallery -->
 
     <!-- ===== 10. GOOGLE MAPS (Conditional) ===== -->
     <!-- IF:address -->
