@@ -24,6 +24,92 @@ export interface CrawlOptions {
 
 const CRAWL_PAGE_LIMIT = 50;
 
+// ── Language variant deduplication ──
+// Common language prefixes in URL paths (ISO 639-1 codes and common variants)
+const LANG_PREFIX_PATTERN = /^\/(af|am|ar|az|be|bg|bn|bs|ca|cs|cy|da|de|el|en|es|et|eu|fa|fi|fil|fr|ga|gl|gu|ha|he|hi|hr|hu|hy|id|ig|is|it|ja|jv|ka|kk|km|kn|ko|ku|ky|lb|lo|lt|lv|mk|ml|mn|mr|ms|mt|my|nb|ne|nl|nn|no|or|pa|pl|pt|pt-br|ro|ru|rw|sd|si|sk|sl|so|sq|sr|sv|sw|ta|te|tg|th|tk|tl|tr|uk|ur|uz|vi|xh|yo|zh|zh-cn|zh-tw|zu)(\/|$)/i;
+
+/**
+ * Deduplicate language variants — keep only the primary language version of each page.
+ * For example, if we have /heavy-duty-shelving, /fr/heavy-duty-shelving, /de/heavy-duty-shelving,
+ * we keep only the root (non-prefixed) version.
+ */
+function deduplicateLanguageVariants(pages: CrawledPage[], baseUrl: string): CrawledPage[] {
+  let base: URL;
+  try { base = new URL(baseUrl); } catch { return pages; }
+
+  // Group pages by their "canonical path" (path without language prefix)
+  const canonicalGroups = new Map<string, CrawledPage[]>();
+
+  for (const page of pages) {
+    try {
+      const pageUrl = new URL(page.url);
+      // Only process pages from the same domain
+      if (pageUrl.hostname !== base.hostname) {
+        // Keep external pages as-is
+        const key = `__external__${page.url}`;
+        canonicalGroups.set(key, [page]);
+        continue;
+      }
+
+      const path = pageUrl.pathname;
+      const langMatch = path.match(LANG_PREFIX_PATTERN);
+
+      let canonicalPath: string;
+      if (langMatch) {
+        // Strip the language prefix to get canonical path
+        canonicalPath = path.replace(LANG_PREFIX_PATTERN, '/');
+        if (canonicalPath === '') canonicalPath = '/';
+      } else {
+        canonicalPath = path;
+      }
+
+      // Normalize trailing slashes for grouping
+      canonicalPath = canonicalPath.replace(/\/+$/, '') || '/';
+
+      const existing = canonicalGroups.get(canonicalPath) || [];
+      existing.push(page);
+      canonicalGroups.set(canonicalPath, existing);
+    } catch {
+      // If URL parsing fails, keep the page
+      canonicalGroups.set(`__fallback__${page.url}`, [page]);
+    }
+  }
+
+  // From each group, pick the best page (prefer root/English version, then first found)
+  const deduplicated: CrawledPage[] = [];
+
+  for (const [, group] of canonicalGroups) {
+    if (group.length === 1) {
+      deduplicated.push(group[0]);
+      continue;
+    }
+
+    // Prefer the version without language prefix (root URL)
+    const rootVersion = group.find(p => {
+      try {
+        const path = new URL(p.url).pathname;
+        return !LANG_PREFIX_PATTERN.test(path);
+      } catch { return false; }
+    });
+
+    // Fallback: prefer English version
+    const enVersion = group.find(p => {
+      try {
+        return /^\/(en)(\/|$)/i.test(new URL(p.url).pathname);
+      } catch { return false; }
+    });
+
+    deduplicated.push(rootVersion || enVersion || group[0]);
+
+    if (group.length > 1) {
+      console.log(`[crawl] Deduplicated ${group.length} language variants for path, kept: ${(rootVersion || enVersion || group[0]).url}`);
+    }
+  }
+
+  console.log(`[crawl] Language dedup: ${pages.length} pages → ${deduplicated.length} unique pages`);
+  return deduplicated;
+}
+
 // ── Page type classification by URL patterns ──
 
 const PAGE_TYPE_PATTERNS: { type: PageType; patterns: RegExp[] }[] = [
@@ -172,9 +258,9 @@ export async function crawlWebsite(url: string, options?: CrawlOptions): Promise
         const resultObj = startData.result as Record<string, unknown>;
         const inlineRecords = (resultObj.records || resultObj.pages || []) as Record<string, unknown>[];
         if (Array.isArray(inlineRecords) && inlineRecords.length > 0) {
-          const pages = extractPagesFromRecords(inlineRecords, url);
+          const pages = deduplicateLanguageVariants(extractPagesFromRecords(inlineRecords, url), url);
           if (pages.length > 0) {
-            console.log(`[crawl] Got ${pages.length} pages from inline result`);
+            console.log(`[crawl] Got ${pages.length} unique pages from inline result`);
             const assets = extractAllAssets(pages, url);
             return { success: true, pages, assets };
           }
@@ -225,7 +311,7 @@ export async function crawlWebsite(url: string, options?: CrawlOptions): Promise
       // Extract any available records for progress reporting
       const records = (result.records || []) as Record<string, unknown>[];
       if (records.length > 0 && options?.onProgress) {
-        const partialPages = extractPagesFromRecords(records, url);
+        const partialPages = deduplicateLanguageVariants(extractPagesFromRecords(records, url), url);
         if (partialPages.length > 0) {
           options.onProgress(partialPages);
         }
@@ -234,8 +320,12 @@ export async function crawlWebsite(url: string, options?: CrawlOptions): Promise
       if (result.status !== "completed") continue;
 
       // Final extraction from completed results
-      const pages = extractPagesFromRecords(records, url);
-      console.log(`[crawl] Completed. Pages with content: ${pages.length}`);
+      const rawPages = extractPagesFromRecords(records, url);
+      console.log(`[crawl] Completed. Raw pages with content: ${rawPages.length}`);
+
+      // Deduplicate language variants (e.g. /fr/page, /de/page, /es/page → keep root version)
+      const pages = deduplicateLanguageVariants(rawPages, url);
+      console.log(`[crawl] After language dedup: ${pages.length} unique pages`);
 
       if (pages.length === 0) {
         return {
