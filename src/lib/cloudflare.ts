@@ -628,35 +628,42 @@ function findHeroImage(html: string, baseUrl: string, images: CrawledImage[]): s
     try { return new URL(src, base).href; } catch { return src; }
   };
 
-  // 1. OG image is usually the best hero candidate
+  const isExcluded = (url: string): boolean => {
+    const lower = url.toLowerCase();
+    return lower.includes("logo") || lower.includes("icon") || lower.includes("favicon") ||
+           lower.startsWith("data:") || lower.includes(".svg") || lower.includes("sprite");
+  };
+
+  // 1st priority: OG image (best quality hero candidate)
   const ogImg = html.match(/<meta\b[^>]*\bproperty=["']og:image["'][^>]*\bcontent=["']([^"']*)["']/i)
     || html.match(/<meta\b[^>]*\bcontent=["']([^"']*)["'][^>]*\bproperty=["']og:image["']/i);
-  if (ogImg?.[1] && !ogImg[1].includes("logo")) return resolve(ogImg[1]);
+  if (ogImg?.[1] && !isExcluded(ogImg[1])) return resolve(ogImg[1]);
 
-  // 2. Look for hero/banner section image
-  const heroSection = html.match(/<(?:section|div)\b[^>]*(?:class|id)=["'][^"']*(?:hero|banner|jumbotron|slider|carousel)[^"']*["'][^>]*>([\s\S]*?)<\/(?:section|div)>/i);
-  if (heroSection) {
-    // Check for background-image in style
-    const bgMatch = heroSection[0].match(/background(?:-image)?\s*:\s*url\(['"]?([^'")\s]+)['"]?\)/i);
-    if (bgMatch) return resolve(bgMatch[1]);
+  // 2nd priority: Largest image >800px width from crawled images
+  const largeImages = images
+    .filter(img => !isExcluded(img.url) && img.width && img.width > 800)
+    .sort((a, b) => (b.width || 0) - (a.width || 0));
+  if (largeImages.length > 0) return largeImages[0].url;
 
-    // Check for img inside hero
-    const imgMatch = heroSection[1].match(/<img\b[^>]*\bsrc=["']([^"']+)["'][^>]*>/i);
-    if (imgMatch && !imgMatch[1].startsWith("data:") && !imgMatch[1].includes("logo")) return resolve(imgMatch[1]);
-  }
-
-  // 3. Background image on body or first section
-  const bgImgMatch = html.match(/background(?:-image)?\s*:\s*url\(['"]?([^'")\s]+)['"]?\)/i);
-  if (bgImgMatch && !bgImgMatch[1].startsWith("data:") && !bgImgMatch[1].includes("logo")) {
-    return resolve(bgImgMatch[1]);
-  }
-
-  // 4. Use the first non-logo, non-icon image classified as hero or content
-  const heroImg = images.find(img => img.context === "hero");
+  // 3rd priority: First relevant image (hero context, then background, then content)
+  const heroImg = images.find(img => img.context === "hero" && !isExcluded(img.url));
   if (heroImg) return heroImg.url;
 
-  // 5. First large content image (skip logos and icons)
-  const contentImg = images.find(img => img.context === "content" && !img.url.includes("logo") && !img.url.includes("icon"));
+  const bgImg = images.find(img => img.context === "background" && !isExcluded(img.url));
+  if (bgImg) return bgImg.url;
+
+  // Fallback: hero/banner section in HTML
+  const heroSection = html.match(/<(?:section|div)\b[^>]*(?:class|id)=["'][^"']*(?:hero|banner|jumbotron|slider|carousel)[^"']*["'][^>]*>([\s\S]*?)<\/(?:section|div)>/i);
+  if (heroSection) {
+    const bgMatch = heroSection[0].match(/background(?:-image)?\s*:\s*url\(['"]?([^'")\s]+)['"]?\)/i);
+    if (bgMatch && !isExcluded(bgMatch[1])) return resolve(bgMatch[1]);
+
+    const imgMatch = heroSection[1].match(/<img\b[^>]*\bsrc=["']([^"']+)["'][^>]*>/i);
+    if (imgMatch && !isExcluded(imgMatch[1])) return resolve(imgMatch[1]);
+  }
+
+  // Last resort: first content image
+  const contentImg = images.find(img => img.context === "content" && !isExcluded(img.url));
   if (contentImg) return contentImg.url;
 
   return undefined;

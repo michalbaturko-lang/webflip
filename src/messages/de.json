@@ -206,6 +206,9 @@
     "nextVariant": "Nächste Variante",
     "goToVariant": "Zu Variante {num} wechseln",
     "variantCarousel": "Varianten-Karussell",
+    "compareVariants": "Varianten vergleichen",
+    "selectThisVariant": "Diese Variante wählen",
+    "closeComparison": "Vergleich schließen",
     "networkError": "Netzwerkfehler. Bitte versuchen Sie es erneut.",
     "retry": "Wiederholen",
     "recommendation": {

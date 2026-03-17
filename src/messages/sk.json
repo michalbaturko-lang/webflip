@@ -206,6 +206,9 @@
     "nextVariant": "Ďalší variant",
     "goToVariant": "Prejsť na variant {num}",
     "variantCarousel": "Karusel variantov",
+    "compareVariants": "Porovnať varianty",
+    "selectThisVariant": "Vybrať tento variant",
+    "closeComparison": "Zavrieť porovnanie",
     "networkError": "Chyba siete. Skúste to prosím znova.",
     "retry": "Skúsiť znova",
     "recommendation": {
