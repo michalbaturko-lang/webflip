@@ -15,11 +15,7 @@ import { interpretBusiness } from "@/lib/business-interpretation";
 import { analyzePage, analyzeSite, generateFindings } from "@/lib/analysis-engine";
 import { calculateScores, mapToLegacyScores } from "@/lib/scoring";
 import { runDeepAnalysis } from "@/lib/checks";
-import { buildLinkGraph } from "@/lib/link-graph";
-import { analyzeLinkGraph } from "@/lib/analyzers/link-analysis";
-import { prioritizeFindings } from "@/lib/prioritizer";
-import { applyBusinessContext } from "@/lib/business-context";
-import { generateExplanations } from "@/lib/llm-explainer";
+import { calculateBenchmarks } from "@/lib/benchmarks";
 import { detectTemplates } from "@/lib/template-detector";
 import type { Finding, BusinessProfile, EnrichmentResults } from "@/lib/supabase";
 
@@ -214,6 +210,7 @@ async function runPipeline(url: string, token: string, locale?: string) {
   // ─── Stage 2b: Comprehensive Analysis Engine (150+ data points) ───
   console.log(`[pipeline:${token}] Running comprehensive analysis engine...`);
   let engineFindings: Finding[] = [];
+  let scoringResult: ReturnType<typeof calculateScores> | null = null;
   try {
     // Run the new analysis engine on all crawled pages
     const pageAnalyses = crawledPages.map((p) => analyzePage(p.html, p.url));
@@ -221,7 +218,7 @@ async function runPipeline(url: string, token: string, locale?: string) {
     const rawEngineFindings = generateFindings(siteAnalysis);
 
     // Calculate new comprehensive scores
-    const scoringResult = calculateScores(siteAnalysis, rawEngineFindings);
+    scoringResult = calculateScores(siteAnalysis, rawEngineFindings);
     const legacyScores = mapToLegacyScores(scoringResult);
 
     // Map engine findings to legacy Finding format for backward compatibility
@@ -343,6 +340,23 @@ async function runPipeline(url: string, token: string, locale?: string) {
   );
 
   console.log(`[pipeline:${token}] Analyzers done. Scores:`, scores, `Overall: ${overall}`);
+
+  // ─── Stage 2.9: Industry Benchmarking ───
+  let benchmarkResults: ReturnType<typeof calculateBenchmarks> | null = null;
+  if (scoringResult) {
+    try {
+      benchmarkResults = calculateBenchmarks(
+        scoringResult,
+        liveFindings,
+        extractedAssets?.siteType,
+        businessProfile
+      );
+      console.log(`[pipeline:${token}] Benchmarks: industry=${benchmarkResults.industryType}, health=${benchmarkResults.executiveDashboard.overallHealthScore}, grade=${benchmarkResults.executiveDashboard.overallGrade}`);
+    } catch (err) {
+      console.error(`[pipeline:${token}] Benchmarking failed (non-fatal):`, err);
+    }
+  }
+
   console.log(`[pipeline:${token}] Stage 3: Updating status to generating`);
   const stageUpdate: Record<string, unknown> = {
     status: "generating",
@@ -362,6 +376,7 @@ async function runPipeline(url: string, token: string, locale?: string) {
       aiVisibility: { score: scores.aiVisibility ?? 50, findings: liveFindings.filter(f => f.category === "aiVisibility") },
     },
     findings: liveFindings,
+    benchmark_results: benchmarkResults as any,
     variant_progress: { current: 0, total: 3, message: "Preparing variant generation..." },
   };
   if (linkGraphData) stageUpdate.link_graph_data = linkGraphData;
