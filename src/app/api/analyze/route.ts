@@ -8,6 +8,7 @@ import { analyzeSecurity } from "@/lib/analyzers/security";
 import { analyzeUX } from "@/lib/analyzers/ux";
 import { analyzeContent } from "@/lib/analyzers/content";
 import { analyzeAIVisibility } from "@/lib/analyzers/ai-visibility";
+import { analyzePerformance } from "@/lib/analyzers/performance";
 import { generateVariants } from "@/lib/redesign";
 import { generateHtmlVariants } from "@/lib/generate-html";
 import { interpretBusiness } from "@/lib/business-interpretation";
@@ -166,13 +167,25 @@ async function runPipeline(url: string, token: string, locale?: string) {
     await updateAnalysis(token, update as any).catch(() => {});
   };
 
-  console.log(`[pipeline:${token}] Running 6 analyzers in parallel...`);
+  console.log(`[pipeline:${token}] Running 7 analyzers in parallel...`);
   // Run analyzers in parallel, but update DB as each completes
   await Promise.allSettled([
-    getPageSpeedData(url).then(
-      (data) => pushFindings("performance", { score: data.score, findings: performanceFindings(data) }),
-      () => pushFindings("performance", { score: 50, findings: [{ category: "performance", severity: "info", title: "PageSpeed unavailable", description: "Could not reach Google PageSpeed API." }] })
-    ),
+    // PageSpeed API + HTML-based performance measurer merged together
+    (async () => {
+      const htmlPerf = analyzePerformance(mainPage.html, url);
+      try {
+        const psData = await getPageSpeedData(url);
+        const psFindings = performanceFindings(psData);
+        // Merge: use PageSpeed score as primary, augment with HTML-based findings
+        const existingTitles = new Set(psFindings.map(f => f.title));
+        const uniqueHtmlFindings = htmlPerf.findings.filter(f => !existingTitles.has(f.title));
+        const mergedScore = Math.round(psData.score * 0.6 + htmlPerf.score * 0.4);
+        await pushFindings("performance", { score: mergedScore, findings: [...psFindings, ...uniqueHtmlFindings] });
+      } catch {
+        // PageSpeed unavailable — use HTML-based analysis alone
+        await pushFindings("performance", htmlPerf);
+      }
+    })(),
     Promise.resolve(analyzeSEO(mainPage.html, url)).then(
       (r) => pushFindings("seo", r),
       () => pushFindings("seo", { score: 50, findings: [] })
