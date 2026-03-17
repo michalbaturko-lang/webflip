@@ -9,6 +9,7 @@ import {
   Monitor,
   FileText,
   Bot,
+  Accessibility,
   CheckCircle,
   AlertTriangle,
   XCircle,
@@ -28,6 +29,7 @@ interface Scores {
   ux: number | null;
   content: number | null;
   aiVisibility: number | null;
+  accessibility: number | null;
   overall: number | null;
 }
 
@@ -44,6 +46,7 @@ const CATEGORY_CONFIG = [
   { key: "ux", label: "UX & Design", icon: Monitor, color: "text-orange-400", gradient: "from-orange-500 to-red-500" },
   { key: "content", label: "Content", icon: FileText, color: "text-blue-400", gradient: "from-blue-500 to-cyan-500" },
   { key: "aiVisibility", label: "AI Visibility", icon: Bot, color: "text-purple-400", gradient: "from-purple-500 to-pink-500" },
+  { key: "accessibility", label: "Přístupnost", icon: Accessibility, color: "text-violet-400", gradient: "from-violet-500 to-purple-500" },
 ] as const;
 
 function getScoreColor(score: number) {
@@ -124,7 +127,7 @@ export default function StageAnalyzing({ url, scores, liveFindings }: Props) {
           Analyzujeme {domain}
         </h2>
         <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-          Kontrolujeme 50+ parametrů v 6 kategoriích
+          Kontrolujeme 50+ parametrů v 7 kategoriích
         </p>
       </div>
 

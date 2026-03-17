@@ -9,6 +9,7 @@ import { analyzeUX } from "@/lib/analyzers/ux";
 import { analyzeContent } from "@/lib/analyzers/content";
 import { analyzeAIVisibility } from "@/lib/analyzers/ai-visibility";
 import { analyzePerformance } from "@/lib/analyzers/performance";
+import { analyzeAccessibility } from "@/lib/analyzers/accessibility";
 import { generateVariants } from "@/lib/redesign";
 import { generateHtmlVariants } from "@/lib/generate-html";
 import { interpretBusiness } from "@/lib/business-interpretation";
@@ -17,6 +18,11 @@ import { calculateScores, mapToLegacyScores } from "@/lib/scoring";
 import { runDeepAnalysis } from "@/lib/checks";
 import { calculateBenchmarks } from "@/lib/benchmarks";
 import { detectTemplates } from "@/lib/template-detector";
+import { buildLinkGraph } from "@/lib/link-graph";
+import { analyzeLinkGraph } from "@/lib/analyzers/link-analysis";
+import { prioritizeFindings } from "@/lib/prioritizer";
+import { applyBusinessContext } from "@/lib/business-context";
+import { generateExplanations } from "@/lib/llm-explainer";
 import type { Finding, BusinessProfile, EnrichmentResults } from "@/lib/supabase";
 
 // Vercel Pro supports up to 300s. Pipeline needs time for crawl+analyze+generate.
@@ -163,10 +169,11 @@ async function runPipeline(url: string, token: string, locale?: string) {
     if (category === "ux") update.score_ux = result.score;
     if (category === "content") update.score_content = result.score;
     if (category === "aiVisibility") update.score_ai_visibility = result.score;
+    if (category === "accessibility") update.score_accessibility = result.score;
     await updateAnalysis(token, update as any).catch(() => {});
   };
 
-  console.log(`[pipeline:${token}] Running 7 analyzers in parallel...`);
+  console.log(`[pipeline:${token}] Running 8 analyzers in parallel...`);
   // Run analyzers in parallel, but update DB as each completes
   await Promise.allSettled([
     // PageSpeed API + HTML-based performance measurer merged together
@@ -204,6 +211,10 @@ async function runPipeline(url: string, token: string, locale?: string) {
     Promise.resolve(analyzeAIVisibility(mainPage.html)).then(
       (r) => pushFindings("aiVisibility", r),
       () => pushFindings("aiVisibility", { score: 50, findings: [] })
+    ),
+    Promise.resolve(analyzeAccessibility(crawledPages)).then(
+      (r) => pushFindings("accessibility", r),
+      () => pushFindings("accessibility", { score: 50, findings: [] })
     ),
   ]);
 
@@ -303,6 +314,7 @@ async function runPipeline(url: string, token: string, locale?: string) {
     await updateAnalysis(token, { findings: liveFindings }).catch(() => {});
   } catch (err) {
     console.error(`[pipeline:${token}] Link graph analysis failed (non-fatal):`, err);
+  }
   // ─── Stage 2.6: Template & DOM Clustering Detection ───
   console.log(`[pipeline:${token}] Running template detection...`);
   let templateClusters: ReturnType<typeof detectTemplates>["clusters"] = [];
@@ -331,12 +343,13 @@ async function runPipeline(url: string, token: string, locale?: string) {
 
   // Calculate overall score (weighted)
   const overall = Math.round(
-    (scores.performance ?? 50) * 0.15 +
-      (scores.seo ?? 50) * 0.25 +
+    (scores.performance ?? 50) * 0.13 +
+      (scores.seo ?? 50) * 0.22 +
       (scores.security ?? 50) * 0.10 +
-      (scores.ux ?? 50) * 0.15 +
-      (scores.content ?? 50) * 0.20 +
-      (scores.aiVisibility ?? 50) * 0.15
+      (scores.ux ?? 50) * 0.13 +
+      (scores.content ?? 50) * 0.17 +
+      (scores.aiVisibility ?? 50) * 0.13 +
+      (scores.accessibility ?? 50) * 0.12
   );
 
   console.log(`[pipeline:${token}] Analyzers done. Scores:`, scores, `Overall: ${overall}`);
@@ -366,6 +379,7 @@ async function runPipeline(url: string, token: string, locale?: string) {
     score_ux: scores.ux ?? 50,
     score_content: scores.content ?? 50,
     score_ai_visibility: scores.aiVisibility ?? 50,
+    score_accessibility: scores.accessibility ?? 50,
     score_overall: overall,
     analysis_results: {
       performance: { score: scores.performance ?? 50, findings: liveFindings.filter(f => f.category === "performance") },
@@ -374,6 +388,7 @@ async function runPipeline(url: string, token: string, locale?: string) {
       ux: { score: scores.ux ?? 50, findings: liveFindings.filter(f => f.category === "ux") },
       content: { score: scores.content ?? 50, findings: liveFindings.filter(f => f.category === "content") },
       aiVisibility: { score: scores.aiVisibility ?? 50, findings: liveFindings.filter(f => f.category === "aiVisibility") },
+      accessibility: { score: scores.accessibility ?? 50, findings: liveFindings.filter(f => f.category === "Přístupnost") },
     },
     findings: liveFindings,
     benchmark_results: benchmarkResults as any,
