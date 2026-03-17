@@ -137,6 +137,7 @@ export interface AnalysisRow {
   score_ux: number | null;
   score_content: number | null;
   score_ai_visibility: number | null;
+  score_accessibility: number | null;
   score_overall: number | null;
   analysis_results: Record<string, CategoryScore> | null;
   findings: Finding[];

@@ -18,6 +18,7 @@ import {
   Monitor,
   FileText,
   Bot,
+  Accessibility,
   Layers,
   ExternalLink,
 } from "lucide-react";
@@ -57,6 +58,7 @@ interface ApiResponse {
     ux: number | null;
     content: number | null;
     aiVisibility: number | null;
+    accessibility: number | null;
     overall: number | null;
   };
   liveFindings?: Finding[];
@@ -269,6 +271,7 @@ const CATEGORY_CARDS = [
   { key: "ux", labelKey: "ux" as const, icon: Monitor, color: "text-orange-400", gradient: "from-orange-500 to-amber-400" },
   { key: "content", labelKey: "content" as const, icon: FileText, color: "text-blue-400", gradient: "from-blue-500 to-cyan-400" },
   { key: "aiVisibility", labelKey: "aiVisibility" as const, icon: Bot, color: "text-purple-400", gradient: "from-purple-500 to-violet-400" },
+  { key: "accessibility", labelKey: "accessibility" as const, icon: Accessibility, color: "text-violet-400", gradient: "from-violet-500 to-purple-400" },
 ] as const;
 
 const EFFORT_LABELS: Record<number, string> = {
@@ -826,6 +829,7 @@ function StageEmailGate({
     { key: "ux", labelKey: "ux" as const, color: "text-orange-400" },
     { key: "content", labelKey: "content" as const, color: "text-blue-400" },
     { key: "aiVisibility", labelKey: "aiVisibility" as const, color: "text-purple-400" },
+    { key: "accessibility", labelKey: "accessibility" as const, color: "text-violet-400" },
   ] as const;
 
   const handleSubmit = (e: React.FormEvent) => {
