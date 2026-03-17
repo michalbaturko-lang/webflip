@@ -18,6 +18,8 @@ import {
   Monitor,
   FileText,
   Bot,
+  Layers,
+  ExternalLink,
 } from "lucide-react";
 
 import { useLocale, useTranslations } from "next-intl";
@@ -69,6 +71,19 @@ interface ApiResponse {
   emailRequired?: boolean;
   error?: string;
   enrichment?: EnrichmentData;
+  templateClusters?: TemplateClusterInfo[];
+}
+
+interface TemplateClusterInfo {
+  id: string;
+  name: string;
+  templateHash: string;
+  pageUrls: string[];
+  pageCount: number;
+  representativeUrl: string;
+  commonIssues: Finding[];
+  templateElements: string[];
+  contentElements: string[];
 }
 
 interface EnrichedFindingData {
@@ -291,6 +306,7 @@ function StageResults({
   token,
   url,
   enrichment,
+  templateClusters,
 }: {
   scores: ApiResponse["scores"];
   findings: Finding[];
@@ -298,6 +314,7 @@ function StageResults({
   token: string;
   url: string;
   enrichment?: EnrichmentData;
+  templateClusters?: TemplateClusterInfo[];
 }) {
   const t = useTranslations("analysis");
   const locale = useLocale();
@@ -629,6 +646,66 @@ function StageResults({
             })}
           </div>
         </div>
+      )}
+
+      {/* Template Clusters Section — Šablony */}
+      {templateClusters && templateClusters.length > 1 && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6 }}
+          className="space-y-4"
+        >
+          <div className="flex items-center gap-2">
+            <Layers className="h-5 w-5 text-indigo-400" />
+            <h3 className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>
+              Šablony ({templateClusters.length})
+            </h3>
+          </div>
+          <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+            Stránky sdílející stejnou HTML šablonu. Opravou šablony vyřešíte problém na všech stránkách najednou.
+          </p>
+          <div className="grid gap-3 md:grid-cols-2">
+            {templateClusters.map((cluster, i) => (
+              <motion.div
+                key={cluster.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.7 + i * 0.1 }}
+                className="glass rounded-xl p-4"
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+                    {cluster.name}
+                  </span>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-400/10 border border-indigo-400/20 text-indigo-400">
+                    {cluster.pageCount} stránek
+                  </span>
+                </div>
+                {cluster.commonIssues.length > 0 && (
+                  <div className="mb-2">
+                    {cluster.commonIssues.slice(0, 3).map((issue, j) => {
+                      const cfg = severityConfig[issue.severity] || severityConfig.info;
+                      return (
+                        <div key={j} className="flex items-center gap-1.5 text-xs mt-1" style={{ color: "var(--text-muted)" }}>
+                          <span className={`inline-block h-1.5 w-1.5 rounded-full ${cfg.color.replace("text-", "bg-")}`} />
+                          <span>{issue.title}</span>
+                          <span className="text-[10px] px-1 py-0.5 rounded bg-indigo-400/10 text-indigo-400 ml-auto whitespace-nowrap">
+                            Ovlivňuje {cluster.pageCount} stránek
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                <div className="flex items-center gap-1 text-[10px] mt-2" style={{ color: "var(--text-muted)" }}>
+                  <ExternalLink className="h-3 w-3" />
+                  <span className="truncate">{cluster.representativeUrl}</span>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
       )}
 
       {/* Redesign Variants Section — powered by VariantComparison */}
@@ -1083,6 +1160,7 @@ export default function AnalysisOrchestrator({ url, token, onStatusChange }: Pro
                   token={data?.token || token}
                   url={url}
                   enrichment={data?.enrichment}
+                  templateClusters={data?.templateClusters}
                 />
               )}
               {stage === 5 && (
@@ -1096,6 +1174,7 @@ export default function AnalysisOrchestrator({ url, token, onStatusChange }: Pro
                   token={data?.token || token}
                   url={url}
                   enrichment={data?.enrichment}
+                  templateClusters={data?.templateClusters}
                 />
               )}
             </AnimatePresence>

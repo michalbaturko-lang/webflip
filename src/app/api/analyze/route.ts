@@ -8,16 +8,15 @@ import { analyzeSecurity } from "@/lib/analyzers/security";
 import { analyzeUX } from "@/lib/analyzers/ux";
 import { analyzeContent } from "@/lib/analyzers/content";
 import { analyzeAIVisibility } from "@/lib/analyzers/ai-visibility";
+import { analyzePerformance } from "@/lib/analyzers/performance";
 import { generateVariants } from "@/lib/redesign";
 import { generateHtmlVariants } from "@/lib/generate-html";
 import { interpretBusiness } from "@/lib/business-interpretation";
 import { analyzePage, analyzeSite, generateFindings } from "@/lib/analysis-engine";
 import { calculateScores, mapToLegacyScores } from "@/lib/scoring";
 import { runDeepAnalysis } from "@/lib/checks";
-import { prioritizeFindings } from "@/lib/prioritizer";
-import { applyBusinessContext } from "@/lib/business-context";
-import { generateExplanations } from "@/lib/llm-explainer";
 import { calculateBenchmarks } from "@/lib/benchmarks";
+import { detectTemplates } from "@/lib/template-detector";
 import type { Finding, BusinessProfile, EnrichmentResults } from "@/lib/supabase";
 
 // Vercel Pro supports up to 300s. Pipeline needs time for crawl+analyze+generate.
@@ -167,13 +166,25 @@ async function runPipeline(url: string, token: string, locale?: string) {
     await updateAnalysis(token, update as any).catch(() => {});
   };
 
-  console.log(`[pipeline:${token}] Running 6 analyzers in parallel...`);
+  console.log(`[pipeline:${token}] Running 7 analyzers in parallel...`);
   // Run analyzers in parallel, but update DB as each completes
   await Promise.allSettled([
-    getPageSpeedData(url).then(
-      (data) => pushFindings("performance", { score: data.score, findings: performanceFindings(data) }),
-      () => pushFindings("performance", { score: 50, findings: [{ category: "performance", severity: "info", title: "PageSpeed unavailable", description: "Could not reach Google PageSpeed API." }] })
-    ),
+    // PageSpeed API + HTML-based performance measurer merged together
+    (async () => {
+      const htmlPerf = analyzePerformance(mainPage.html, url);
+      try {
+        const psData = await getPageSpeedData(url);
+        const psFindings = performanceFindings(psData);
+        // Merge: use PageSpeed score as primary, augment with HTML-based findings
+        const existingTitles = new Set(psFindings.map(f => f.title));
+        const uniqueHtmlFindings = htmlPerf.findings.filter(f => !existingTitles.has(f.title));
+        const mergedScore = Math.round(psData.score * 0.6 + htmlPerf.score * 0.4);
+        await pushFindings("performance", { score: mergedScore, findings: [...psFindings, ...uniqueHtmlFindings] });
+      } catch {
+        // PageSpeed unavailable — use HTML-based analysis alone
+        await pushFindings("performance", htmlPerf);
+      }
+    })(),
     Promise.resolve(analyzeSEO(mainPage.html, url)).then(
       (r) => pushFindings("seo", r),
       () => pushFindings("seo", { score: 50, findings: [] })
@@ -270,6 +281,54 @@ async function runPipeline(url: string, token: string, locale?: string) {
     console.error(`[pipeline:${token}] Deep analysis failed (non-fatal):`, err);
   }
 
+  // ─── Stage 2.6: Internal Link Graph Analysis ───
+  console.log(`[pipeline:${token}] Running link graph analysis...`);
+  let linkGraphData: Record<string, unknown> | null = null;
+  try {
+    const graphResult = buildLinkGraph(
+      crawledPages.map(p => ({ url: p.url, html: p.html, pageType: (p as any).pageType })),
+      url
+    );
+    const linkAnalysis = analyzeLinkGraph(graphResult);
+
+    // Merge link analysis findings
+    const existingLinkTitles = new Set(liveFindings.map(f => f.title));
+    const newLinkFindings = linkAnalysis.findings.filter(f => !existingLinkTitles.has(f.title));
+    liveFindings = [...liveFindings, ...newLinkFindings];
+
+    linkGraphData = linkAnalysis.linkGraphData as unknown as Record<string, unknown>;
+
+    console.log(`[pipeline:${token}] Link graph: ${graphResult.summary.totalPages} pages, ${graphResult.summary.totalInternalLinks} links, ${graphResult.orphanPages.length} orphans`);
+
+    await updateAnalysis(token, { findings: liveFindings }).catch(() => {});
+  } catch (err) {
+    console.error(`[pipeline:${token}] Link graph analysis failed (non-fatal):`, err);
+  // ─── Stage 2.6: Template & DOM Clustering Detection ───
+  console.log(`[pipeline:${token}] Running template detection...`);
+  let templateClusters: ReturnType<typeof detectTemplates>["clusters"] = [];
+  try {
+    const templateResult = detectTemplates({
+      pages: crawledPages.map((p) => ({ url: p.url, html: p.html })),
+      findings: liveFindings,
+    });
+
+    templateClusters = templateResult.clusters;
+
+    // Replace findings with deduplicated version
+    if (templateResult.templateFindingsCount > 0) {
+      liveFindings = templateResult.deduplicatedFindings;
+    }
+
+    console.log(`[pipeline:${token}] Template detection: ${templateClusters.length} clusters found, ${templateResult.templateFindingsCount} findings deduplicated`);
+
+    await updateAnalysis(token, {
+      template_clusters: templateClusters,
+      findings: liveFindings,
+    } as any).catch(() => {});
+  } catch (err) {
+    console.error(`[pipeline:${token}] Template detection failed (non-fatal):`, err);
+  }
+
   // Calculate overall score (weighted)
   const overall = Math.round(
     (scores.performance ?? 50) * 0.15 +
@@ -299,7 +358,7 @@ async function runPipeline(url: string, token: string, locale?: string) {
   }
 
   console.log(`[pipeline:${token}] Stage 3: Updating status to generating`);
-  await updateAnalysis(token, {
+  const stageUpdate: Record<string, unknown> = {
     status: "generating",
     score_performance: scores.performance ?? 50,
     score_seo: scores.seo ?? 50,
@@ -319,7 +378,9 @@ async function runPipeline(url: string, token: string, locale?: string) {
     findings: liveFindings,
     benchmark_results: benchmarkResults as any,
     variant_progress: { current: 0, total: 3, message: "Preparing variant generation..." },
-  });
+  };
+  if (linkGraphData) stageUpdate.link_graph_data = linkGraphData;
+  await updateAnalysis(token, stageUpdate as any);
 
   // ─── Stage 2.75: Enrichment — prioritize, apply business context, generate explanations ───
   console.log(`[pipeline:${token}] Stage 2.75: Enriching findings...`);
