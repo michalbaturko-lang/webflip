@@ -363,11 +363,11 @@ async function runPipeline(url: string, token: string, locale?: string, email?: 
 
     console.log(`[pipeline:${token}] Link graph: ${graphResult.summary.totalPages} pages, ${graphResult.summary.totalInternalLinks} links, ${graphResult.orphanPages.length} orphans`);
 
-  }
+    await updateAnalysis(token, { findings: liveFindings }).catch(() => {});
   } catch (err) {
     console.error(`[pipeline:${token}] Link graph analysis failed (non-fatal):`, err);
   }
-    }
+
   // ─── Stage 2.6: Template & DOM Clustering Detection ───
   console.log(`[pipeline:${token}] Running template detection...`);
   let templateClusters: ReturnType<typeof detectTemplates>["clusters"] = [];

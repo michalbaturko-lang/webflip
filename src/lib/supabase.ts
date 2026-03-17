@@ -139,6 +139,7 @@ export interface SEOSuggestionsData {
     competitor_angles: string[];
   };
   summary: string;
+}
 
 export interface PageSpeedMetricsData {
   fcp: number;
