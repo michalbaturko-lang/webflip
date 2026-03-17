@@ -509,20 +509,18 @@ function fillTemplate(template: string, data: TemplateData): string {
     html = html.replace(new RegExp(key, "g"), value);
   }
 
-  // 5. Apply hero background image if available
+  // 5. Apply cinematic hero image if available
   if (data.heroImageUrl) {
-    // Add hero background image as inline style on the hero section
+    // Insert img element into hero__image-container
     html = html.replace(
-      /data-hero-image="[^"]*"/,
-      `style="background-image: url('${escapeAttr(data.heroImageUrl)}'); background-size: cover; background-position: center;"`
+      /<!-- HERO_IMAGE -->/,
+      `<img src="${escapeAttr(data.heroImageUrl)}" alt="${escapeAttr(data.companyName)}" onerror="this.parentElement.style.display='none'">`
     );
-    // Add class for hero-with-image styling
-    html = html.replace(
-      /class="hero"/,
-      'class="hero hero--with-image"'
-    );
+    // Remove the data attribute placeholder
+    html = html.replace(/\s*data-hero-image="[^"]*"/, "");
   } else {
-    // Remove the data attribute if no hero image
+    // Remove the hero image container content and data attribute when no image
+    html = html.replace(/<!-- HERO_IMAGE -->/, "");
     html = html.replace(/\s*data-hero-image="[^"]*"/, "");
   }
 
