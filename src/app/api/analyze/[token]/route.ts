@@ -77,6 +77,12 @@ export async function GET(
         response.enrichment = enrichment;
       }
 
+      // Include template clusters (available to all)
+      const templateClusters = (analysis as any).template_clusters;
+      if (templateClusters && templateClusters.length > 0) {
+        response.templateClusters = templateClusters;
+      }
+
       // Only show full results if email is provided (email gate)
       if (analysis.email) {
         response.findings = analysis.findings;

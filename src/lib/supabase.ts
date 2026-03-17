@@ -110,6 +110,18 @@ export interface EditHistoryEntry {
   previous_html: string;
 }
 
+export interface TemplateClusterData {
+  id: string;
+  name: string;
+  templateHash: string;
+  pageUrls: string[];
+  pageCount: number;
+  representativeUrl: string;
+  commonIssues: Finding[];
+  templateElements: string[];
+  contentElements: string[];
+}
+
 export interface AnalysisRow {
   id: string;
   token: string;
@@ -136,6 +148,7 @@ export interface AnalysisRow {
   edit_history: EditHistoryEntry[] | null;
   enrichment_results: EnrichmentResults | null;
   link_graph_data: Record<string, unknown> | null;
+      template_clusters: TemplateClusterData[] | null;
   created_at: string;
   updated_at: string;
   completed_at: string | null;
