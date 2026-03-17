@@ -112,6 +112,7 @@
     .hero__headline { font-size: clamp(2.5rem, 6vw + 0.5rem, 4.75rem); line-height: 1.08; margin-bottom: 28px; font-weight: 600; letter-spacing: -0.02em; }
     .hero__subheadline { font-size: clamp(1rem, 0.5vw + 0.875rem, 1.1875rem); color: var(--muted); line-height: 1.8; margin-bottom: 48px; max-width: 520px; margin-left: auto; margin-right: auto; }
     .hero__actions { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+    .hero--with-image { background-size: cover; background-position: center; }
 
     /* === 3. STATS === */
     .stats { padding: 64px 0; border-bottom: 1px solid var(--border); }
@@ -146,6 +147,17 @@
     .blog-card__excerpt { font-size: 0.9375rem; color: var(--muted); line-height: 1.8; margin-bottom: 24px; }
     .blog-card__link { font-size: 0.6875rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent, var(--accent-fb)); border-bottom: 1px solid transparent; padding-bottom: 2px; transition: border-color var(--tr); }
     .blog-card__link:hover { border-bottom-color: var(--accent, var(--accent-fb)); color: var(--accent, var(--accent-fb)); }
+    .blog-card__image { width: 100%; height: 200px; object-fit: cover; margin-bottom: 24px; }
+
+    /* === PRODUCTS === */
+    .products__grid { display: grid; grid-template-columns: 1fr; gap: 24px; }
+    .product-card { border: 1px solid var(--border); padding: 0; overflow: hidden; transition: border-color var(--tr); }
+    .product-card:hover { border-color: var(--border-h); }
+    .product-card__image { width: 100%; height: 220px; object-fit: cover; }
+    .product-card__body { padding: var(--card-pad); text-align: center; }
+    .product-card__name { font-family: var(--serif); font-size: clamp(1.0625rem, 0.5vw + 0.9rem, 1.25rem); font-weight: 600; margin-bottom: 12px; color: var(--text); }
+    .product-card__desc { font-size: 0.9375rem; color: var(--muted); line-height: 1.8; margin-bottom: 16px; }
+    .product-card__price { display: inline-block; font-family: var(--serif); font-size: 1.125rem; font-weight: 600; color: var(--accent, var(--accent-fb)); letter-spacing: 0.01em; }
 
     /* === 7. TESTIMONIALS === */
     .testimonials__grid { display: grid; grid-template-columns: 1fr; gap: 40px; }
@@ -250,6 +262,7 @@
       .stats__grid { grid-template-columns: repeat(2, 1fr); }
       .gallery__grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
       .blog__grid { grid-template-columns: repeat(2, 1fr); }
+      .products__grid { grid-template-columns: repeat(2, 1fr); }
       .cookie-banner__inner { flex-direction: row; align-items: center; justify-content: space-between; }
     }
     @media (min-width: 768px) {
@@ -257,6 +270,7 @@
       .nav__inner { height: 72px; }
       .hero { min-height: 68vh; padding: 120px 28px 100px; }
       .services__grid { grid-template-columns: repeat(2, 1fr); gap: 28px; }
+      .products__grid { grid-template-columns: repeat(2, 1fr); gap: 28px; }
       .about__grid { grid-template-columns: 1fr 1fr; gap: 56px; }
       .about__image img { max-height: 420px; }
       .contact__grid { grid-template-columns: 1fr 1fr; }
@@ -273,6 +287,7 @@
       .nav__hamburger { display: none; }
       .stats__grid { grid-template-columns: repeat(4, 1fr); }
       .services__grid { grid-template-columns: repeat(3, 1fr); gap: 32px; }
+      .products__grid { grid-template-columns: repeat(3, 1fr); gap: 32px; }
       .blog__grid { grid-template-columns: repeat(3, 1fr); gap: 32px; }
       .testimonials__grid { grid-template-columns: repeat(3, 1fr); }
       .gallery__grid { grid-template-columns: repeat(4, 1fr); gap: 16px; }
@@ -323,7 +338,7 @@
   <main id="main-content">
 
     <!-- ===== 2. HERO ===== -->
-    <section class="hero" aria-label="Hero">
+    <section class="hero" aria-label="Hero" data-hero-image="TEMPLATE_VAR_heroImageUrl">
       <div class="hero__content fade-in">
         <span class="hero__label">TEMPLATE_VAR_companyName</span>
         <h1 class="hero__headline">TEMPLATE_VAR_headline</h1>
@@ -368,6 +383,29 @@
       </div>
     </section>
 
+    <!-- ===== PRODUCTS ===== -->
+    <!-- IF:products -->
+    <section class="section section--warm" id="products" aria-labelledby="products-heading">
+      <div class="container">
+        <hr class="section-rule">
+        <h2 class="section-title" id="products-heading">TEMPLATE_VAR_section_products</h2>
+        <p class="section-subtitle">TEMPLATE_VAR_subtitle_products</p>
+        <div class="products__grid">
+          <!-- REPEAT:products -->
+          <article class="product-card fade-in">
+            <img class="product-card__image" src="TEMPLATE_VAR_productImageUrl" alt="TEMPLATE_VAR_productName" onerror="this.style.display='none'" loading="lazy">
+            <div class="product-card__body">
+              <h3 class="product-card__name">TEMPLATE_VAR_productName</h3>
+              <p class="product-card__desc">TEMPLATE_VAR_productDescription</p>
+              <span class="product-card__price">TEMPLATE_VAR_productPrice</span>
+            </div>
+          </article>
+          <!-- /REPEAT:products -->
+        </div>
+      </div>
+    </section>
+    <!-- /IF:products -->
+
     <!-- ===== 5. ABOUT ===== -->
     <section class="section section--warm" id="about" aria-labelledby="about-heading">
       <div class="container container--wide">
@@ -395,6 +433,7 @@
         <div class="blog__grid">
           <!-- REPEAT:blogPosts -->
           <article class="blog-card fade-in">
+            <img class="blog-card__image" src="TEMPLATE_VAR_blogImageUrl" alt="TEMPLATE_VAR_blogTitle" onerror="this.style.display='none'" loading="lazy">
             <time class="blog-card__date" datetime="TEMPLATE_VAR_blogDate">TEMPLATE_VAR_blogDate</time>
             <h3 class="blog-card__title">TEMPLATE_VAR_blogTitle</h3>
             <p class="blog-card__excerpt">TEMPLATE_VAR_blogExcerpt</p>

@@ -1,7 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import fs from "fs";
 import path from "path";
-import type { DesignVariant, AnalysisRow, ExtractedAssets, BusinessProfile } from "./supabase";
+import type { DesignVariant, AnalysisRow, ExtractedAssets, BusinessProfile, SiteType } from "./supabase";
 
 // ── Template Data Interface ──
 
@@ -14,13 +14,16 @@ interface TemplateData {
   faviconUrl: string;
   primaryColor: string;
   language: string;
+  heroImageUrl: string;
+  siteType: SiteType;
   navLinks: { text: string; href: string }[];
   services: { title: string; description: string; icon: string }[];
   aboutText: string;
   stats: { number: string; label: string }[];
   testimonials: { quote: string; author: string; role: string }[];
   faqItems: { question: string; answer: string }[];
-  blogPosts: { title: string; excerpt: string; date: string }[];
+  blogPosts: { title: string; excerpt: string; date: string; imageUrl: string }[];
+  products: { name: string; description: string; price: string; imageUrl: string }[];
   gallery: { url: string; alt: string }[];
   socialLinks: string[];
   phone: string;
@@ -156,6 +159,9 @@ CRITICAL LANGUAGE RULE: ${businessProfile ? `The detected language is "${busines
 8. navLinks must include anchor links to ALL sections present on the page (services, about, gallery, blog, testimonials, faq, contact). Use #section-id format. The text of each navLink MUST be in the detected language.
 ${businessProfile ? `9. The headline/subheadline should reflect the core value proposition: ${businessProfile.valuePropositions[0] || businessProfile.summary}` : ""}
 
+8b. Extract real products if the site has them (name, description, price, image URL)
+8c. For blog posts, include imageUrl (featured image URL) when available from crawled content
+
 Return ONLY valid JSON (no markdown fences, no explanation) with this exact structure:
 {
   "companyName": "string",
@@ -169,7 +175,8 @@ Return ONLY valid JSON (no markdown fences, no explanation) with this exact stru
   "stats": [{"number": "string like 15+ or 98%", "label": "string"}],
   "testimonials": [{"quote": "string", "author": "string", "role": "string"}],
   "faqItems": [{"question": "string", "answer": "string"}],
-  "blogPosts": [{"title": "string", "excerpt": "string", "date": "string like 2024-01-15"}],
+  "blogPosts": [{"title": "string", "excerpt": "string", "date": "string like 2024-01-15", "imageUrl": "string or empty"}],
+  "products": [{"name": "string", "description": "string", "price": "string or empty", "imageUrl": "string or empty"}],
   "gallery": [{"url": "string absolute URL", "alt": "string"}],
   "socialLinks": ["url strings"],
   "phone": "string",
@@ -195,6 +202,43 @@ Return ONLY valid JSON (no markdown fences, no explanation) with this exact stru
     return buildFallbackTemplateData(url, "", assets);
   }
 
+  // Use real blog posts from crawled data if available
+  let blogPosts: TemplateData["blogPosts"] = [];
+  if (assets?.blogPosts && assets.blogPosts.length > 0) {
+    // Use REAL blog posts from crawl
+    blogPosts = assets.blogPosts.slice(0, 6).map(bp => ({
+      title: bp.title,
+      excerpt: bp.excerpt || "",
+      date: bp.date || new Date().toISOString().slice(0, 10),
+      imageUrl: bp.featuredImage || "",
+    }));
+  } else if (Array.isArray(parsed.blogPosts)) {
+    blogPosts = (parsed.blogPosts as Array<Record<string, string>>).map(bp => ({
+      title: bp.title || "",
+      excerpt: bp.excerpt || "",
+      date: bp.date || new Date().toISOString().slice(0, 10),
+      imageUrl: bp.imageUrl || "",
+    }));
+  }
+
+  // Use real products from crawled data if available
+  let products: TemplateData["products"] = [];
+  if (assets?.products && assets.products.length > 0) {
+    products = assets.products.slice(0, 12).map(p => ({
+      name: p.name,
+      description: p.description || "",
+      price: p.price || "",
+      imageUrl: p.imageUrl || "",
+    }));
+  } else if (Array.isArray(parsed.products)) {
+    products = (parsed.products as Array<Record<string, string>>).map(p => ({
+      name: p.name || "",
+      description: p.description || "",
+      price: p.price || "",
+      imageUrl: p.imageUrl || "",
+    }));
+  }
+
   // Build TemplateData from parsed response, with fallbacks
   return {
     companyName: (parsed.companyName as string) || companyName,
@@ -205,16 +249,19 @@ Return ONLY valid JSON (no markdown fences, no explanation) with this exact stru
     faviconUrl: assets?.favicon || "",
     primaryColor: "#1B2A4A",
     language: (parsed.language as string) || "en",
+    heroImageUrl: assets?.heroImageUrl || "",
+    siteType: assets?.siteType || "corporate",
     navLinks: Array.isArray(parsed.navLinks) ? parsed.navLinks as TemplateData["navLinks"] : assets?.navLinks || [],
     services: Array.isArray(parsed.services) ? parsed.services as TemplateData["services"] : [],
     aboutText: (parsed.aboutText as string) || "",
     stats: Array.isArray(parsed.stats) ? parsed.stats as TemplateData["stats"] : [],
     testimonials: Array.isArray(parsed.testimonials) ? parsed.testimonials as TemplateData["testimonials"] : [],
     faqItems: Array.isArray(parsed.faqItems) ? parsed.faqItems as TemplateData["faqItems"] : [],
-    blogPosts: Array.isArray(parsed.blogPosts) ? parsed.blogPosts as TemplateData["blogPosts"] : [],
+    blogPosts,
+    products,
     gallery: Array.isArray(parsed.gallery)
       ? parsed.gallery as TemplateData["gallery"]
-      : (assets?.images || []).slice(0, 8).map(img => ({ url: img.url, alt: img.alt || companyName })),
+      : (assets?.images || []).filter(img => img.context !== "icon" && img.context !== "logo").slice(0, 8).map(img => ({ url: img.url, alt: img.alt || companyName })),
     socialLinks: Array.isArray(parsed.socialLinks) ? parsed.socialLinks as string[] : assets?.socialLinks || [],
     phone: (parsed.phone as string) || assets?.phoneNumbers?.[0] || "",
     email: (parsed.email as string) || assets?.emails?.[0] || "",
@@ -225,6 +272,7 @@ Return ONLY valid JSON (no markdown fences, no explanation) with this exact stru
 // ── Template i18n Translations ──
 
 const TRANSLATIONS: Record<string, Record<string, string>> = {
+  section_products: { cs: 'Naše produkty', sk: 'Naše produkty', en: 'Our Products', de: 'Unsere Produkte' },
   section_services: { cs: 'Naše služby', sk: 'Naše služby', en: 'Our Services', de: 'Unsere Dienstleistungen' },
   section_about: { cs: 'O nás', sk: 'O nás', en: 'About Us', de: 'Über uns' },
   section_blog: { cs: 'Nejnovější články', sk: 'Najnovšie články', en: 'Latest Insights', de: 'Neuigkeiten' },
@@ -238,6 +286,7 @@ const TRANSLATIONS: Record<string, Record<string, string>> = {
   cta_read_more: { cs: 'Číst dále', sk: 'Čítať ďalej', en: 'Read More', de: 'Weiterlesen' },
   cta_contact: { cs: 'Kontaktujte nás', sk: 'Kontaktujte nás', en: 'Contact Us', de: 'Kontakt' },
   cta_send_message: { cs: 'Odeslat zprávu', sk: 'Odoslať správu', en: 'Send Message', de: 'Nachricht senden' },
+  nav_products: { cs: 'Produkty', sk: 'Produkty', en: 'Products', de: 'Produkte' },
   nav_services: { cs: 'Služby', sk: 'Služby', en: 'Services', de: 'Dienstleistungen' },
   nav_about: { cs: 'O nás', sk: 'O nás', en: 'About', de: 'Über uns' },
   nav_blog: { cs: 'Blog', sk: 'Blog', en: 'Blog', de: 'Blog' },
@@ -269,6 +318,7 @@ const TRANSLATIONS: Record<string, Record<string, string>> = {
   select_consultation: { cs: 'Konzultace', sk: 'Konzultácia', en: 'Consultation', de: 'Beratung' },
   select_services: { cs: 'Služby', sk: 'Služby', en: 'Services', de: 'Dienstleistungen' },
   select_other: { cs: 'Jiné', sk: 'Iné', en: 'Other', de: 'Sonstiges' },
+  subtitle_products: { cs: 'Naše nejoblíbenější produkty a řešení', sk: 'Naše najobľúbenejšie produkty a riešenia', en: 'Our most popular products and solutions', de: 'Unsere beliebtesten Produkte und Lösungen' },
   subtitle_services: { cs: 'Pečlivě připravená řešení pro váš úspěch', sk: 'Starostlivo pripravené riešenia pre váš úspech', en: 'Carefully crafted solutions for your success', de: 'Sorgfältig erarbeitete Lösungen für Ihren Erfolg' },
   subtitle_about: { cs: 'Náš příběh a hodnoty', sk: 'Náš príbeh a hodnoty', en: 'Our story and values', de: 'Unsere Geschichte und Werte' },
   subtitle_blog: { cs: 'Novinky a aktuální informace', sk: 'Novinky a aktuálne informácie', en: 'News and latest updates', de: 'Neuigkeiten und aktuelle Informationen' },
@@ -298,6 +348,8 @@ function fillTemplate(template: string, data: TemplateData): string {
   // 2. Handle conditional sections — <!-- IF:name -->...<!-- /IF:name -->
   const conditionalFields: Record<string, string> = {
     address: data.address,
+    heroImage: data.heroImageUrl,
+    products: data.products.length > 0 ? "true" : "",
   };
   for (const [field, value] of Object.entries(conditionalFields)) {
     const ifRegex = new RegExp(`<!-- IF:${field} -->([\\s\\S]*?)<!-- /IF:${field} -->`, "g");
@@ -334,6 +386,13 @@ function fillTemplate(template: string, data: TemplateData): string {
       TEMPLATE_VAR_blogTitle: escapeHtml(b.title),
       TEMPLATE_VAR_blogExcerpt: escapeHtml(b.excerpt),
       TEMPLATE_VAR_blogDate: escapeHtml(b.date),
+      TEMPLATE_VAR_blogImageUrl: b.imageUrl || "",
+    })),
+    products: data.products.map(p => ({
+      TEMPLATE_VAR_productName: escapeHtml(p.name),
+      TEMPLATE_VAR_productDescription: escapeHtml(p.description),
+      TEMPLATE_VAR_productPrice: escapeHtml(p.price),
+      TEMPLATE_VAR_productImageUrl: p.imageUrl || "",
     })),
     gallery: data.gallery.map(g => ({
       TEMPLATE_VAR_galleryUrl: g.url,
@@ -377,12 +436,14 @@ function fillTemplate(template: string, data: TemplateData): string {
     TEMPLATE_VAR_faviconUrl: data.faviconUrl,
     TEMPLATE_VAR_primaryColor: data.primaryColor,
     TEMPLATE_VAR_language: data.language,
+    TEMPLATE_VAR_heroImageUrl: data.heroImageUrl,
     TEMPLATE_VAR_phone: escapeHtml(data.phone),
     TEMPLATE_VAR_email: escapeHtml(data.email),
     TEMPLATE_VAR_address: escapeHtml(data.address),
     TEMPLATE_VAR_aboutText: escapeHtml(data.aboutText),
     TEMPLATE_VAR_year: String(new Date().getFullYear()),
     // i18n translations
+    TEMPLATE_VAR_section_products: tt('section_products', lang),
     TEMPLATE_VAR_section_services: tt('section_services', lang),
     TEMPLATE_VAR_section_about: tt('section_about', lang),
     TEMPLATE_VAR_section_blog: tt('section_blog', lang),
@@ -425,6 +486,8 @@ function fillTemplate(template: string, data: TemplateData): string {
     TEMPLATE_VAR_select_consultation: tt('select_consultation', lang),
     TEMPLATE_VAR_select_services: tt('select_services', lang),
     TEMPLATE_VAR_select_other: tt('select_other', lang),
+    TEMPLATE_VAR_subtitle_products: tt('subtitle_products', lang),
+    TEMPLATE_VAR_nav_products: tt('nav_products', lang),
     TEMPLATE_VAR_subtitle_services: tt('subtitle_services', lang),
     TEMPLATE_VAR_subtitle_about: tt('subtitle_about', lang),
     TEMPLATE_VAR_subtitle_blog: tt('subtitle_blog', lang),
@@ -445,7 +508,24 @@ function fillTemplate(template: string, data: TemplateData): string {
     html = html.replace(new RegExp(key, "g"), value);
   }
 
-  // 5. Handle logo display — show image or text fallback
+  // 5. Apply hero background image if available
+  if (data.heroImageUrl) {
+    // Add hero background image as inline style on the hero section
+    html = html.replace(
+      /data-hero-image="[^"]*"/,
+      `style="background-image: linear-gradient(180deg, rgba(27,42,74,0.5) 0%, rgba(27,42,74,0.7) 100%), url('${escapeAttr(data.heroImageUrl)}'); background-size: cover; background-position: center;"`
+    );
+    // Add class for hero-with-image styling
+    html = html.replace(
+      /class="hero"/,
+      'class="hero hero--with-image"'
+    );
+  } else {
+    // Remove the data attribute if no hero image
+    html = html.replace(/\s*data-hero-image="[^"]*"/, "");
+  }
+
+  // 6. Handle logo display — show image or text fallback
   if (data.logoUrl) {
     // Remove text logo fallback markers if image logo exists
     html = html.replace(/<!-- LOGO_TEXT_ONLY -->([\s\S]*?)<!-- \/LOGO_TEXT_ONLY -->/g, "");
@@ -560,6 +640,8 @@ function buildFallbackTemplateData(
     faviconUrl: assets?.favicon || "",
     primaryColor: "#1B2A4A",
     language: "en",
+    heroImageUrl: assets?.heroImageUrl || "",
+    siteType: assets?.siteType || "corporate",
     navLinks: assets?.navLinks || [],
     services: headings.slice(1, 7).map((title, i) => ({
       title,
@@ -575,7 +657,10 @@ function buildFallbackTemplateData(
     })),
     faqItems: extractFaqItems(crawledContent || ""),
     blogPosts: [],
-    gallery: (assets?.images || []).slice(0, 8).map(img => ({ url: img.url, alt: img.alt || companyName })),
+    products: (assets?.products || []).slice(0, 12).map(p => ({
+      name: p.name, description: p.description, price: p.price || "", imageUrl: p.imageUrl || "",
+    })),
+    gallery: (assets?.images || []).filter(img => img.context !== "icon" && img.context !== "logo").slice(0, 8).map(img => ({ url: img.url, alt: img.alt || companyName })),
     socialLinks: assets?.socialLinks || [],
     phone: assets?.phoneNumbers?.[0] || "",
     email: assets?.emails?.[0] || "",
@@ -698,9 +783,12 @@ function buildDynamicNavLinks(data: TemplateData): TemplateData["navLinks"] {
   const links: TemplateData["navLinks"] = [];
 
   // Order per TEMPLATE-STANDARDS rule #11:
-  // Services → About → Gallery → Blog → Testimonials → FAQ → Contact
+  // Services → Products → About → Gallery → Blog → Testimonials → FAQ → Contact
   if (data.services.length >= 2) {
     links.push({ text: tt("nav_services", lang), href: "#services" });
+  }
+  if (data.products.length >= 2) {
+    links.push({ text: tt("nav_products", lang), href: "#products" });
   }
   if (data.aboutText.trim()) {
     links.push({ text: tt("nav_about", lang), href: "#about" });

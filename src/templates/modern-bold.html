@@ -334,6 +334,17 @@
     .blog-card .blog-date { font-size: 0.8rem; color: var(--text-gray); margin-bottom: 0.5rem; }
     .blog-card h3 { font-size: 1.15rem; font-weight: 800; margin-bottom: 0.75rem; color: var(--text-white); }
     .blog-card p { color: var(--text-gray); font-size: 0.925rem; line-height: 1.7; }
+    .blog-card__image { width: 100%; height: 200px; object-fit: cover; border-radius: 0.75rem 0.75rem 0 0; margin: -2rem -2rem 1rem -2rem; width: calc(100% + 4rem); }
+    /* Hero with image */
+    .hero--with-image { background-size: cover; background-position: center; }
+    /* Products */
+    .products-grid { display: grid; grid-template-columns: 1fr; gap: 1.5rem; }
+    .product-card { display: flex; flex-direction: column; overflow: hidden; }
+    .product-card__image { width: 100%; height: 200px; object-fit: cover; border-radius: 0.75rem 0.75rem 0 0; margin: -2rem -2rem 1rem -2rem; width: calc(100% + 4rem); }
+    .product-card__body { flex: 1; display: flex; flex-direction: column; }
+    .product-card__name { font-size: 1.25rem; font-weight: 800; margin-bottom: 0.5rem; color: var(--text-white); }
+    .product-card__description { color: var(--text-gray); font-size: 0.95rem; line-height: 1.7; flex: 1; }
+    .product-card__price { font-size: 1.25rem; font-weight: 900; margin-top: 1rem; background: linear-gradient(135deg, var(--primary-start), var(--primary-end)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
     /* 7. Testimonials */
     .testimonials-grid { display: grid; grid-template-columns: 1fr; gap: 1.5rem; }
     .testimonial-card blockquote {
@@ -631,6 +642,7 @@
       }
       .footer-grid { grid-template-columns: repeat(2, 1fr); }
       .blog-grid { grid-template-columns: repeat(2, 1fr); }
+      .products-grid { grid-template-columns: repeat(2, 1fr); }
     }
     /* Responsive: 768px */
     @media (min-width: 768px) {
@@ -649,6 +661,7 @@
       .navbar-links { display: flex; }
       .hamburger { display: none; }
       .services-grid { grid-template-columns: repeat(3, 1fr); }
+      .products-grid { grid-template-columns: repeat(3, 1fr); }
       .blog-grid { grid-template-columns: repeat(3, 1fr); }
       .testimonials-grid { grid-template-columns: repeat(3, 1fr); }
       .gallery-grid { grid-template-columns: repeat(4, 1fr); }
@@ -701,7 +714,7 @@
   <main id="main-content">
 
     <!-- 2. Hero Section -->
-    <section class="hero" aria-label="Hero">
+    <section class="hero hero--with-image" aria-label="Hero" data-hero-image="TEMPLATE_VAR_heroImageUrl">
       <div class="hero-content">
         <h1 class="gradient-text">TEMPLATE_VAR_headline</h1>
         <p>TEMPLATE_VAR_subheadline</p>
@@ -741,6 +754,30 @@
       </div>
     </section>
 
+    <!-- Products Section -->
+    <!-- IF:products -->
+    <section id="products" class="section-padding" aria-labelledby="products-heading">
+      <div class="container">
+        <h2 id="products-heading" class="section-title">
+          <span class="gradient-text">TEMPLATE_VAR_section_products</span>
+        </h2>
+        <p style="text-align:center;color:var(--text-gray);max-width:600px;margin:-2rem auto 3rem;font-size:1rem;">TEMPLATE_VAR_subtitle_products</p>
+        <div class="products-grid">
+          <!-- REPEAT:products -->
+          <article class="glass-card product-card fade-in">
+            <img class="product-card__image" src="TEMPLATE_VAR_productImageUrl" alt="TEMPLATE_VAR_productName" onerror="this.style.display='none'" loading="lazy">
+            <div class="product-card__body">
+              <h3 class="product-card__name">TEMPLATE_VAR_productName</h3>
+              <p class="product-card__description">TEMPLATE_VAR_productDescription</p>
+              <div class="product-card__price">TEMPLATE_VAR_productPrice</div>
+            </div>
+          </article>
+          <!-- /REPEAT:products -->
+        </div>
+      </div>
+    </section>
+    <!-- /IF:products -->
+
     <!-- 5. About Section -->
     <section id="about" class="section-padding" aria-labelledby="about-heading">
       <div class="container">
@@ -763,6 +800,7 @@
         <div class="blog-grid">
           <!-- REPEAT:blogPosts -->
           <article class="glass-card blog-card fade-in">
+            <img class="blog-card__image" src="TEMPLATE_VAR_blogImageUrl" alt="TEMPLATE_VAR_blogTitle" onerror="this.style.display='none'" loading="lazy">
             <time class="blog-date" datetime="TEMPLATE_VAR_blogDate">TEMPLATE_VAR_blogDate</time>
             <h3>TEMPLATE_VAR_blogTitle</h3>
             <p>TEMPLATE_VAR_blogExcerpt</p>

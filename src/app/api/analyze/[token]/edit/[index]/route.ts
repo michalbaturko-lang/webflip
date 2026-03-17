@@ -91,33 +91,66 @@ function sanitizeInstruction(input: string): { sanitized: string; blocked: boole
   return { sanitized, blocked: false };
 }
 
+// ── HTML Cleanup / Repair ────────────────────────────────────────────
+function repairHtml(html: string): string {
+  let result = html.trim();
+
+  // Add DOCTYPE if missing
+  if (!result.match(/^<!DOCTYPE\s+html/i)) {
+    // Check if it starts with <html
+    if (result.match(/^<html/i)) {
+      result = "<!DOCTYPE html>\n" + result;
+    }
+  }
+
+  // Close </html> if missing
+  if (!result.includes("</html>")) {
+    // Check if it ends with </body> but no </html>
+    if (result.includes("</body>")) {
+      result = result.replace(/([\s\S]*<\/body>)/, "$1\n</html>");
+    } else {
+      result += "\n</html>";
+    }
+  }
+
+  // Strip any leading/trailing markdown fences that weren't caught
+  result = result.replace(/^```(?:html)?\s*\n?/i, "");
+  result = result.replace(/\n?```\s*$/i, "");
+
+  return result;
+}
+
 // ── Output validation ────────────────────────────────────────────────
 function validateHtmlOutput(html: string): { valid: boolean; reason?: string } {
   if (!html || typeof html !== "string") {
-    return { valid: false, reason: "Empty response" };
+    return { valid: false, reason: "Empty or non-string response from AI" };
+  }
+
+  if (html.trim().length < 50) {
+    return { valid: false, reason: "Response too short to be valid HTML" };
   }
 
   if (!html.includes("<!DOCTYPE") && !html.includes("<html")) {
-    return { valid: false, reason: "Missing HTML document structure" };
+    return { valid: false, reason: "Missing HTML document structure (no <!DOCTYPE html> or <html> tag found)" };
   }
 
   if (!html.includes("</html>")) {
-    return { valid: false, reason: "Incomplete HTML document" };
+    return { valid: false, reason: "Incomplete HTML document (missing closing </html> tag)" };
   }
 
   // Reject dangerous inline script patterns
-  const dangerousPatterns = [
-    /document\.cookie/i,
-    /window\.location\s*=\s*["']https?:\/\/(?!fonts\.googleapis)/i,
-    /fetch\s*\(\s*["']https?:\/\/(?!fonts\.googleapis)/i,
-    /eval\s*\(/i,
-    /Function\s*\(/i,
-    /\.innerHTML\s*=.*<script/i,
+  const dangerousPatterns: { pattern: RegExp; reason: string }[] = [
+    { pattern: /document\.cookie/i, reason: "Cookie access attempt detected" },
+    { pattern: /window\.location\s*=\s*["']https?:\/\/(?!fonts\.googleapis)/i, reason: "Unauthorized redirect detected" },
+    { pattern: /fetch\s*\(\s*["']https?:\/\/(?!fonts\.googleapis)/i, reason: "Unauthorized external request detected" },
+    { pattern: /eval\s*\(/i, reason: "Eval() usage detected" },
+    { pattern: /Function\s*\(/i, reason: "Dynamic Function() constructor detected" },
+    { pattern: /\.innerHTML\s*=.*<script/i, reason: "Script injection via innerHTML detected" },
   ];
 
-  for (const pattern of dangerousPatterns) {
+  for (const { pattern, reason } of dangerousPatterns) {
     if (pattern.test(html)) {
-      return { valid: false, reason: "Potentially dangerous content detected" };
+      return { valid: false, reason };
     }
   }
 
@@ -293,12 +326,15 @@ Return the COMPLETE modified HTML document. No explanations, no markdown — jus
       }
     }
 
+    // Repair common HTML issues (missing DOCTYPE, unclosed tags)
+    updatedHtml = repairHtml(updatedHtml);
+
     // Validate output
     const validation = validateHtmlOutput(updatedHtml);
     if (!validation.valid) {
       console.error("HTML validation failed:", validation.reason);
       return NextResponse.json(
-        { error: "AI generated invalid output. Please try again with a different instruction." },
+        { error: `Failed to apply edit: ${validation.reason}. Please try a different instruction.` },
         { status: 500 }
       );
     }
@@ -325,8 +361,22 @@ Return the COMPLETE modified HTML document. No explanations, no markdown — jus
     return NextResponse.json({ success: true, html: updatedHtml });
   } catch (err) {
     console.error("POST /api/analyze/[token]/edit/[index] error:", err);
+    const message = err instanceof Error ? err.message : "Unknown error";
+    // Provide specific error messages based on error type
+    if (message.includes("rate_limit") || message.includes("429")) {
+      return NextResponse.json(
+        { error: "AI service rate limit reached. Please wait a moment and try again." },
+        { status: 429 }
+      );
+    }
+    if (message.includes("timeout") || message.includes("ECONNRESET")) {
+      return NextResponse.json(
+        { error: "AI service timed out. Please try a simpler edit instruction." },
+        { status: 504 }
+      );
+    }
     return NextResponse.json(
-      { error: "Failed to apply edit. Please try again." },
+      { error: `Failed to apply edit: ${message.slice(0, 200)}` },
       { status: 500 }
     );
   }
