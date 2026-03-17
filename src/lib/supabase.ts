@@ -122,6 +122,26 @@ export interface TemplateClusterData {
   contentElements: string[];
 }
 
+export interface PageSpeedMetricsData {
+  fcp: number;
+  lcp: number;
+  tbt: number;
+  cls: number;
+  si: number;
+  tti: number;
+  fieldData: {
+    fcpP75: number | null;
+    lcpP75: number | null;
+    clsP75: number | null;
+    fidP75: number | null;
+    inpP75: number | null;
+    ttfbP75: number | null;
+  } | null;
+  lighthouseScore: number;
+  accessibilityScore: number;
+  source: "lighthouse" | "estimation";
+}
+
 export interface AnalysisRow {
   id: string;
   token: string;
@@ -149,7 +169,8 @@ export interface AnalysisRow {
   enrichment_results: EnrichmentResults | null;
   benchmark_results: BenchmarkResultsData | null;
   link_graph_data: Record<string, unknown> | null;
-      template_clusters: TemplateClusterData[] | null;
+  template_clusters: TemplateClusterData[] | null;
+  pagespeed_metrics: PageSpeedMetricsData | null;
   created_at: string;
   updated_at: string;
   completed_at: string | null;

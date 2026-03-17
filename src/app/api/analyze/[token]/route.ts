@@ -55,6 +55,11 @@ export async function GET(
       // Live findings — show top findings during analysis/generating
       response.liveFindings = (analysis.findings || []).slice(0, 10);
       response.liveFindingsTotal = (analysis.findings || []).length;
+
+      // PageSpeed metrics for Core Web Vitals display
+      if ((analysis as any).pagespeed_metrics) {
+        response.pagespeedMetrics = (analysis as any).pagespeed_metrics;
+      }
     }
 
     if (analysis.status === "generating") {

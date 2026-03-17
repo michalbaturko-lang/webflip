@@ -29,6 +29,7 @@ import ProgressBar from "./ProgressBar";
 import StageCrawling from "./StageCrawling";
 import StageAnalyzing from "./StageAnalyzing";
 import StageGenerating from "./StageGenerating";
+import CoreWebVitals from "./CoreWebVitals";
 import VariantComparison from "@/components/comparison/VariantComparison";
 import { translateFindings } from "@/lib/finding-i18n";
 
@@ -72,6 +73,25 @@ interface ApiResponse {
   error?: string;
   enrichment?: EnrichmentData;
   templateClusters?: TemplateClusterInfo[];
+  pagespeedMetrics?: {
+    fcp: number;
+    lcp: number;
+    tbt: number;
+    cls: number;
+    si: number;
+    tti: number;
+    fieldData: {
+      fcpP75: number | null;
+      lcpP75: number | null;
+      clsP75: number | null;
+      fidP75: number | null;
+      inpP75: number | null;
+      ttfbP75: number | null;
+    } | null;
+    lighthouseScore: number;
+    accessibilityScore: number;
+    source: "lighthouse" | "estimation";
+  };
 }
 
 interface TemplateClusterInfo {
@@ -307,6 +327,7 @@ function StageResults({
   url,
   enrichment,
   templateClusters,
+  pagespeedMetrics,
 }: {
   scores: ApiResponse["scores"];
   findings: Finding[];
@@ -315,6 +336,7 @@ function StageResults({
   url: string;
   enrichment?: EnrichmentData;
   templateClusters?: TemplateClusterInfo[];
+  pagespeedMetrics?: ApiResponse["pagespeedMetrics"];
 }) {
   const t = useTranslations("analysis");
   const locale = useLocale();
@@ -471,6 +493,9 @@ function StageResults({
           );
         })}
       </div>
+
+      {/* Core Web Vitals */}
+      <CoreWebVitals metrics={pagespeedMetrics} />
 
       {/* Tab selector: Findings vs Recommendations */}
       {enrichment && (
@@ -1147,6 +1172,7 @@ export default function AnalysisOrchestrator({ url, token, onStatusChange }: Pro
                   url={url}
                   scores={data?.scores}
                   liveFindings={data?.liveFindings || []}
+                  pagespeedMetrics={data?.pagespeedMetrics}
                 />
               )}
               {stage === 3 && (
@@ -1160,6 +1186,7 @@ export default function AnalysisOrchestrator({ url, token, onStatusChange }: Pro
                   token={data?.token || token}
                   url={url}
                   enrichment={data?.enrichment}
+                  pagespeedMetrics={data?.pagespeedMetrics}
                   templateClusters={data?.templateClusters}
                 />
               )}
