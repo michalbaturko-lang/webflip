@@ -135,6 +135,7 @@ export interface AnalysisRow {
   variant_progress: VariantProgress | null;
   edit_history: EditHistoryEntry[] | null;
   enrichment_results: EnrichmentResults | null;
+  link_graph_data: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
   completed_at: string | null;

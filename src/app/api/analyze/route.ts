@@ -14,6 +14,8 @@ import { interpretBusiness } from "@/lib/business-interpretation";
 import { analyzePage, analyzeSite, generateFindings } from "@/lib/analysis-engine";
 import { calculateScores, mapToLegacyScores } from "@/lib/scoring";
 import { runDeepAnalysis } from "@/lib/checks";
+import { buildLinkGraph } from "@/lib/link-graph";
+import { analyzeLinkGraph } from "@/lib/analyzers/link-analysis";
 import { prioritizeFindings } from "@/lib/prioritizer";
 import { applyBusinessContext } from "@/lib/business-context";
 import { generateExplanations } from "@/lib/llm-explainer";
@@ -268,6 +270,30 @@ async function runPipeline(url: string, token: string, locale?: string) {
     console.error(`[pipeline:${token}] Deep analysis failed (non-fatal):`, err);
   }
 
+  // ─── Stage 2.6: Internal Link Graph Analysis ───
+  console.log(`[pipeline:${token}] Running link graph analysis...`);
+  let linkGraphData: Record<string, unknown> | null = null;
+  try {
+    const graphResult = buildLinkGraph(
+      crawledPages.map(p => ({ url: p.url, html: p.html, pageType: (p as any).pageType })),
+      url
+    );
+    const linkAnalysis = analyzeLinkGraph(graphResult);
+
+    // Merge link analysis findings
+    const existingLinkTitles = new Set(liveFindings.map(f => f.title));
+    const newLinkFindings = linkAnalysis.findings.filter(f => !existingLinkTitles.has(f.title));
+    liveFindings = [...liveFindings, ...newLinkFindings];
+
+    linkGraphData = linkAnalysis.linkGraphData as unknown as Record<string, unknown>;
+
+    console.log(`[pipeline:${token}] Link graph: ${graphResult.summary.totalPages} pages, ${graphResult.summary.totalInternalLinks} links, ${graphResult.orphanPages.length} orphans`);
+
+    await updateAnalysis(token, { findings: liveFindings }).catch(() => {});
+  } catch (err) {
+    console.error(`[pipeline:${token}] Link graph analysis failed (non-fatal):`, err);
+  }
+
   // Calculate overall score (weighted)
   const overall = Math.round(
     (scores.performance ?? 50) * 0.15 +
@@ -280,7 +306,7 @@ async function runPipeline(url: string, token: string, locale?: string) {
 
   console.log(`[pipeline:${token}] Analyzers done. Scores:`, scores, `Overall: ${overall}`);
   console.log(`[pipeline:${token}] Stage 3: Updating status to generating`);
-  await updateAnalysis(token, {
+  const stageUpdate: Record<string, unknown> = {
     status: "generating",
     score_performance: scores.performance ?? 50,
     score_seo: scores.seo ?? 50,
@@ -299,7 +325,9 @@ async function runPipeline(url: string, token: string, locale?: string) {
     },
     findings: liveFindings,
     variant_progress: { current: 0, total: 3, message: "Preparing variant generation..." },
-  });
+  };
+  if (linkGraphData) stageUpdate.link_graph_data = linkGraphData;
+  await updateAnalysis(token, stageUpdate as any);
 
   // ─── Stage 2.75: Enrichment — prioritize, apply business context, generate explanations ───
   console.log(`[pipeline:${token}] Stage 2.75: Enriching findings...`);
