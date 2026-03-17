@@ -96,6 +96,10 @@ export async function POST(request: Request) {
  * Full analysis pipeline — runs async after returning the token.
  */
 async function runPipeline(url: string, token: string, locale?: string, email?: string | null) {
+  const pipelineStart = Date.now();
+  const MAX_PIPELINE_MS = 280_000; // 280s hard limit (Vercel max is 300s)
+  const timeLeft = () => MAX_PIPELINE_MS - (Date.now() - pipelineStart);
+
   try {
   // ─── Stage 1: Crawl ───
   console.log(`[pipeline:${token}] Stage 1: Starting crawl for ${url}`);
@@ -554,15 +558,22 @@ async function runPipeline(url: string, token: string, locale?: string, email?: 
     variants = [];
   }
 
-  // ─── Stage 4: Generate HTML previews (sequential with progress) ───
-  console.log(`[pipeline:${token}] Stage 4: Generating HTML previews for ${variants.length} variants...`);
+  // ─── Stage 4: Generate HTML previews (sequential with progress, time-guarded) ───
+  const maxHtmlVariants = timeLeft() > 120_000 ? variants.length : Math.min(variants.length, 2);
+  console.log(`[pipeline:${token}] Stage 4: Generating HTML previews for ${maxHtmlVariants}/${variants.length} variants (${Math.round(timeLeft()/1000)}s remaining)...`);
   const htmlVariants: string[] = [];
   if (variants.length > 0) {
-    for (let i = 0; i < variants.length; i++) {
+    for (let i = 0; i < maxHtmlVariants; i++) {
+      // Skip if less than 30s remaining
+      if (timeLeft() < 30_000) {
+        console.warn(`[pipeline:${token}] Time guard: skipping HTML variant ${i+1}, only ${Math.round(timeLeft()/1000)}s left`);
+        htmlVariants.push("");
+        continue;
+      }
       await updateAnalysis(token, {
         variant_progress: {
           current: i + 1,
-          total: variants.length,
+          total: maxHtmlVariants,
           message: `Generating HTML for "${variants[i].name}"...`,
         },
       });
