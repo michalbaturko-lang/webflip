@@ -460,8 +460,8 @@ function fillTemplate(template: string, data: TemplateData): string {
   const lang = data.language || 'en';
   const scalarReplacements: Record<string, string> = {
     TEMPLATE_VAR_companyName: escapeHtml(data.companyName),
-    TEMPLATE_VAR_headline: escapeHtml(data.headline),
-    TEMPLATE_VAR_subheadline: escapeHtml(data.subheadline),
+    TEMPLATE_VAR_headline: escapeHtmlLight(data.headline),
+    TEMPLATE_VAR_subheadline: escapeHtmlLight(data.subheadline),
     TEMPLATE_VAR_metaDescription: escapeAttr(data.metaDescription),
     TEMPLATE_VAR_logoUrl: data.logoUrl,
     TEMPLATE_VAR_faviconUrl: data.faviconUrl,
@@ -945,6 +945,13 @@ function escapeHtml(str: string): string {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+/** Light escape for visible text (headlines, subheadlines) — keeps & as-is for readability */
+function escapeHtmlLight(str: string): string {
+  return str
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
 }
 
 function escapeAttr(str: string): string {
