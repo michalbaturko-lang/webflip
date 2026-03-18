@@ -432,7 +432,7 @@ function fillTemplate(template: string, data: TemplateData): string {
       TEMPLATE_VAR_productName: escapeHtml(p.name),
       TEMPLATE_VAR_productDescription: escapeHtml(p.description),
       TEMPLATE_VAR_productPrice: escapeHtml(p.price),
-      TEMPLATE_VAR_productImageUrl: p.imageUrl || "",
+      TEMPLATE_VAR_productImageUrl: p.imageUrl || generateProductPlaceholder(data.primaryColor, p.name),
     })),
     gallery: data.gallery.map(g => ({
       TEMPLATE_VAR_galleryUrl: g.url,
@@ -483,6 +483,7 @@ function fillTemplate(template: string, data: TemplateData): string {
     TEMPLATE_VAR_email: escapeHtml(data.email),
     TEMPLATE_VAR_address: escapeHtml(data.address),
     TEMPLATE_VAR_aboutText: escapeHtml(data.aboutText),
+    TEMPLATE_VAR_aboutImageUrl: data.gallery[0]?.url || data.heroImageUrl || "",
     TEMPLATE_VAR_year: String(new Date().getFullYear()),
     // i18n translations
     TEMPLATE_VAR_section_products: tt('section_products', lang),
@@ -775,6 +776,20 @@ function buildMinimalFallbackHtml(data: TemplateData, variant: DesignVariant): s
   <footer class="footer">&copy; ${year} ${escapeHtml(data.companyName)}</footer>
 </body>
 </html>`;
+}
+
+// ── Product Placeholder SVG ──
+
+function generateProductPlaceholder(primaryColor: string, productName: string): string {
+  const color = primaryColor || "#1B2A4A";
+  // Create a subtle, professional placeholder with the product initial
+  const initial = (productName || "P").charAt(0).toUpperCase();
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 280" width="400" height="280">
+    <rect width="100%" height="100%" fill="${color}" opacity="0.06"/>
+    <text x="200" y="150" text-anchor="middle" dominant-baseline="central" font-family="system-ui,-apple-system,sans-serif" font-size="72" font-weight="700" fill="${color}" opacity="0.15">${escapeHtml(initial)}</text>
+    <rect x="160" y="200" width="80" height="3" rx="1.5" fill="${color}" opacity="0.1"/>
+  </svg>`;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
 }
 
 // ── Social Media Icon Helpers ──
