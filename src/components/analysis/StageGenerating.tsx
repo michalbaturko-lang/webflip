@@ -6,9 +6,16 @@ import { Sparkles, CheckCircle, Loader2 } from "lucide-react";
 
 interface Props {
   variantProgress?: { current: number; total: number; message: string } | null;
+  variantNames?: string[];
 }
 
-const VARIANT_NAMES = ["Brand-Faithful", "Modern Edge", "Conversion Max"];
+// Czech display names for the 3 standard variant styles
+const VARIANT_NAMES_CS: Record<string, string> = {
+  "Corporate Clean": "Profesionální",
+  "Modern Bold": "Moderní & Odvážný",
+  "Elegant Minimal": "Elegantní Minimál",
+};
+const VARIANT_FALLBACK_NAMES = ["Profesionální", "Moderní & Odvážný", "Elegantní Minimál"];
 const VARIANT_COLORS = [
   { from: "from-blue-500", to: "to-cyan-400", accent: "blue" },
   { from: "from-purple-500", to: "to-pink-400", accent: "purple" },
@@ -43,10 +50,19 @@ function TypingText({ text, speed = 40 }: { text: string; speed?: number }) {
   );
 }
 
-export default function StageGenerating({ variantProgress }: Props) {
+export default function StageGenerating({ variantProgress, variantNames }: Props) {
   const current = variantProgress?.current ?? 0;
   const total = variantProgress?.total ?? 3;
   const message = variantProgress?.message ?? "Připravujeme varianty...";
+
+  // Resolve display names: use actual variant names (translated) or fallback
+  const getDisplayName = (index: number): string => {
+    if (variantNames && variantNames[index]) {
+      const name = variantNames[index];
+      return VARIANT_NAMES_CS[name] || name;
+    }
+    return VARIANT_FALLBACK_NAMES[index] || `Varianta ${index + 1}`;
+  };
 
   return (
     <motion.div
@@ -91,12 +107,21 @@ export default function StageGenerating({ variantProgress }: Props) {
       {/* Progress bar */}
       <div className="w-full max-w-md mx-auto mb-8">
         <div className="w-full h-2.5 rounded-full overflow-hidden" style={{ background: "var(--bar-bg)" }}>
-          <motion.div
-            className="h-full rounded-full bg-gradient-to-r from-purple-500 to-pink-500"
-            initial={{ width: 0 }}
-            animate={{ width: `${total > 0 ? (current / total) * 100 : 0}%` }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
-          />
+          {total > 0 ? (
+            <motion.div
+              className="h-full rounded-full bg-gradient-to-r from-purple-500 to-pink-500"
+              initial={{ width: 0 }}
+              animate={{ width: `${(current / total) * 100}%` }}
+              transition={{ duration: 0.8, ease: "easeOut" }}
+            />
+          ) : (
+            <motion.div
+              className="h-full rounded-full bg-gradient-to-r from-purple-500 to-pink-500"
+              style={{ width: "30%" }}
+              animate={{ x: ["-30%", "330%"] }}
+              transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+            />
+          )}
         </div>
       </div>
 
@@ -106,7 +131,7 @@ export default function StageGenerating({ variantProgress }: Props) {
           const isComplete = i < current;
           const isActive = i === current - 1 || (current === 0 && i === 0);
           const colors = VARIANT_COLORS[i % VARIANT_COLORS.length];
-          const name = VARIANT_NAMES[i] || `Variant ${i + 1}`;
+          const name = getDisplayName(i);
 
           return (
             <motion.div
@@ -197,7 +222,7 @@ export default function StageGenerating({ variantProgress }: Props) {
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.4 }}
                   >
-                    Varianta připravena
+                    Připraveno ✓
                   </motion.p>
                 ) : (
                   <div className="space-y-2">

@@ -7,6 +7,13 @@ import { useTranslations } from "next-intl";
 import RecommendBadge, { type RecommendBadgeProps } from "./RecommendBadge";
 import type { DesignVariant, ViewMode } from "@/types/design";
 
+// Czech display names for standard variant styles
+const VARIANT_NAMES_CS: Record<string, string> = {
+  "Corporate Clean": "Profesionální",
+  "Modern Bold": "Moderní & Odvážný",
+  "Elegant Minimal": "Elegantní Minimál",
+};
+
 interface VariantCardProps {
   variant: DesignVariant;
   index: number;
@@ -164,7 +171,7 @@ export default function VariantCard({
             className="font-bold text-base mb-1"
             style={{ color: "var(--text-primary)" }}
           >
-            {variant.name}
+            {VARIANT_NAMES_CS[variant.name] || variant.name}
           </h3>
           <p
             className="text-xs leading-relaxed line-clamp-2"

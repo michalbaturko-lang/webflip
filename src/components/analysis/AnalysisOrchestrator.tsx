@@ -1209,7 +1209,7 @@ export default function AnalysisOrchestrator({ url, token, email, onStatusChange
                 />
               )}
               {stage === 3 && (
-                <StageGenerating variantProgress={data?.variantProgress} />
+                <StageGenerating variantProgress={data?.variantProgress} variantNames={data?.variants?.map((v: any) => v.name)} />
               )}
               {stage === 4 && (
                 <StageResults

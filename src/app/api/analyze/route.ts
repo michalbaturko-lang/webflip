@@ -275,6 +275,9 @@ async function runPipeline(url: string, token: string, locale?: string, email?: 
   ]);
 
   // ─── Stage 2b: Comprehensive Analysis Engine (150+ data points) ───
+  await updateAnalysis(token, {
+    variant_progress: { current: 0, total: 0, message: "Zpracováváme výsledky analýzy..." },
+  }).catch(() => {});
   console.log(`[pipeline:${token}] Running comprehensive analysis engine...`);
   let engineFindings: Finding[] = [];
   let scoringResult: ReturnType<typeof calculateScores> | null = null;
@@ -315,6 +318,9 @@ async function runPipeline(url: string, token: string, locale?: string, email?: 
   liveFindings = [...liveFindings, ...newEngineFindings];
 
   // ─── Stage 2.5: Deep Analysis Checks ───
+  await updateAnalysis(token, {
+    variant_progress: { current: 0, total: 0, message: "Hloubková analýza webu..." },
+  }).catch(() => {});
   console.log(`[pipeline:${token}] Running deep analysis checks...`);
   try {
     const $ = await import("cheerio").then((m) => m.load(mainPage.html));
@@ -349,6 +355,9 @@ async function runPipeline(url: string, token: string, locale?: string, email?: 
   }
 
   // ─── Stage 2.6: Internal Link Graph Analysis ───
+  await updateAnalysis(token, {
+    variant_progress: { current: 0, total: 0, message: "Analyzujeme strukturu odkazů..." },
+  }).catch(() => {});
   console.log(`[pipeline:${token}] Running link graph analysis...`);
   let linkGraphData: Record<string, unknown> | null = null;
   try {
@@ -399,6 +408,9 @@ async function runPipeline(url: string, token: string, locale?: string, email?: 
   }
 
   // ─── Stage 2.8: LLM SEO Content Suggestions ───
+  await updateAnalysis(token, {
+    variant_progress: { current: 0, total: 0, message: "Generujeme SEO doporučení..." },
+  }).catch(() => {});
   console.log(`[pipeline:${token}] Stage 2.8: Generating SEO suggestions...`);
   let seoSuggestions: SEOSuggestionsData | null = null;
   try {
@@ -479,84 +491,93 @@ async function runPipeline(url: string, token: string, locale?: string, email?: 
     await updateAnalysis(token, safeUpdate as any);
   }
 
-  // ─── Stage 2.75: Enrichment — prioritize, apply business context, generate explanations ───
-  console.log(`[pipeline:${token}] Stage 2.75: Enriching findings...`);
+  // ─── Stage 2.75 + 3: Enrichment & Variant Concepts IN PARALLEL ───
+  // Both tasks need scores+findings+businessProfile — run them simultaneously to save ~15-20s
+  console.log(`[pipeline:${token}] Running enrichment + variant concepts in parallel...`);
   let enrichmentResults: EnrichmentResults | null = null;
-  try {
-    // 1. Prioritize findings (pure algorithmic, no LLM)
-    const prioritizationResult = prioritizeFindings(liveFindings);
-    console.log(`[pipeline:${token}] Prioritized ${prioritizationResult.prioritized.length} findings. Quick wins: ${prioritizationResult.quickWins.length}`);
-
-    // 2. Apply business context (deterministic)
-    const businessContext = applyBusinessContext(
-      prioritizationResult,
-      liveFindings,
-      extractedAssets,
-      businessProfile
-    );
-    console.log(`[pipeline:${token}] Business type: ${businessContext.businessType}. Recommendations: ${businessContext.recommendations.length}`);
-
-    // 3. Generate LLM explanations for top findings
-    const explanationResult = await generateExplanations(
-      businessContext.adjustedFindings,
-      businessContext.businessType,
-      25
-    );
-    console.log(`[pipeline:${token}] Generated ${explanationResult.enrichedFindings.length} explanations`);
-
-    // Merge into enrichment results
-    const adjustedMap = new Map(
-      businessContext.adjustedFindings.map((af) => [af.findingId, af])
-    );
-
-    enrichmentResults = {
-      businessType: businessContext.businessType,
-      letterGrade: businessContext.letterGrade,
-      healthScore: businessContext.healthScore,
-      executiveSummary: prioritizationResult.executiveSummary,
-      recommendations: businessContext.recommendations,
-      impactEstimates: businessContext.impactEstimates,
-      enrichedFindings: explanationResult.enrichedFindings.map((ef) => {
-        const adjusted = adjustedMap.get(ef.findingId);
-        return {
-          ...ef,
-          businessValueScore: adjusted?.businessValueScore ?? 0,
-          effortScore: adjusted?.effortScore ?? 3,
-          roi: adjusted?.roi ?? 0,
-          category: adjusted?.category ?? "low-priority",
-        };
-      }),
-    };
-
-    await updateAnalysis(token, { enrichment_results: enrichmentResults } as any).catch(() => {});
-  } catch (err) {
-    console.error(`[pipeline:${token}] Enrichment failed (non-fatal):`, err);
-  }
-
-  // ─── Stage 3: Generate variants (with progress) ───
-  console.log(`[pipeline:${token}] Stage 3: Generating variant concepts...`);
   let variants: any[] = [];
-  try {
-    const currentAnalysis = {
-      url,
-      score_performance: scores.performance ?? 50,
-      score_seo: scores.seo ?? 50,
-      score_security: scores.security ?? 50,
-      score_ux: scores.ux ?? 50,
-      score_content: scores.content ?? 50,
-      score_ai_visibility: scores.aiVisibility ?? 50,
-      score_overall: overall,
-    };
-    await updateAnalysis(token, {
-      variant_progress: { current: 0, total: 3, message: "Designing variant concepts..." },
-    });
-    variants = await generateVariants(currentAnalysis as any, allMarkdown, extractedAssets, businessProfile, locale);
-    console.log(`[pipeline:${token}] Generated ${variants.length} variant concepts`);
-    await updateAnalysis(token, { variants }).catch(() => {});
-  } catch (err) {
-    console.error(`[pipeline:${token}] Variant generation failed:`, err);
-    variants = [];
-  }
+
+  const currentAnalysis = {
+    url,
+    score_performance: scores.performance ?? 50,
+    score_seo: scores.seo ?? 50,
+    score_security: scores.security ?? 50,
+    score_ux: scores.ux ?? 50,
+    score_content: scores.content ?? 50,
+    score_ai_visibility: scores.aiVisibility ?? 50,
+    score_overall: overall,
+  };
+
+  await updateAnalysis(token, {
+    variant_progress: { current: 0, total: 0, message: "Připravujeme redesign koncepty..." },
+  }).catch(() => {});
+
+  await Promise.allSettled([
+    // --- Enrichment (LLM explanations) ---
+    (async () => {
+      try {
+        const prioritizationResult = prioritizeFindings(liveFindings);
+        console.log(`[pipeline:${token}] Prioritized ${prioritizationResult.prioritized.length} findings. Quick wins: ${prioritizationResult.quickWins.length}`);
+
+        const businessCtx = applyBusinessContext(
+          prioritizationResult,
+          liveFindings,
+          extractedAssets,
+          businessProfile
+        );
+        console.log(`[pipeline:${token}] Business type: ${businessCtx.businessType}. Recommendations: ${businessCtx.recommendations.length}`);
+
+        const explanationResult = await generateExplanations(
+          businessCtx.adjustedFindings,
+          businessCtx.businessType,
+          25
+        );
+        console.log(`[pipeline:${token}] Generated ${explanationResult.enrichedFindings.length} explanations`);
+
+        const adjustedMap = new Map(
+          businessCtx.adjustedFindings.map((af) => [af.findingId, af])
+        );
+
+        enrichmentResults = {
+          businessType: businessCtx.businessType,
+          letterGrade: businessCtx.letterGrade,
+          healthScore: businessCtx.healthScore,
+          executiveSummary: prioritizationResult.executiveSummary,
+          recommendations: businessCtx.recommendations,
+          impactEstimates: businessCtx.impactEstimates,
+          enrichedFindings: explanationResult.enrichedFindings.map((ef) => {
+            const adjusted = adjustedMap.get(ef.findingId);
+            return {
+              ...ef,
+              businessValueScore: adjusted?.businessValueScore ?? 0,
+              effortScore: adjusted?.effortScore ?? 3,
+              roi: adjusted?.roi ?? 0,
+              category: adjusted?.category ?? "low-priority",
+            };
+          }),
+        };
+
+        await updateAnalysis(token, { enrichment_results: enrichmentResults } as any).catch(() => {});
+      } catch (err) {
+        console.error(`[pipeline:${token}] Enrichment failed (non-fatal):`, err);
+      }
+    })(),
+
+    // --- Variant Concept Generation (LLM) ---
+    (async () => {
+      try {
+        variants = await generateVariants(currentAnalysis as any, allMarkdown, extractedAssets, businessProfile, locale);
+        console.log(`[pipeline:${token}] Generated ${variants.length} variant concepts`);
+        await updateAnalysis(token, {
+          variants,
+          variant_progress: { current: 0, total: 3, message: "Varianty navrženy, generujeme HTML..." },
+        }).catch(() => {});
+      } catch (err) {
+        console.error(`[pipeline:${token}] Variant generation failed:`, err);
+        variants = [];
+      }
+    })(),
+  ]);
 
   // ─── Stage 4: Generate HTML previews (sequential with progress, time-guarded) ───
   const maxHtmlVariants = timeLeft() > 120_000 ? variants.length : Math.min(variants.length, 2);
