@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import fs from "fs";
 import path from "path";
 import type { DesignVariant, AnalysisRow, ExtractedAssets, BusinessProfile, SiteType } from "./supabase";
+import { getHeroImage, type HeroImageResult } from "./hero-image";
 
 // ── Template Data Interface ──
 
@@ -63,13 +64,30 @@ export async function generateHtmlVariants(
   const anthropic = new Anthropic({ apiKey });
   const content = crawledContent.slice(0, 20000);
 
-  // Extract structured content once using Haiku (shared across all variants)
+  // Run content extraction + hero image search in parallel
   let templateData: TemplateData;
-  try {
-    templateData = await extractStructuredContent(anthropic, analysis.url, content, assets, businessProfile);
-  } catch (err) {
-    console.error("[generate-html] Content extraction failed:", err);
+  let heroImage: HeroImageResult | null = null;
+
+  const [contentResult, heroResult] = await Promise.allSettled([
+    extractStructuredContent(anthropic, analysis.url, content, assets, businessProfile),
+    getHeroImage(businessProfile, assets),
+  ]);
+
+  if (contentResult.status === "fulfilled") {
+    templateData = contentResult.value;
+  } else {
+    console.error("[generate-html] Content extraction failed:", contentResult.reason);
     templateData = buildFallbackTemplateData(analysis.url, content, assets);
+  }
+
+  if (heroResult.status === "fulfilled") {
+    heroImage = heroResult.value;
+    console.log(`[generate-html] Hero image source: ${heroImage.source}`);
+  }
+
+  // Override hero image — use generated/stock image instead of original site's baked-text hero
+  if (heroImage && heroImage.source !== "original") {
+    templateData.heroImageUrl = heroImage.url;
   }
 
   // Fill each variant's template
@@ -90,6 +108,13 @@ export async function generateHtmlVariants(
 
       let html = fillTemplate(template, variantData);
       html = postProcessHtml(html, variant);
+
+      // Inject Unsplash attribution if applicable
+      if (heroImage?.source === "unsplash" && heroImage.photographer) {
+        const attrHtml = `<a href="${heroImage.photographerUrl || '#'}?utm_source=webflip&utm_medium=referral" target="_blank" rel="noopener noreferrer" style="position:absolute;bottom:0.75rem;right:1rem;z-index:20;font-size:0.625rem;color:rgba(255,255,255,0.5);text-decoration:none;font-family:system-ui">Photo: ${heroImage.photographer} / Unsplash</a>`;
+        html = html.replace(/<\/section>\s*(?=\s*<main)/, `${attrHtml}</section>\n`);
+      }
+
       html = injectTheftProtection(html);
       return validateHtml(html, variantData.companyName);
     } catch (err) {
