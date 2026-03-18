@@ -82,12 +82,18 @@ export async function generateHtmlVariants(
 
   if (heroResult.status === "fulfilled") {
     heroImage = heroResult.value;
-    console.log(`[generate-html] Hero image source: ${heroImage.source}`);
+    console.log(`[generate-html] Hero image: source=${heroImage.source}, url=${heroImage.url?.slice(0, 80)}...`);
+  } else {
+    console.error(`[generate-html] Hero image failed:`, heroResult.reason);
   }
 
   // Override hero image — use generated/stock image instead of original site's baked-text hero
+  const originalHero = templateData.heroImageUrl;
   if (heroImage && heroImage.source !== "original") {
     templateData.heroImageUrl = heroImage.url;
+    console.log(`[generate-html] Hero override: ${originalHero?.slice(0, 60)} → ${heroImage.source} (${heroImage.url?.slice(0, 60)})`);
+  } else {
+    console.log(`[generate-html] Hero NOT overridden: heroImage=${heroImage?.source || 'null'}, original=${originalHero?.slice(0, 60)}`);
   }
 
   // Fill each variant's template
@@ -239,19 +245,24 @@ Return ONLY valid JSON (no markdown fences, no explanation) with this exact stru
   // If no real blog posts from crawl, blog section will be hidden via IF:blogPosts
 
   // Use real products from crawled data if available
+  // Filter out navigation-like entries that crawlers sometimes extract as products
+  const NAV_LIKE_NAMES = new Set(["home", "about", "about us", "contact", "blog", "services", "products", "gallery", "faq", "testimonials", "categories", "news", "video", "download", "sitemap"]);
+  const isRealProduct = (name: string) => name && !NAV_LIKE_NAMES.has(name.toLowerCase().trim()) && name.trim().length > 1;
+
   let products: TemplateData["products"] = [];
   if (assets?.products && assets.products.length > 0) {
-    products = assets.products.slice(0, 12).map(p => ({
-      name: p.name,
-      description: p.description || "",
-      price: p.price || "",
-      imageUrl: p.imageUrl || "",
-    }));
+    products = assets.products
+      .filter(p => isRealProduct(p.name))
+      .slice(0, 12)
+      .map(p => ({
+        name: p.name,
+        description: p.description || "",
+        price: p.price || "",
+        imageUrl: p.imageUrl || "",
+      }));
   } else if (Array.isArray(parsed.products)) {
-    // Filter out nav-link-like entries that LLM sometimes injects (Home, About Us, etc.)
-    const navLikeNames = new Set(["home", "about", "about us", "contact", "blog", "services", "products", "gallery", "faq", "testimonials"]);
     products = (parsed.products as Array<Record<string, string>>)
-      .filter(p => p.name && !navLikeNames.has(p.name.toLowerCase().trim()))
+      .filter(p => isRealProduct(p.name))
       .map(p => ({
         name: p.name || "",
         description: p.description || "",
