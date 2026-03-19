@@ -58,7 +58,7 @@ export default function VisualEditor({
   useEffect(() => {
     iframeRef.current?.contentWindow?.postMessage(
       { type: "wf-cmd-set-mode", mode: editorMode },
-      "*"
+      window.location.origin
     );
     if (editorMode !== "browse") {
       injectScript();
@@ -80,7 +80,7 @@ export default function VisualEditor({
           injectScript();
           iframe.contentWindow?.postMessage(
             { type: "wf-cmd-set-mode", mode: editorMode },
-            "*"
+            window.location.origin
           );
         }, 100);
       }
@@ -150,7 +150,7 @@ export default function VisualEditor({
           property,
           value,
         },
-        "*"
+        window.location.origin
       );
     },
     [selectedElement, iframeRef]
@@ -160,7 +160,7 @@ export default function VisualEditor({
   const handleSaveState = useCallback(() => {
     iframeRef.current?.contentWindow?.postMessage(
       { type: "wf-cmd-get-html" },
-      "*"
+      window.location.origin
     );
   }, [iframeRef]);
 
@@ -169,7 +169,7 @@ export default function VisualEditor({
     (cssPath: string) => {
       iframeRef.current?.contentWindow?.postMessage(
         { type: "wf-cmd-select", cssPath },
-        "*"
+        window.location.origin
       );
     },
     [iframeRef]
@@ -180,7 +180,7 @@ export default function VisualEditor({
     if (!selectedElement) return;
     iframeRef.current?.contentWindow?.postMessage(
       { type: "wf-cmd-text-edit", cssPath: selectedElement.cssPath, enable: true },
-      "*"
+      window.location.origin
     );
   }, [selectedElement, iframeRef]);
 
@@ -213,7 +213,7 @@ export default function VisualEditor({
         el.parentNode.insertBefore(clone, el.nextSibling);
         iframeRef.current?.contentWindow?.postMessage(
           { type: "wf-cmd-get-html" },
-          "*"
+          window.location.origin
         );
       }
     } catch {
@@ -225,7 +225,7 @@ export default function VisualEditor({
     if (!selectedElement) return;
     iframeRef.current?.contentWindow?.postMessage(
       { type: "wf-cmd-delete", cssPath: selectedElement.cssPath },
-      "*"
+      window.location.origin
     );
   }, [selectedElement, iframeRef]);
 
@@ -239,7 +239,7 @@ export default function VisualEditor({
           cssPath: selectedElement.cssPath,
           newHtml: newElementHtml,
         },
-        "*"
+        window.location.origin
       );
       setShowAIContext(false);
     },
@@ -257,13 +257,13 @@ export default function VisualEditor({
           property: "src",
           value: newSrc,
         },
-        "*"
+        window.location.origin
       );
       // Request updated HTML after attribute change
       setTimeout(() => {
         iframeRef.current?.contentWindow?.postMessage(
           { type: "wf-cmd-get-html" },
-          "*"
+          window.location.origin
         );
       }, 50);
       setShowImageReplacer(false);
