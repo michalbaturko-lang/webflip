@@ -4,7 +4,7 @@ import * as cheerio from "cheerio";
 import { getAnalysis, updateAnalysis } from "@/lib/supabase";
 import type { EditHistoryEntry } from "@/lib/supabase";
 
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 // ── Rate limiting (in-memory, per-token, with eviction) ──────────────
 const rateLimitMap = new Map<string, number[]>();
