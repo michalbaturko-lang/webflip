@@ -90,7 +90,7 @@ export default function VariantComparison({
         return;
       }
 
-      // Persist selection
+      // Persist selection — always open preview regardless of persistence result
       try {
         const res = await fetch(`/api/analyze/${token}/select`, {
           method: "POST",
@@ -99,13 +99,14 @@ export default function VariantComparison({
         });
         if (res.ok) {
           setSelectedVariant(index);
-          window.open(`/${locale}/preview/${token}/${index}`, "_blank");
         } else {
           setSelectError(t("selectFailed"));
         }
-      } catch {
+      } catch (err) {
+        console.error("Failed to persist variant selection:", err);
         setSelectError(t("selectFailed"));
       }
+      window.open(`/${locale}/preview/${token}/${index}`, "_blank");
     },
     [token, locale, onSelectVariant, t]
   );

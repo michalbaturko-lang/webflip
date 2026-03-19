@@ -212,6 +212,7 @@
     "compareVariants": "Varianten vergleichen",
     "selectThisVariant": "Diese Variante wählen",
     "closeComparison": "Vergleich schließen",
+    "selectFailed": "Auswahl konnte nicht gespeichert werden. Sie können die Variante trotzdem ansehen.",
     "networkError": "Netzwerkfehler. Bitte versuchen Sie es erneut.",
     "retry": "Wiederholen",
     "recommendation": {

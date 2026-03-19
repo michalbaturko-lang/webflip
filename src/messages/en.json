@@ -212,6 +212,7 @@
     "compareVariants": "Compare variants",
     "selectThisVariant": "Select this variant",
     "closeComparison": "Close comparison",
+    "selectFailed": "Failed to save selection. You can still preview the variant.",
     "networkError": "Network error. Please try again.",
     "retry": "Retry",
     "recommendation": {
