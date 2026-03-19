@@ -33,7 +33,7 @@ export async function POST(
     const emailType =
       analysis.status === "error"
         ? "analysis-error" as const
-        : analysis.status === "completed"
+        : analysis.status === "complete"
           ? "analysis-complete" as const
           : "analysis-started" as const;
 
