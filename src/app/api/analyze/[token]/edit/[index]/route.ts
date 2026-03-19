@@ -280,7 +280,7 @@ export async function POST(
 
     const anthropic = new Anthropic({ apiKey });
 
-    const response = await anthropic.messages.create({
+    const stream = anthropic.messages.stream({
       model: "claude-sonnet-4-20250514",
       max_tokens: 32000,
       system: SYSTEM_PROMPT,
@@ -299,6 +299,7 @@ Return the COMPLETE modified HTML document. No explanations, no markdown — jus
         },
       ],
     });
+    const response = await stream.finalMessage();
 
     const text = response.content[0].type === "text" ? response.content[0].text : "";
 
