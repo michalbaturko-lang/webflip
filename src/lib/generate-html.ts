@@ -16,6 +16,7 @@ interface TemplateData {
   primaryColor: string;
   language: string;
   heroImageUrl: string;
+  siteUrl: string;
   siteType: SiteType;
   navLinks: { text: string; href: string }[];
   services: { title: string; description: string; icon: string }[];
@@ -282,6 +283,7 @@ Return ONLY valid JSON (no markdown fences, no explanation) with this exact stru
     primaryColor: "#1B2A4A",
     language: (parsed.language as string) || "en",
     heroImageUrl: assets?.heroImageUrl || "",
+    siteUrl: url,
     siteType: assets?.siteType || "corporate",
     navLinks: Array.isArray(parsed.navLinks) ? parsed.navLinks as TemplateData["navLinks"] : assets?.navLinks || [],
     services: Array.isArray(parsed.services) ? parsed.services as TemplateData["services"] : [],
@@ -479,6 +481,7 @@ function fillTemplate(template: string, data: TemplateData): string {
     TEMPLATE_VAR_primaryColor: data.primaryColor,
     TEMPLATE_VAR_language: data.language,
     TEMPLATE_VAR_heroImageUrl: data.heroImageUrl,
+    TEMPLATE_VAR_siteUrl: escapeAttr(data.siteUrl),
     TEMPLATE_VAR_phone: escapeHtml(data.phone),
     TEMPLATE_VAR_email: escapeHtml(data.email),
     TEMPLATE_VAR_address: escapeHtml(data.address),
@@ -684,6 +687,7 @@ function buildFallbackTemplateData(
     primaryColor: "#1B2A4A",
     language: "en",
     heroImageUrl: assets?.heroImageUrl || "",
+    siteUrl: url,
     siteType: assets?.siteType || "corporate",
     navLinks: assets?.navLinks || [],
     services: headings.slice(1, 7).map((title, i) => ({
