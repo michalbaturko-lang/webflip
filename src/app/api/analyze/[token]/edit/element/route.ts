@@ -82,7 +82,7 @@ export async function POST(
       ? `\nElement tag: <${context.tag}>, parent: <${context.parentTag || "unknown"}>`
       : "";
 
-    const response = await anthropic.messages.create({
+    const stream = anthropic.messages.stream({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 4000,
       system: ELEMENT_SYSTEM_PROMPT,
@@ -101,6 +101,7 @@ Return ONLY the modified HTML element. No explanations, no markdown code blocks.
         },
       ],
     });
+    const response = await stream.finalMessage();
 
     const text = response.content[0].type === "text" ? response.content[0].text : "";
 

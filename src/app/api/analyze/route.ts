@@ -474,7 +474,7 @@ async function runPipeline(url: string, token: string, locale?: string, email?: 
       ux: { score: scores.ux ?? 50, findings: liveFindings.filter(f => f.category === "ux") },
       content: { score: scores.content ?? 50, findings: liveFindings.filter(f => f.category === "content") },
       aiVisibility: { score: scores.aiVisibility ?? 50, findings: liveFindings.filter(f => f.category === "aiVisibility") },
-      accessibility: { score: scores.accessibility ?? 50, findings: liveFindings.filter(f => f.category === "Přístupnost") },
+      accessibility: { score: scores.accessibility ?? 50, findings: liveFindings.filter(f => f.category === "accessibility") },
     },
     findings: liveFindings,
     variant_progress: { current: 0, total: 3, message: "Preparing variant generation..." },

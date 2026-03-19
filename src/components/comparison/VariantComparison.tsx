@@ -99,14 +99,15 @@ export default function VariantComparison({
         });
         if (res.ok) {
           setSelectedVariant(index);
+          window.open(`/${locale}/preview/${token}/${index}`, "_blank");
+        } else {
+          setSelectError(t("selectFailed"));
         }
       } catch {
-        // Selection persistence failed — still open preview
+        setSelectError(t("selectFailed"));
       }
-
-      window.open(`/${locale}/preview/${token}/${index}`, "_blank");
     },
-    [token, onSelectVariant]
+    [token, locale, onSelectVariant, t]
   );
 
   const handleRemixComplete = useCallback(
