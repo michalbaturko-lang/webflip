@@ -3,7 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { getAnalysis, updateAnalysis } from "@/lib/supabase";
 import type { EditHistoryEntry } from "@/lib/supabase";
 
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 // ── Rate limiting (shared with main edit route pattern) ─────────────
 const rateLimitMap = new Map<string, number[]>();
