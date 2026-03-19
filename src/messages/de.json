@@ -211,6 +211,9 @@
     "variantCarousel": "Varianten-Karussell",
     "compareVariants": "Varianten vergleichen",
     "selectThisVariant": "Diese Variante wählen",
+    "confirmAndPay": "Bestätigen & Bezahlen",
+    "checkoutLoading": "Weiterleitung...",
+    "selectFailed": "Variante konnte nicht ausgewählt werden. Bitte versuchen Sie es erneut.",
     "closeComparison": "Vergleich schließen",
     "networkError": "Netzwerkfehler. Bitte versuchen Sie es erneut.",
     "retry": "Wiederholen",
@@ -300,5 +303,13 @@
     "stepAnalyze": "Analysieren",
     "stepGenerate": "Generieren",
     "stepResults": "Ergebnisse"
+  },
+  "success": {
+    "title": "Zahlung erfolgreich!",
+    "description": "Vielen Dank für Ihren Kauf. Ihr Redesign ist bestätigt und unser Team beginnt mit dem Übergabeprozess.",
+    "nextStep1": "1. Wir bereiten Ihr ausgewähltes Redesign für die Bereitstellung vor.",
+    "nextStep2": "2. Sie erhalten eine E-Mail mit dem vollständigen Quellcode und Bereitstellungsanweisungen.",
+    "nextStep3": "3. Unser Team steht Ihnen für alle Fragen während des Übergangs zur Verfügung.",
+    "backToPreview": "Zurück zur Analyse"
   }
 }

@@ -10,9 +10,11 @@ import {
   Monitor,
   MousePointer2,
   Hand,
+  CreditCard,
+  Loader2,
 } from "lucide-react";
 import { useState, useRef, useCallback, useEffect } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import AIEditor from "@/components/editor/AIEditor";
 import VisualEditor from "@/components/editor/VisualEditor";
 import type { EditorMode } from "@/lib/visual-editor/messages";
@@ -23,7 +25,10 @@ export default function PreviewPage() {
   const params = useParams<{ token: string; index: string }>();
   const router = useRouter();
   const t = useTranslations("editor");
+  const tc = useTranslations("comparison");
+  const locale = useLocale();
   const [viewMode, setViewMode] = useState<ViewMode>("desktop");
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isEditorActive, setIsEditorActive] = useState(false);
@@ -97,6 +102,31 @@ export default function PreviewPage() {
   const toggleEditorMode = useCallback(() => {
     setEditorMode((prev) => (prev === "browse" ? "select" : "browse"));
   }, []);
+
+  const handleCheckout = useCallback(async () => {
+    setCheckoutLoading(true);
+    try {
+      const res = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token: params.token,
+          variantIndex: Number(params.index),
+          locale,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.url) {
+          window.location.href = data.url;
+          return;
+        }
+      }
+    } catch {
+      // Fall through
+    }
+    setCheckoutLoading(false);
+  }, [params.token, params.index, locale]);
 
   return (
     <div
@@ -226,6 +256,26 @@ export default function PreviewPage() {
         >
           <ExternalLink className="h-4 w-4" />
         </a>
+
+        <div className="w-px h-5 bg-white/10" />
+
+        <button
+          onClick={handleCheckout}
+          disabled={checkoutLoading}
+          className="flex items-center gap-1.5 text-sm font-semibold px-3 py-1.5 rounded-full bg-purple-600 hover:bg-purple-500 text-white transition-colors disabled:opacity-60 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500"
+        >
+          {checkoutLoading ? (
+            <>
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              {tc("checkoutLoading")}
+            </>
+          ) : (
+            <>
+              <CreditCard className="h-3.5 w-3.5" />
+              {tc("confirmAndPay")}
+            </>
+          )}
+        </button>
       </div>
 
       {/* Iframe */}
