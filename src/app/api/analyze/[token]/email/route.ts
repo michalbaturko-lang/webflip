@@ -42,9 +42,18 @@ export async function POST(
       type: emailType,
       token,
       url: analysis.url,
-      scores: analysis.scores,
+      scores: analysis.score_overall != null
+        ? {
+            performance: analysis.score_performance ?? 0,
+            seo: analysis.score_seo ?? 0,
+            security: analysis.score_security ?? 0,
+            ux: analysis.score_ux ?? 0,
+            content: analysis.score_content ?? 0,
+            aiVisibility: analysis.score_ai_visibility ?? 0,
+          }
+        : undefined,
       variantCount: analysis.variants?.length,
-      errorMessage: analysis.error_message,
+      errorMessage: analysis.error_message ?? undefined,
     });
 
     return NextResponse.json({ success: true });
