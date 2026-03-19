@@ -14,7 +14,7 @@ import { analyzeAIVisibility } from "@/lib/analyzers/ai-visibility";
 import { analyzePerformance } from "@/lib/analyzers/performance";
 import { analyzeAccessibility } from "@/lib/analyzers/accessibility";
 import { generateVariants } from "@/lib/redesign";
-import { generateHtmlVariants } from "@/lib/generate-html";
+import { generateHtmlVariants, buildQuickFallbackHtml } from "@/lib/generate-html";
 import { interpretBusiness } from "@/lib/business-interpretation";
 import { analyzePage, analyzeSite, generateFindings } from "@/lib/analysis-engine";
 import { calculateScores, mapToLegacyScores } from "@/lib/scoring";
@@ -588,7 +588,7 @@ async function runPipeline(url: string, token: string, locale?: string, email?: 
       // Skip if less than 30s remaining
       if (timeLeft() < 30_000) {
         console.warn(`[pipeline:${token}] Time guard: skipping HTML variant ${i+1}, only ${Math.round(timeLeft()/1000)}s left`);
-        htmlVariants.push("");
+        htmlVariants.push(buildQuickFallbackHtml(variants[i], url, extractedAssets));
         continue;
       }
       await updateAnalysis(token, {
@@ -617,7 +617,7 @@ async function runPipeline(url: string, token: string, locale?: string, email?: 
         htmlVariants.push(html[0]);
       } catch (err) {
         console.error(`HTML generation failed for variant ${i}:`, err);
-        htmlVariants.push("");
+        htmlVariants.push(buildQuickFallbackHtml(variants[i], url, extractedAssets));
       }
     }
   }
