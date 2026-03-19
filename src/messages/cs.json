@@ -212,6 +212,7 @@
     "compareVariants": "Porovnat varianty",
     "selectThisVariant": "Vybrat tuto variantu",
     "closeComparison": "Zavřít porovnání",
+    "selectFailed": "Nepodařilo se uložit výběr. Variantu si můžete stále prohlédnout.",
     "networkError": "Chyba sítě. Zkuste to prosím znovu.",
     "retry": "Zkusit znovu",
     "recommendation": {
