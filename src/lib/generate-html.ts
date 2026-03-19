@@ -739,6 +739,23 @@ function buildFallbackHtml(
   }
 }
 
+// ── Quick Fallback for Time Guard / Catch Failures ──
+
+/**
+ * Build a lightweight HTML preview when the full generation pipeline
+ * cannot run (e.g. time guard or unexpected error). Uses only inline
+ * HTML — no template files, no AI calls.
+ */
+export function buildQuickFallbackHtml(
+  variant: DesignVariant,
+  url: string,
+  assets?: ExtractedAssets | null
+): string {
+  const data = buildFallbackTemplateData(url, "", assets);
+  data.primaryColor = variant.palette.primary;
+  return buildMinimalFallbackHtml(data, variant);
+}
+
 // ── Minimal Inline Fallback (if templates can't be read) ──
 
 function buildMinimalFallbackHtml(data: TemplateData, variant: DesignVariant): string {
