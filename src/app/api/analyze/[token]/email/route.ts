@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAnalysis, updateAnalysis } from "@/lib/supabase";
+import { sendAnalysisEmail } from "@/lib/email";
 
 export async function POST(
   request: Request,
@@ -28,8 +29,23 @@ export async function POST(
     // Save email to analysis
     await updateAnalysis(token, { email });
 
-    // TODO: Send email report via Resend when RESEND_API_KEY is configured
-    // For now, just save the email and unlock results
+    // Send email report via Resend
+    const emailType =
+      analysis.status === "error"
+        ? "analysis-error" as const
+        : analysis.status === "complete"
+          ? "analysis-complete" as const
+          : "analysis-started" as const;
+
+    await sendAnalysisEmail({
+      to: email,
+      type: emailType,
+      token,
+      url: analysis.url,
+      scores: analysis.scores,
+      variantCount: analysis.variants?.length,
+      errorMessage: analysis.error_message,
+    });
 
     return NextResponse.json({ success: true });
   } catch (err) {
