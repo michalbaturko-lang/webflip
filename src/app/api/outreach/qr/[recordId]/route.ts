@@ -32,10 +32,10 @@ function generateQrSvg(text: string): string {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { recordId: string } }
+  { params }: { params: Promise<{ recordId: string }> }
 ) {
   try {
-    const recordId = params.recordId;
+    const { recordId } = await params;
     const db = supabase();
 
     // Fetch the record to get the slug
