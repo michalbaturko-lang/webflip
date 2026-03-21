@@ -14,10 +14,10 @@ const supabase = () => createServerClient();
  */
 export async function GET(
   request: Request,
-  { params }: { params: { shortId: string } }
+  { params }: { params: Promise<{ shortId: string }> }
 ) {
   try {
-    const shortId = params.shortId;
+    const { shortId } = await params;
     const db = supabase();
 
     // Find the record with this short ID
