@@ -327,7 +327,7 @@ export interface EnrichmentResults {
   }[];
 }
 
-// Server-side client (service role — full access)
+// Server-side client (service role â full access)
 export function createServerClient() {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -361,12 +361,26 @@ export async function getAnalysis(token: string) {
   return data as AnalysisRow;
 }
 
-// Helper: update analysis
+// Helper: update analysis (resilient to missing columns like edit_history)
 export async function updateAnalysis(token: string, updates: Partial<AnalysisRow>) {
   const supabase = createServerClient();
   const { error } = await supabase
     .from("analyses")
     .update({ ...updates, updated_at: new Date().toISOString() })
     .eq("token", token);
-  if (error) throw new Error(`Failed to update analysis: ${error.message}`);
+  if (error) {
+    // If the error is about a missing column (e.g. edit_history not yet migrated),
+    // retry without the problematic field so the critical update still goes through
+    if (error.message.includes("schema cache") || error.message.includes("edit_history")) {
+      const { edit_history, ...safeUpdates } = updates as Record<string, unknown>;
+      const { error: retryError } = await supabase
+        .from("analyses")
+        .update({ ...safeUpdates, updated_at: new Date().toISOString() })
+        .eq("token", token);
+      if (retryError) throw new Error(`Failed to update analysis: ${retryError.message}`);
+      console.warn("updateAnalysis: edit_history column not available, saved without it");
+      return;
+    }
+    throw new Error(`Failed to update analysis: ${error.message}`);
+  }
 }
