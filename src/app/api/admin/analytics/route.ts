@@ -49,7 +49,7 @@ interface AnalyticsResponse {
   }[];
 }
 
-export async function GET(): Promise<NextResponse<AnalyticsResponse>> {
+export async function GET(): Promise<NextResponse<AnalyticsResponse | { error: string }>> {
   try {
     const db = supabase();
     const now = new Date();
