@@ -1,5 +1,10 @@
 import { createServerClient } from "@/lib/supabase";
-import type { OutreachSequence, LinkedInTask, OutreachEmailLog, DailyOutreachStats } from "@/types/outreach";
+import type {
+  OutreachSequence,
+  LinkedInTask,
+  OutreachEmailLog,
+  DailyOutreachStats,
+} from "@/types/outreach";
 import type { CrmRecord } from "@/types/admin";
 
 const supabase = () => createServerClient();
@@ -94,7 +99,8 @@ export async function getPendingOutreachSteps(): Promise<
     .select("*")
     .not("outreach_sequence_id", "is", null);
 
-  if (recordsError) throw new Error(`getPendingOutreachSteps records: ${recordsError.message}`);
+  if (recordsError)
+    throw new Error(`getPendingOutreachSteps records: ${recordsError.message}`);
 
   const results = [];
   const now = new Date();
@@ -108,17 +114,15 @@ export async function getPendingOutreachSteps(): Promise<
       .single();
 
     if (seqError || !sequenceData) continue;
-
     const sequence = sequenceData as OutreachSequence;
-    const currentStep = sequence.steps[record.outreach_sequence_step];
 
+    const currentStep = sequence.steps[record.outreach_sequence_step];
     if (!currentStep) continue;
 
     // Check if delay has elapsed
     const lastContactDate = record.last_contact_date
       ? new Date(record.last_contact_date)
       : new Date(record.created_at);
-
     const nextDueDate = new Date(
       lastContactDate.getTime() + currentStep.delay_days * 86400000
     );
@@ -137,16 +141,24 @@ export async function getPendingOutreachSteps(): Promise<
 
 export async function advanceSequenceStep(recordId: string): Promise<void> {
   const now = new Date().toISOString();
-  const { error } = await supabase()
+  const db = supabase();
+
+  // Fetch current step value first
+  const { data: record } = await db
+    .from("crm_records")
+    .select("outreach_sequence_step")
+    .eq("id", recordId)
+    .single();
+
+  const currentStep = (record as unknown as Record<string, number>)?.outreach_sequence_step ?? 0;
+
+  const { error } = await db
     .from("crm_records")
     .update({
-      outreach_sequence_step: supabase().raw(
-        "outreach_sequence_step + 1"
-      ),
+      outreach_sequence_step: currentStep + 1,
       last_contact_date: now,
     })
     .eq("id", recordId);
-
   if (error) throw new Error(`advanceSequenceStep: ${error.message}`);
 }
 
@@ -175,7 +187,6 @@ export async function listLinkedInTasks(params: {
 
   if (params.status) query = query.eq("status", params.status);
   if (params.assigned_to) query = query.eq("assigned_to", params.assigned_to);
-
   const limit = params.limit || 50;
   query = query.limit(limit);
   query = query.order("created_at", { ascending: false });
@@ -279,11 +290,14 @@ export async function getDailyOutreachStats(): Promise<DailyOutreachStats> {
     .select("*")
     .gte("sent_at", sevenDaysAgo);
 
-  if (sentError) throw new Error(`getDailyOutreachStats sent: ${sentError.message}`);
+  if (sentError)
+    throw new Error(`getDailyOutreachStats sent: ${sentError.message}`);
 
   const totalSent7d = sentData?.length || 0;
-  const openRate = totalSent7d > 0 ? (openedRes.count || 0) / totalSent7d : 0;
-  const clickRate = totalSent7d > 0 ? (clickedRes.count || 0) / totalSent7d : 0;
+  const openRate =
+    totalSent7d > 0 ? (openedRes.count || 0) / totalSent7d : 0;
+  const clickRate =
+    totalSent7d > 0 ? (clickedRes.count || 0) / totalSent7d : 0;
 
   return {
     pending_emails: pendingEmailsRes.count || 0,
@@ -298,7 +312,8 @@ export async function getDailyOutreachStats(): Promise<DailyOutreachStats> {
 // ─── Slug Utilities ───
 
 export function generateSlug(companyName: string, domain: string): string {
-  const base = companyName && companyName.trim().length > 0 ? companyName : domain;
+  const base =
+    companyName && companyName.trim().length > 0 ? companyName : domain;
   return base
     .toLowerCase()
     .trim()
@@ -317,7 +332,6 @@ export async function getRecordBySlug(slug: string): Promise<CrmRecord | null> {
   for (const record of records || []) {
     const companySlug = generateSlug(record.company_name || "", record.domain);
     const domainSlug = generateSlug("", record.domain);
-
     if (companySlug === slug || domainSlug === slug) {
       return record as CrmRecord;
     }
