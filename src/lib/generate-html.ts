@@ -133,6 +133,31 @@ export async function generateHtmlVariants(
   return results;
 }
 
+// ── Language Detection Heuristic ──
+
+function detectLanguageFromContent(text: string): string {
+  const czechPatterns = [
+    /\\b(jako|více|služby|kontakt|o\\s+nás|společnost|reference|galerie|novinky|články|blog|cena|ceník|tým|tím|která|které|který|kterou|kterých|kterým|kterými|jsme|jsme|máme|máte|mají|jste|ste|jsou|jest|nejde|nejsme|nejste|nejsou)\\b/gi,
+    /[àáâäåæèéêëìíîïòóôöœùúûüñ]/gi,
+  ];
+  const slovakPatterns = [
+    /\\b(ako|viac|služby|kontakt|o\\s+nás|spoločnosť|referencie|galéria|správy|články|blog|cena|cenník|tím|ktorá|ktoré|ktorý|ktorého|ktorému|ktorí|ktorých|ktorým|ktorými|sme|máme|máte|majú|ste|sú|je|je|nemáme|nemáte|nemajú)\\b/gi,
+    /[àáâäåæèéêëìíîïòóôöœùúûüñ]/gi,
+  ];
+  const germanPatterns = [
+    /\\b(wie|mehr|Dienstleistungen|Kontakt|über|Unternehmen|Referenzen|Galerie|Nachrichten|Artikel|Blog|Preis|Preisliste|Team|welche|welcher|welches|sind|haben|habt|sei|seid|haben|wir|sie|ihr|gibt)\\b/gi,
+    /[ßäöü]/gi,
+  ];
+  let czechScore = 0, slovakScore = 0, germanScore = 0;
+  for (const p of czechPatterns) { const m = text.match(p); czechScore += m ? m.length : 0; }
+  for (const p of slovakPatterns) { const m = text.match(p); slovakScore += m ? m.length : 0; }
+  for (const p of germanPatterns) { const m = text.match(p); germanScore += m ? m.length : 0; }
+  if (czechScore >= 3 && czechScore >= slovakScore && czechScore >= germanScore) return "cs";
+  if (slovakScore >= 3 && slovakScore > czechScore && slovakScore > germanScore) return "sk";
+  if (germanScore >= 3 && germanScore > czechScore && germanScore > slovakScore) return "de";
+  return "en";
+}
+
 // ── Content Extraction via Haiku ──
 
 async function extractStructuredContent(
@@ -176,6 +201,13 @@ AVAILABLE ASSETS:
 
 INSTRUCTIONS:
 CRITICAL LANGUAGE RULE: ${businessProfile ? `The detected language is "${businessProfile.language}".` : "Detect the website language (cs/en/de/sk)."} Every single piece of text you output — headlines, descriptions, blog titles, FAQ questions and answers, testimonial quotes, stat labels, navLink texts — MUST be in that language. ZERO English text is acceptable when the language is not "en". This includes ALL generated content like blog posts, FAQ items, and testimonials.
+
+EXAMPLES of correct language usage:
+- Czech (cs): "Služby", "O nás", "Kontakt", "Reference", "Často kladené dotazy", "Zobrazit více"
+- Slovak (sk): "Služby", "O nás", "Kontakt", "Referencie", "Často kladené otázky"
+- German (de): "Dienstleistungen", "Über uns", "Kontakt", "Referenzen", "Häufig gestellte Fragen"
+- English (en): "Services", "About Us", "Contact", "Testimonials", "FAQ"
+If the website content is in Czech, ALL output must be in Czech. Never mix languages.
 
 1. Extract ALL real content from the crawled data — NEVER invent placeholder text for services/about/stats
 2. Blog posts: Extract ONLY real blog posts/articles found in the crawled content. If no real articles exist, return an EMPTY blogPosts array []. NEVER generate fictional blog posts — only use real articles from the crawled website.
@@ -273,6 +305,9 @@ Return ONLY valid JSON (no markdown fences, no explanation) with this exact stru
   }
 
   // Build TemplateData from parsed response, with fallbacks
+  // Use heuristic language detection as fallback
+  const parsedLanguage = (parsed.language as string) || detectLanguageFromContent(crawledContent) || "en";
+
   return {
     companyName: (parsed.companyName as string) || companyName,
     headline: (parsed.headline as string) || companyName,
@@ -281,7 +316,7 @@ Return ONLY valid JSON (no markdown fences, no explanation) with this exact stru
     logoUrl: assets?.logo || "",
     faviconUrl: assets?.favicon || "",
     primaryColor: "#1B2A4A",
-    language: (parsed.language as string) || "en",
+    language: parsedLanguage,
     heroImageUrl: assets?.heroImageUrl || "",
     siteUrl: url,
     siteType: assets?.siteType || "corporate",
