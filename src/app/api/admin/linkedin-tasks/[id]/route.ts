@@ -4,12 +4,13 @@ import { createServerClient } from "@/lib/supabase";
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const authError = requireAdmin(request);
     if (authError) return authError;
 
+    const { id: taskId } = await params;
     const body = await request.json();
     const { status, actual_message } = body;
 
@@ -22,7 +23,6 @@ export async function PUT(
 
     const supabase = createServerClient();
     const now = new Date().toISOString();
-    const taskId = params.id;
 
     const updateData: any = { status };
 
@@ -33,7 +33,6 @@ export async function PUT(
       }
     }
 
-    // Fetch the task to get the record ID
     const { data: task, error: fetchError } = await supabase
       .from("linkedin_tasks")
       .select("crm_record_id, template_message, task_type")
@@ -47,7 +46,6 @@ export async function PUT(
       );
     }
 
-    // Update the LinkedIn task
     const { data: updatedTask, error: updateError } = await supabase
       .from("linkedin_tasks")
       .update(updateData)
@@ -59,7 +57,6 @@ export async function PUT(
       throw new Error(`Failed to update LinkedIn task: ${updateError.message}`);
     }
 
-    // If completed, create an activity log
     if (status === "completed") {
       await supabase.from("crm_activities").insert({
         crm_record_id: task.crm_record_id,
@@ -83,14 +80,14 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const authError = requireAdmin(request);
     if (authError) return authError;
 
+    const { id: taskId } = await params;
     const supabase = createServerClient();
-    const taskId = params.id;
 
     const { error } = await supabase
       .from("linkedin_tasks")
