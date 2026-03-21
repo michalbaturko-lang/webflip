@@ -32,7 +32,7 @@ export async function recordABSend(testId: string, variant: 'a' | 'b'): Promise<
   // Use RPC or manual increment
   const { data } = await supabase.from('ab_tests').select(field).eq('id', testId).single();
   if (data) {
-    const record = data as Record<string, number>;
+    const record = data as unknown as Record<string, number>;
     await supabase.from('ab_tests').update({ [field]: (record[field] || 0) + 1 }).eq('id', testId);
   }
 }
@@ -44,7 +44,7 @@ export async function recordABEvent(testId: string, variant: 'a' | 'b', eventTyp
 
   const { data } = await supabase.from('ab_tests').select(field).eq('id', testId).single();
   if (data) {
-    const record = data as Record<string, number>;
+    const record = data as unknown as Record<string, number>;
     await supabase.from('ab_tests').update({ [field]: (record[field] || 0) + 1 }).eq('id', testId);
   }
 }
@@ -56,7 +56,7 @@ export async function checkABWinner(testId: string): Promise<'a' | 'b' | null> {
   if (!test) return null;
 
   const MIN_SAMPLE = 50;
-  const t = test as Record<string, number>;
+  const t = test as unknown as Record<string, number>;
   if (t.sent_a < MIN_SAMPLE || t.sent_b < MIN_SAMPLE) return null;
 
   const rateA = t.sent_a > 0 ? t.opened_a / t.sent_a : 0;
