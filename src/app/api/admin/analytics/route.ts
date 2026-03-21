@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
-import type { CrmRecord, OutreachSequence, OutreachEmailLog } from "@/types/admin";
+import type { CrmRecord } from "@/types/admin";
+import type { OutreachSequence, OutreachEmailLog } from "@/types/outreach";
 
 const supabase = () => createServerClient();
 
