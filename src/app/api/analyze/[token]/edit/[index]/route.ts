@@ -217,7 +217,7 @@ function repairHtml(html: string): string {
 }
 
 // ââ Output validation ââââââââââââââââââââââââââââââââââââââââââââââââ
-function validateHtmlOutput(html: string): { valid: boolean; reason?: string } {
+function validateHtmlOutput(html: string, originalHtml?: string): { valid: boolean; reason?: string } {
   if (!html || typeof html !== "string") {
     return { valid: false, reason: "Empty or non-string response from AI" };
   }
@@ -235,6 +235,7 @@ function validateHtmlOutput(html: string): { valid: boolean; reason?: string } {
   }
 
   // Reject dangerous inline script patterns
+  // Skip patterns that already exist in the original HTML (pre-existing code is safe)
   const dangerousPatterns: { pattern: RegExp; reason: string }[] = [
     { pattern: /document\.cookie/i, reason: "Cookie access attempt detected" },
     { pattern: /window\.location\s*=\s*["']https?:\/\/(?!fonts\.googleapis)/i, reason: "Unauthorized redirect detected" },
@@ -246,6 +247,10 @@ function validateHtmlOutput(html: string): { valid: boolean; reason?: string } {
 
   for (const { pattern, reason } of dangerousPatterns) {
     if (pattern.test(html)) {
+      // If pattern was already in the original HTML, skip it (pre-existing code)
+      if (originalHtml && pattern.test(originalHtml)) {
+        continue;
+      }
       return { valid: false, reason };
     }
   }
@@ -516,7 +521,7 @@ Return the COMPLETE modified HTML document. No explanations, no markdown â 
     updatedHtml = repairHtml(updatedHtml);
 
     // Validate output
-    const validation = validateHtmlOutput(updatedHtml);
+    const validation = validateHtmlOutput(updatedHtml, currentHtml);
     if (!validation.valid) {
       console.error("HTML validation failed:", validation.reason);
       return NextResponse.json(
