@@ -28,10 +28,12 @@ export function getABVariant(test: ABTest): 'a' | 'b' {
 export async function recordABSend(testId: string, variant: 'a' | 'b'): Promise<void> {
   const supabase = createServerClient();
   const field = variant === 'a' ? 'sent_a' : 'sent_b';
+
   // Use RPC or manual increment
   const { data } = await supabase.from('ab_tests').select(field).eq('id', testId).single();
   if (data) {
-    await supabase.from('ab_tests').update({ [field]: (data[field] || 0) + 1 }).eq('id', testId);
+    const record = data as Record<string, number>;
+    await supabase.from('ab_tests').update({ [field]: (record[field] || 0) + 1 }).eq('id', testId);
   }
 }
 
@@ -39,9 +41,11 @@ export async function recordABSend(testId: string, variant: 'a' | 'b'): Promise<
 export async function recordABEvent(testId: string, variant: 'a' | 'b', eventType: 'opened' | 'clicked'): Promise<void> {
   const supabase = createServerClient();
   const field = `${eventType}_${variant}`;
+
   const { data } = await supabase.from('ab_tests').select(field).eq('id', testId).single();
   if (data) {
-    await supabase.from('ab_tests').update({ [field]: (data[field] || 0) + 1 }).eq('id', testId);
+    const record = data as Record<string, number>;
+    await supabase.from('ab_tests').update({ [field]: (record[field] || 0) + 1 }).eq('id', testId);
   }
 }
 
@@ -52,10 +56,11 @@ export async function checkABWinner(testId: string): Promise<'a' | 'b' | null> {
   if (!test) return null;
 
   const MIN_SAMPLE = 50;
-  if (test.sent_a < MIN_SAMPLE || test.sent_b < MIN_SAMPLE) return null;
+  const t = test as Record<string, number>;
+  if (t.sent_a < MIN_SAMPLE || t.sent_b < MIN_SAMPLE) return null;
 
-  const rateA = test.sent_a > 0 ? test.opened_a / test.sent_a : 0;
-  const rateB = test.sent_b > 0 ? test.opened_b / test.sent_b : 0;
+  const rateA = t.sent_a > 0 ? t.opened_a / t.sent_a : 0;
+  const rateB = t.sent_b > 0 ? t.opened_b / t.sent_b : 0;
 
   // Simple: 3% difference threshold
   const diff = Math.abs(rateA - rateB);
@@ -63,6 +68,7 @@ export async function checkABWinner(testId: string): Promise<'a' | 'b' | null> {
 
   const winner = rateA > rateB ? 'a' : 'b';
   await supabase.from('ab_tests').update({ winner, is_active: false }).eq('id', testId);
+
   return winner as 'a' | 'b';
 }
 
