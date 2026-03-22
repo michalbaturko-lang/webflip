@@ -1,14 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
+import { timingSafeEqual } from "crypto";
 
-// Webhook secret for verification
+// Webhook secret for verification — MUST be configured in production
 function verifyWebhookSecret(request: NextRequest): boolean {
   const secret = process.env.PHANTOMBUSTER_WEBHOOK_SECRET;
-  if (!secret) return true; // No secret configured = accept all (dev mode)
+  if (!secret) {
+    console.error("[phantombuster-webhook] PHANTOMBUSTER_WEBHOOK_SECRET is not configured");
+    return false; // Reject if no secret configured
+  }
   const provided =
     request.headers.get("x-webhook-secret") ||
     request.nextUrl.searchParams.get("secret");
-  return provided === secret;
+  if (!provided) return false;
+  // Use timing-safe comparison to prevent timing attacks
+  try {
+    const a = Buffer.from(secret);
+    const b = Buffer.from(provided);
+    return a.length === b.length && timingSafeEqual(a, b);
+  } catch {
+    return false;
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -56,7 +68,7 @@ export async function POST(request: NextRequest) {
 
     if (!record) {
       return NextResponse.json(
-        { error: "Contact not found", linkedin_url: linkedinUrl, email },
+        { error: "Contact not found" },
         { status: 404 }
       );
     }
@@ -130,13 +142,9 @@ export async function POST(request: NextRequest) {
     });
   } catch (err) {
     console.error("POST /api/webhooks/phantombuster error:", err);
+    // Do not leak internal error details to the client
     return NextResponse.json(
-      {
-        error:
-          err instanceof Error
-            ? err.message
-            : "Webhook processing failed",
-      },
+      { error: "Webhook processing failed" },
       { status: 500 }
     );
   }
