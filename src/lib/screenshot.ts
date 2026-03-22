@@ -231,15 +231,19 @@ async function takeUrlbox(
 /**
  * Local Playwright — for development or self-hosted render servers.
  * Requires playwright to be installed: npm i playwright
+ *
+ * NOTE: Playwright cannot be imported at build time (Turbopack resolves
+ * all dynamic imports statically). To use this strategy locally, run
+ * the dev server with SCREENSHOT_API=playwright and ensure playwright
+ * is installed. On Vercel, use screenshotone or urlbox instead.
  */
 async function takePlaywright(
   url: string,
   opts: { width: number; height: number; fullPage: boolean }
 ): Promise<Buffer> {
-  // Dynamic import — Playwright is optional (local-only dependency)
-  // Use computed string to prevent Turbopack from statically analyzing this import
-  const _pw = 'play' + 'wright';
-  const { chromium } = await import(_pw);
+  // Use require() to avoid Turbopack static analysis of the import
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { chromium } = require("playwright");
 
   const browser = await chromium.launch({ headless: true });
   try {
@@ -247,7 +251,6 @@ async function takePlaywright(
       viewport: { width: opts.width, height: opts.height },
     });
     await page.goto(url, { waitUntil: "networkidle", timeout: 30000 });
-    // Wait a bit for lazy-loaded content
     await page.waitForTimeout(2000);
 
     const buffer = await page.screenshot({
