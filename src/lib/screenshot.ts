@@ -236,9 +236,10 @@ async function takePlaywright(
   url: string,
   opts: { width: number; height: number; fullPage: boolean }
 ): Promise<Buffer> {
-  // Dynamic import — Playwright is optional
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const { chromium } = await import("playwright");
+  // Dynamic import — Playwright is optional (local-only dependency)
+  // Use computed string to prevent Turbopack from statically analyzing this import
+  const _pw = 'play' + 'wright';
+  const { chromium } = await import(_pw);
 
   const browser = await chromium.launch({ headless: true });
   try {
@@ -300,7 +301,7 @@ export async function captureAllScreenshots(
     domain,
     variant: "original",
   });
-  results.push(original);
+  results.push(original)
 
   // Each redesign variant
   for (const { variant, url } of variantUrls) {
