@@ -257,10 +257,16 @@ async function processEmailStep(
       emailParams.expirationDays = 7;
     }
 
-    // Send email via Resend
+    // Send email via Resend (with built-in retry + rate limiting)
     const sendResult = await sendOutreachEmail(emailParams);
 
     if (!sendResult.success) {
+      // If rate limited, don't advance the step — it will be retried next run
+      if ((sendResult as any).rateLimited) {
+        console.warn(
+          `[sequence-engine] Rate limited for record ${record.id}, will retry next run`
+        );
+      }
       return {
         record_id: record.id,
         domain: record.domain,
