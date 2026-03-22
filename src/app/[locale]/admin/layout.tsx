@@ -11,6 +11,7 @@ import {
   Zap,
   BarChart3,
   AlertCircle,
+  Rocket,
 } from "lucide-react";
 
 const NAV_GROUPS = [
@@ -27,6 +28,7 @@ const NAV_GROUPS = [
     items: [
       { href: "/outreach", label: "Outreach", icon: Send },
       { href: "/sequences", label: "Sekvence", icon: Zap },
+      { href: "/outreach-pipeline", label: "Pipeline Prep", icon: Rocket },
       { href: "/import", label: "Import", icon: BarChart3 },
     ],
   },
