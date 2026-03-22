@@ -229,39 +229,22 @@ async function takeUrlbox(
 }
 
 /**
- * Local Playwright — for development or self-hosted render servers.
- * Requires playwright to be installed: npm i playwright
+ * Local Playwright — stub for production builds.
  *
- * NOTE: Playwright cannot be imported at build time (Turbopack resolves
- * all dynamic imports statically). To use this strategy locally, run
- * the dev server with SCREENSHOT_API=playwright and ensure playwright
- * is installed. On Vercel, use screenshotone or urlbox instead.
+ * Turbopack statically resolves all import() and require() calls,
+ * so we cannot reference the playwright package at all in code that
+ * gets bundled for Vercel. Set SCREENSHOT_API=screenshotone or urlbox
+ * in production. For local dev with playwright, use a separate script.
  */
 async function takePlaywright(
   url: string,
   opts: { width: number; height: number; fullPage: boolean }
 ): Promise<Buffer> {
-  // Use require() to avoid Turbopack static analysis of the import
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { chromium } = require("playwright");
-
-  const browser = await chromium.launch({ headless: true });
-  try {
-    const page = await browser.newPage({
-      viewport: { width: opts.width, height: opts.height },
-    });
-    await page.goto(url, { waitUntil: "networkidle", timeout: 30000 });
-    await page.waitForTimeout(2000);
-
-    const buffer = await page.screenshot({
-      fullPage: opts.fullPage,
-      type: "png",
-    });
-
-    return Buffer.from(buffer);
-  } finally {
-    await browser.close();
-  }
+  throw new Error(
+    "Playwright screenshots are not available in this environment. " +
+    "Set SCREENSHOT_API to 'screenshotone' or 'urlbox' for production, " +
+    "or run the standalone playwright-screenshot script for local development."
+  );
 }
 
 /**
