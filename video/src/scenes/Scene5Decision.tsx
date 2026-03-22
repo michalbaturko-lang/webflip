@@ -8,7 +8,11 @@ import {
   Sequence,
 } from "remotion";
 import { loadFont } from "@remotion/google-fonts/Inter";
-import { GradientBackground, GridOverlay } from "../components/GradientBackground";
+import {
+  GradientBackground,
+  FloatingOrbs,
+  NoiseOverlay,
+} from "../components/GradientBackground";
 
 const { fontFamily } = loadFont("normal", {
   weights: ["400", "600", "700", "900"],
@@ -17,30 +21,32 @@ const { fontFamily } = loadFont("normal", {
 
 type Props = {
   companyName: string;
+  landingPageUrl: string;
 };
 
-const TIMELINE_STEPS = [
-  { day: "Den 1", label: "Vyberte svůj redesign", icon: "🎯" },
-  { day: "Den 2–5", label: "Upravte design v AI editoru", icon: "✏️" },
-  { day: "Den 6", label: "Finalizujte obsah", icon: "📋" },
-  { day: "Den 7", label: "Zaplaťte a spusťte", icon: "🚀" },
+const TIMELINE = [
+  { day: "Den 1", label: "Vyberte redesign", icon: "🎯" },
+  { day: "Den 2–5", label: "Upravte v editoru", icon: "✏️" },
+  { day: "Den 6", label: "Finalizujte", icon: "📋" },
+  { day: "Den 7", label: "Spusťte web", icon: "🚀" },
 ];
 
-export const Scene5Decision: React.FC<Props> = ({ companyName }) => {
+export const Scene5Decision: React.FC<Props> = ({ companyName, landingPageUrl }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  const titleEntrance = spring({ frame, fps, config: { damping: 200 } });
-  const titleOpacity = interpolate(titleEntrance, [0, 1], [0, 1]);
-  const titleY = interpolate(titleEntrance, [0, 1], [30, 0]);
+  const titleSpring = spring({ frame, fps, config: { damping: 200 } });
+  const titleOpacity = interpolate(titleSpring, [0, 1], [0, 1]);
+  const titleY = interpolate(titleSpring, [0, 1], [30, 0]);
 
-  // Countdown pulse
-  const pulse = interpolate(frame % 30, [0, 15, 30], [1, 1.05, 1]);
+  // Pulse on CTA
+  const pulse = interpolate(frame % 45, [0, 22, 45], [1, 1.03, 1]);
 
   return (
     <AbsoluteFill style={{ fontFamily }}>
-      <GradientBackground colors={["#1a0a2e", "#2a1040", "#1a0a2e"]} />
-      <GridOverlay />
+      <GradientBackground colors={["#09090b", "#1a0a28", "#09090b"]} />
+      <FloatingOrbs count={6} color="245, 158, 11" />
+      <NoiseOverlay />
 
       <AbsoluteFill style={{ padding: "50px 80px" }}>
         {/* Title */}
@@ -48,40 +54,40 @@ export const Scene5Decision: React.FC<Props> = ({ companyName }) => {
           style={{
             opacity: titleOpacity,
             transform: `translateY(${titleY}px)`,
-            marginBottom: 40,
+            marginBottom: 36,
             textAlign: "center",
           }}
         >
           <div
             style={{
-              fontSize: 20,
+              fontSize: 15,
               color: "#f59e0b",
-              fontWeight: 600,
+              fontWeight: 700,
               textTransform: "uppercase",
-              letterSpacing: 3,
-              marginBottom: 12,
+              letterSpacing: 4,
+              marginBottom: 14,
             }}
           >
-            Rozhodnutí
+            Další krok
           </div>
           <div
             style={{
-              fontSize: 50,
+              fontSize: 48,
               fontWeight: 900,
               color: "#ffffff",
-              lineHeight: 1.2,
+              lineHeight: 1.15,
             }}
           >
-            <span style={{ color: "#f59e0b" }}>7 dní</span> na rozhodnutí
+            <span style={{ color: "#f59e0b" }}>7 dní</span> na vyzkoušení — zdarma
           </div>
           <div
             style={{
-              fontSize: 22,
-              color: "rgba(255,255,255,0.6)",
-              marginTop: 12,
+              fontSize: 20,
+              color: "rgba(255,255,255,0.45)",
+              marginTop: 10,
             }}
           >
-            Zaplaťte kartou a web se spustí. Nebo smažeme vše — žádný závazek.
+            Zaplaťte a web je váš. Nebo smažeme vše — žádný závazek.
           </div>
         </div>
 
@@ -91,77 +97,64 @@ export const Scene5Decision: React.FC<Props> = ({ companyName }) => {
             style={{
               display: "flex",
               justifyContent: "center",
-              gap: 24,
-              marginBottom: 48,
+              gap: 16,
+              marginBottom: 40,
             }}
           >
-            {TIMELINE_STEPS.map((step, i) => {
-              const stepEntrance = spring({
+            {TIMELINE.map((step, i) => {
+              const stepSpring = spring({
                 frame,
                 fps,
-                delay: 20 + i * 15,
+                delay: 20 + i * 12,
                 config: { damping: 200 },
               });
-              const opacity = interpolate(stepEntrance, [0, 1], [0, 1]);
-              const scale = interpolate(stepEntrance, [0, 1], [0.8, 1]);
+              const sOpacity = interpolate(stepSpring, [0, 1], [0, 1]);
+              const sScale = interpolate(stepSpring, [0, 1], [0.85, 1]);
 
               return (
                 <React.Fragment key={i}>
                   <div
                     style={{
-                      opacity,
-                      transform: `scale(${scale})`,
+                      opacity: sOpacity,
+                      transform: `scale(${sScale})`,
                       display: "flex",
                       flexDirection: "column",
                       alignItems: "center",
-                      width: 200,
+                      width: 180,
                     }}
                   >
                     <div
                       style={{
-                        width: 72,
-                        height: 72,
-                        borderRadius: 20,
-                        background: "rgba(245,158,11,0.12)",
-                        border: "1px solid rgba(245,158,11,0.3)",
+                        width: 64,
+                        height: 64,
+                        borderRadius: 16,
+                        background: "rgba(245,158,11,0.08)",
+                        border: "1px solid rgba(245,158,11,0.2)",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        fontSize: 36,
-                        marginBottom: 14,
+                        fontSize: 30,
+                        marginBottom: 12,
                       }}
                     >
                       {step.icon}
                     </div>
-                    <div
-                      style={{
-                        fontSize: 15,
-                        fontWeight: 700,
-                        color: "#f59e0b",
-                        marginBottom: 4,
-                      }}
-                    >
+                    <div style={{ fontSize: 14, fontWeight: 700, color: "#f59e0b", marginBottom: 4 }}>
                       {step.day}
                     </div>
-                    <div
-                      style={{
-                        fontSize: 16,
-                        color: "rgba(255,255,255,0.7)",
-                        textAlign: "center",
-                      }}
-                    >
+                    <div style={{ fontSize: 15, color: "rgba(255,255,255,0.6)", textAlign: "center" }}>
                       {step.label}
                     </div>
                   </div>
-                  {i < TIMELINE_STEPS.length - 1 && (
+                  {i < TIMELINE.length - 1 && (
                     <div
                       style={{
                         display: "flex",
                         alignItems: "center",
-                        opacity: opacity * 0.4,
+                        opacity: sOpacity * 0.3,
                         color: "#f59e0b",
-                        fontSize: 28,
-                        marginTop: -30,
+                        fontSize: 20,
+                        marginTop: -20,
                       }}
                     >
                       →
@@ -173,147 +166,72 @@ export const Scene5Decision: React.FC<Props> = ({ companyName }) => {
           </div>
         </Sequence>
 
-        {/* Bottom: Two options */}
-        <Sequence from={80} layout="none">
-          <div
-            style={{
-              display: "flex",
-              gap: 40,
-              justifyContent: "center",
-            }}
-          >
-            {/* Option A: Pay */}
-            {(() => {
-              const aEntrance = spring({
-                frame: frame - 80,
-                fps,
-                config: { damping: 15 },
-              });
-              const aOpacity = interpolate(aEntrance, [0, 1], [0, 1]);
-              const aScale = interpolate(aEntrance, [0, 1], [0.8, 1]);
-              return (
+        {/* CTA */}
+        <Sequence from={70} layout="none">
+          {(() => {
+            const ctaSpring = spring({
+              frame: frame - 70,
+              fps,
+              config: { damping: 15 },
+            });
+            const ctaOpacity = interpolate(ctaSpring, [0, 1], [0, 1]);
+            const ctaScale = interpolate(ctaSpring, [0, 1], [0.9, 1]);
+
+            return (
+              <div
+                style={{
+                  opacity: ctaOpacity,
+                  transform: `scale(${ctaScale * pulse})`,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 16,
+                }}
+              >
+                {/* Big CTA button */}
                 <div
                   style={{
-                    opacity: aOpacity,
-                    transform: `scale(${aScale * pulse})`,
-                    width: 420,
-                    padding: "36px 40px",
-                    borderRadius: 24,
-                    background: "linear-gradient(135deg, rgba(34,197,94,0.15), rgba(16,185,129,0.1))",
-                    border: "2px solid rgba(34,197,94,0.4)",
-                    textAlign: "center",
+                    background: "linear-gradient(135deg, #6366f1, #7c3aed)",
+                    padding: "24px 64px",
+                    borderRadius: 20,
+                    boxShadow: "0 8px 32px rgba(99,102,241,0.4)",
                   }}
                 >
-                  <div style={{ fontSize: 48, marginBottom: 16 }}>💳</div>
                   <div
                     style={{
                       fontSize: 28,
                       fontWeight: 800,
-                      color: "#22c55e",
-                      marginBottom: 8,
+                      color: "#ffffff",
                     }}
                   >
-                    Zaplaťte a spusťte
-                  </div>
-                  <div
-                    style={{
-                      fontSize: 17,
-                      color: "rgba(255,255,255,0.6)",
-                      lineHeight: 1.5,
-                    }}
-                  >
-                    Jednorázová platba kartou. Web přejde na vaši doménu do 24
-                    hodin.
+                    Prohlédněte si návrhy →
                   </div>
                 </div>
-              );
-            })()}
 
-            {/* VS divider */}
-            {(() => {
-              const vsEntrance = spring({
-                frame: frame - 80,
-                fps,
-                delay: 10,
-                config: { damping: 200 },
-              });
-              return (
+                {/* URL */}
                 <div
                   style={{
-                    display: "flex",
-                    alignItems: "center",
-                    opacity: interpolate(vsEntrance, [0, 1], [0, 1]),
+                    fontSize: 16,
+                    color: "rgba(255,255,255,0.3)",
+                    fontWeight: 500,
                   }}
                 >
-                  <div
-                    style={{
-                      width: 50,
-                      height: 50,
-                      borderRadius: "50%",
-                      background: "rgba(255,255,255,0.06)",
-                      border: "1px solid rgba(255,255,255,0.15)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: 18,
-                      fontWeight: 700,
-                      color: "rgba(255,255,255,0.4)",
-                    }}
-                  >
-                    nebo
-                  </div>
+                  {landingPageUrl}
                 </div>
-              );
-            })()}
 
-            {/* Option B: Delete */}
-            {(() => {
-              const bEntrance = spring({
-                frame: frame - 80,
-                fps,
-                delay: 15,
-                config: { damping: 15 },
-              });
-              const bOpacity = interpolate(bEntrance, [0, 1], [0, 1]);
-              const bScale = interpolate(bEntrance, [0, 1], [0.8, 1]);
-              return (
+                {/* Company name */}
                 <div
                   style={{
-                    opacity: bOpacity,
-                    transform: `scale(${bScale})`,
-                    width: 420,
-                    padding: "36px 40px",
-                    borderRadius: 24,
-                    background: "rgba(255,255,255,0.03)",
-                    border: "1px solid rgba(255,255,255,0.1)",
-                    textAlign: "center",
+                    marginTop: 8,
+                    fontSize: 15,
+                    color: "rgba(255,255,255,0.2)",
                   }}
                 >
-                  <div style={{ fontSize: 48, marginBottom: 16 }}>🗑️</div>
-                  <div
-                    style={{
-                      fontSize: 28,
-                      fontWeight: 800,
-                      color: "rgba(255,255,255,0.5)",
-                      marginBottom: 8,
-                    }}
-                  >
-                    Smažeme vše
-                  </div>
-                  <div
-                    style={{
-                      fontSize: 17,
-                      color: "rgba(255,255,255,0.4)",
-                      lineHeight: 1.5,
-                    }}
-                  >
-                    Žádný závazek, žádné poplatky. Po 7 dnech se vše
-                    automaticky odstraní.
-                  </div>
+                  Připraveno pro {companyName}
                 </div>
-              );
-            })()}
-          </div>
+              </div>
+            );
+          })()}
         </Sequence>
       </AbsoluteFill>
     </AbsoluteFill>

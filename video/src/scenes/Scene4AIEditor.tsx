@@ -8,31 +8,35 @@ import {
   Sequence,
 } from "remotion";
 import { loadFont } from "@remotion/google-fonts/Inter";
-import { GradientBackground, GridOverlay } from "../components/GradientBackground";
+import {
+  GradientBackground,
+  FloatingOrbs,
+  NoiseOverlay,
+} from "../components/GradientBackground";
 
 const { fontFamily } = loadFont("normal", {
   weights: ["400", "600", "700", "900"],
   subsets: ["latin", "latin-ext"],
 });
 
-const EDITOR_STEPS = [
+const STEPS = [
   {
-    icon: "📝",
-    label: "Klikněte na text",
-    desc: "Vyberte jakýkoli textový blok",
-    mockAction: "select",
+    num: "01",
+    label: "Klikněte na prvek",
+    desc: "Vyberte jakýkoli text, obrázek nebo blok na stránce",
+    color: "#6366f1",
   },
   {
-    icon: "🤖",
-    label: "AI navrhne",
-    desc: "Umělá inteligence navrhne lepší verzi",
-    mockAction: "suggest",
+    num: "02",
+    label: "Popište změnu",
+    desc: "Napište česky co chcete — \"změň barvu na modrou\"",
+    color: "#8b5cf6",
   },
   {
-    icon: "✅",
-    label: "Potvrdíte",
-    desc: "Jedním kliknutím schválíte změnu",
-    mockAction: "confirm",
+    num: "03",
+    label: "AI upraví okamžitě",
+    desc: "Barvy, texty, obrázky, layout — vše se změní během sekund",
+    color: "#a855f7",
   },
 ];
 
@@ -40,28 +44,29 @@ export const Scene4AIEditor: React.FC = () => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  const titleEntrance = spring({ frame, fps, config: { damping: 200 } });
-  const titleOpacity = interpolate(titleEntrance, [0, 1], [0, 1]);
-  const titleY = interpolate(titleEntrance, [0, 1], [30, 0]);
+  const titleSpring = spring({ frame, fps, config: { damping: 200 } });
+  const titleOpacity = interpolate(titleSpring, [0, 1], [0, 1]);
+  const titleY = interpolate(titleSpring, [0, 1], [30, 0]);
 
-  // Cursor animation for the mock editor
-  const cursorProgress = interpolate(frame, [60, 180], [0, 1], {
+  // Mock editor phases
+  const editPhase = interpolate(frame, [60, 100, 140, 200], [0, 1, 1, 2], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
-  const cursorX = interpolate(cursorProgress, [0, 0.3, 0.7, 1], [200, 480, 480, 600]);
-  const cursorY = interpolate(cursorProgress, [0, 0.3, 0.7, 1], [300, 180, 180, 220]);
 
-  // Text editing animation
-  const editPhase = interpolate(frame, [90, 120, 150, 200], [0, 1, 1, 2], {
+  // Cursor
+  const cursorProgress = interpolate(frame, [50, 160], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
+  const cursorX = interpolate(cursorProgress, [0, 0.3, 0.7, 1], [120, 360, 360, 440]);
+  const cursorY = interpolate(cursorProgress, [0, 0.3, 0.7, 1], [260, 140, 140, 180]);
 
   return (
     <AbsoluteFill style={{ fontFamily }}>
-      <GradientBackground colors={["#0a1a1a", "#0a2a2a", "#0a1a2e"]} />
-      <GridOverlay />
+      <GradientBackground colors={["#09090b", "#0a1a18", "#09090b"]} />
+      <FloatingOrbs count={4} color="34, 197, 94" />
+      <NoiseOverlay />
 
       <AbsoluteFill style={{ padding: "50px 80px" }}>
         {/* Title */}
@@ -74,96 +79,106 @@ export const Scene4AIEditor: React.FC = () => {
         >
           <div
             style={{
-              fontSize: 20,
+              fontSize: 15,
               color: "#22c55e",
-              fontWeight: 600,
+              fontWeight: 700,
               textTransform: "uppercase",
-              letterSpacing: 3,
-              marginBottom: 12,
+              letterSpacing: 4,
+              marginBottom: 14,
             }}
           >
             AI Editor
           </div>
           <div
             style={{
-              fontSize: 48,
+              fontSize: 44,
               fontWeight: 900,
               color: "#ffffff",
-              lineHeight: 1.2,
+              lineHeight: 1.15,
             }}
           >
-            Upravte si web{" "}
-            <span style={{ color: "#22c55e" }}>sami</span> — s pomocí AI
+            Upravte web{" "}
+            <span
+              style={{
+                background: "linear-gradient(135deg, #22c55e, #10b981)",
+                backgroundClip: "text",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+              }}
+            >
+              sami
+            </span>
+            {" — "}bez programátora
           </div>
         </div>
 
         <div style={{ display: "flex", gap: 40 }}>
           {/* Left: Mock editor */}
-          <Sequence from={20} layout="none">
+          <Sequence from={15} layout="none">
             <div
               style={{
                 flex: 1.3,
-                background: "rgba(255,255,255,0.03)",
-                borderRadius: 20,
-                border: "1px solid rgba(255,255,255,0.1)",
+                background: "rgba(255,255,255,0.02)",
+                borderRadius: 16,
+                border: "1px solid rgba(255,255,255,0.06)",
                 overflow: "hidden",
                 position: "relative",
+                boxShadow: "0 16px 64px rgba(0,0,0,0.4)",
               }}
             >
-              {/* Mock toolbar */}
+              {/* Toolbar */}
               <div
                 style={{
-                  height: 48,
-                  background: "rgba(255,255,255,0.06)",
-                  borderBottom: "1px solid rgba(255,255,255,0.08)",
+                  height: 44,
+                  background: "linear-gradient(180deg, #1e1e2e, #1a1a28)",
+                  borderBottom: "1px solid rgba(255,255,255,0.06)",
                   display: "flex",
                   alignItems: "center",
-                  padding: "0 20px",
-                  gap: 16,
+                  padding: "0 16px",
+                  gap: 12,
                 }}
               >
-                <div style={{ display: "flex", gap: 6 }}>
-                  <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#ef4444" }} />
-                  <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#f59e0b" }} />
-                  <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#22c55e" }} />
+                <div style={{ display: "flex", gap: 7 }}>
+                  <div style={{ width: 11, height: 11, borderRadius: "50%", background: "#ff5f57" }} />
+                  <div style={{ width: 11, height: 11, borderRadius: "50%", background: "#febc2e" }} />
+                  <div style={{ width: 11, height: 11, borderRadius: "50%", background: "#28c840" }} />
                 </div>
                 <div
                   style={{
                     flex: 1,
                     height: 28,
-                    borderRadius: 6,
-                    background: "rgba(255,255,255,0.06)",
+                    borderRadius: 7,
+                    background: "rgba(0,0,0,0.3)",
                     display: "flex",
                     alignItems: "center",
                     padding: "0 12px",
-                    fontSize: 13,
-                    color: "rgba(255,255,255,0.4)",
+                    fontSize: 12,
+                    color: "rgba(255,255,255,0.35)",
                   }}
                 >
-                  webflip.io/editor
+                  🔒 webflip.cz/editor
                 </div>
               </div>
 
-              {/* Mock content */}
-              <div style={{ padding: "32px 40px" }}>
-                {/* Mock heading being edited */}
+              {/* Content */}
+              <div style={{ padding: "28px 36px" }}>
+                {/* Editable heading */}
                 <div
                   style={{
-                    fontSize: 28,
+                    fontSize: 26,
                     fontWeight: 700,
                     color: "#ffffff",
-                    padding: "8px 12px",
-                    borderRadius: 8,
+                    padding: "10px 14px",
+                    borderRadius: 10,
                     background:
                       editPhase > 0
-                        ? "rgba(99,102,241,0.15)"
+                        ? "rgba(99,102,241,0.12)"
                         : "transparent",
                     border:
                       editPhase > 0
-                        ? "2px solid rgba(99,102,241,0.5)"
+                        ? "2px solid rgba(99,102,241,0.4)"
                         : "2px solid transparent",
-                    marginBottom: 20,
-                    transition: "none",
+                    marginBottom: 18,
                   }}
                 >
                   {editPhase < 1.5
@@ -175,71 +190,58 @@ export const Scene4AIEditor: React.FC = () => {
                 {editPhase >= 1 && editPhase < 2 && (
                   <div
                     style={{
-                      background: "rgba(99,102,241,0.2)",
-                      border: "1px solid rgba(99,102,241,0.4)",
+                      background: "rgba(99,102,241,0.15)",
+                      border: "1px solid rgba(99,102,241,0.3)",
                       borderRadius: 12,
-                      padding: "16px 20px",
-                      marginBottom: 20,
+                      padding: "14px 18px",
+                      marginBottom: 18,
                     }}
                   >
-                    <div
-                      style={{
-                        fontSize: 13,
-                        color: "#a5b4fc",
-                        fontWeight: 600,
-                        marginBottom: 8,
-                      }}
-                    >
-                      🤖 AI návrh:
+                    <div style={{ fontSize: 12, color: "#a5b4fc", fontWeight: 600, marginBottom: 6 }}>
+                      ✨ AI návrh:
                     </div>
-                    <div
-                      style={{
-                        fontSize: 18,
-                        color: "#ffffff",
-                        fontWeight: 600,
-                      }}
-                    >
-                      "Najděte řešení pro váš byznys"
+                    <div style={{ fontSize: 17, color: "#ffffff", fontWeight: 600 }}>
+                      „Najděte řešení pro váš byznys"
                     </div>
                   </div>
                 )}
 
-                {/* Mock paragraph lines */}
-                {[200, 280, 160].map((w, i) => (
+                {/* Placeholder lines */}
+                {[240, 320, 180].map((w, i) => (
                   <div
                     key={i}
                     style={{
                       width: w,
-                      height: 14,
-                      borderRadius: 4,
-                      background: "rgba(255,255,255,0.08)",
+                      height: 12,
+                      borderRadius: 6,
+                      background: "rgba(255,255,255,0.06)",
                       marginBottom: 10,
                     }}
                   />
                 ))}
 
-                {/* Mock image block */}
+                {/* Mock image placeholder */}
                 <div
                   style={{
                     width: "100%",
-                    height: 120,
+                    height: 100,
                     borderRadius: 12,
-                    background: "linear-gradient(135deg, rgba(99,102,241,0.1), rgba(139,92,246,0.1))",
-                    border: "1px dashed rgba(255,255,255,0.1)",
+                    background: "linear-gradient(135deg, rgba(99,102,241,0.06), rgba(139,92,246,0.06))",
+                    border: "1px dashed rgba(255,255,255,0.08)",
+                    marginTop: 16,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    marginTop: 20,
-                    fontSize: 24,
-                    color: "rgba(255,255,255,0.2)",
+                    fontSize: 14,
+                    color: "rgba(255,255,255,0.15)",
                   }}
                 >
-                  🖼️ Přetáhněte nový obrázek
+                  Přetáhněte obrázek
                 </div>
               </div>
 
-              {/* Animated cursor */}
-              {frame > 50 && frame < 200 && (
+              {/* Cursor */}
+              {frame > 40 && frame < 180 && (
                 <div
                   style={{
                     position: "absolute",
@@ -247,10 +249,10 @@ export const Scene4AIEditor: React.FC = () => {
                     top: cursorY,
                     width: 0,
                     height: 0,
-                    borderLeft: "12px solid #ffffff",
-                    borderTop: "8px solid transparent",
-                    borderBottom: "8px solid transparent",
-                    filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.5))",
+                    borderLeft: "14px solid #ffffff",
+                    borderTop: "9px solid transparent",
+                    borderBottom: "9px solid transparent",
+                    filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.6))",
                     transform: "rotate(-30deg)",
                   }}
                 />
@@ -259,27 +261,26 @@ export const Scene4AIEditor: React.FC = () => {
           </Sequence>
 
           {/* Right: Steps */}
-          <Sequence from={40} layout="none">
+          <Sequence from={30} layout="none">
             <div
               style={{
-                flex: 0.7,
+                flex: 0.65,
                 display: "flex",
                 flexDirection: "column",
                 justifyContent: "center",
-                gap: 24,
+                gap: 20,
               }}
             >
-              {EDITOR_STEPS.map((step, i) => {
-                const stepEntrance = spring({
-                  frame: frame - 40,
+              {STEPS.map((step, i) => {
+                const stepSpring = spring({
+                  frame: frame - 30,
                   fps,
-                  delay: i * 20,
+                  delay: i * 18,
                   config: { damping: 200 },
                 });
-                const opacity = interpolate(stepEntrance, [0, 1], [0, 1]);
-                const x = interpolate(stepEntrance, [0, 1], [40, 0]);
+                const sOpacity = interpolate(stepSpring, [0, 1], [0, 1]);
+                const sX = interpolate(stepSpring, [0, 1], [30, 0]);
 
-                // Highlight active step
                 const isActive =
                   (i === 0 && editPhase >= 0 && editPhase < 1) ||
                   (i === 1 && editPhase >= 1 && editPhase < 2) ||
@@ -289,53 +290,56 @@ export const Scene4AIEditor: React.FC = () => {
                   <div
                     key={i}
                     style={{
-                      opacity,
-                      transform: `translateX(${x}px)`,
+                      opacity: sOpacity,
+                      transform: `translateX(${sX}px)`,
                       display: "flex",
                       alignItems: "center",
-                      gap: 20,
-                      padding: "24px 28px",
+                      gap: 18,
+                      padding: "22px 24px",
                       background: isActive
-                        ? "rgba(34,197,94,0.12)"
-                        : "rgba(255,255,255,0.03)",
-                      borderRadius: 16,
+                        ? `rgba(34,197,94,0.08)`
+                        : "rgba(255,255,255,0.02)",
+                      borderRadius: 14,
                       border: isActive
-                        ? "1px solid rgba(34,197,94,0.4)"
-                        : "1px solid rgba(255,255,255,0.06)",
+                        ? "1px solid rgba(34,197,94,0.3)"
+                        : "1px solid rgba(255,255,255,0.04)",
                     }}
                   >
                     <div
                       style={{
-                        width: 56,
-                        height: 56,
-                        borderRadius: 14,
+                        width: 48,
+                        height: 48,
+                        borderRadius: 12,
                         background: isActive
-                          ? "rgba(34,197,94,0.2)"
-                          : "rgba(255,255,255,0.06)",
+                          ? `linear-gradient(135deg, ${step.color}, ${step.color}88)`
+                          : "rgba(255,255,255,0.04)",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        fontSize: 28,
+                        fontSize: 18,
+                        fontWeight: 900,
+                        color: isActive ? "#ffffff" : "rgba(255,255,255,0.3)",
                         flexShrink: 0,
                       }}
                     >
-                      {step.icon}
+                      {step.num}
                     </div>
                     <div>
                       <div
                         style={{
-                          fontSize: 20,
+                          fontSize: 19,
                           fontWeight: 700,
                           color: isActive ? "#22c55e" : "#ffffff",
-                          marginBottom: 4,
+                          marginBottom: 3,
                         }}
                       >
                         {step.label}
                       </div>
                       <div
                         style={{
-                          fontSize: 15,
-                          color: "rgba(255,255,255,0.5)",
+                          fontSize: 14,
+                          color: "rgba(255,255,255,0.4)",
+                          lineHeight: 1.4,
                         }}
                       >
                         {step.desc}

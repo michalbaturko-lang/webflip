@@ -8,164 +8,177 @@ import {
   Sequence,
 } from "remotion";
 import { loadFont } from "@remotion/google-fonts/Inter";
-import { GradientBackground, GridOverlay } from "../components/GradientBackground";
+import {
+  GradientBackground,
+  FloatingOrbs,
+  NoiseOverlay,
+} from "../components/GradientBackground";
+import { BrowserFrame } from "../components/BrowserFrame";
 
 const { fontFamily } = loadFont("normal", {
   weights: ["400", "600", "700", "900"],
   subsets: ["latin", "latin-ext"],
 });
 
-const ARGUMENTS = [
-  {
-    icon: "🤖",
-    title: "AI vás nevidí",
-    desc: "ChatGPT, Perplexity a AI asistenti váš web přeskakují. Nemáte strukturovaná data, schéma markup ani správné meta tagy.",
-    color: "#ef4444",
-  },
-  {
-    icon: "📱",
-    title: "Není mobilní",
-    desc: "60 % návštěvníků přichází z mobilu. Starý design ztrácí zákazníky ještě dřív, než stihnou zavolat.",
-    color: "#f59e0b",
-  },
-  {
-    icon: "🐌",
-    title: "Pomalé načítání",
-    desc: "Každá sekunda navíc snižuje konverzi o 7 %. Velké obrázky a zastaralý kód vás stojí peníze.",
-    color: "#f97316",
-  },
-  {
-    icon: "🔒",
-    title: "Bezpečnostní díry",
-    desc: "Chybějící HTTPS, zastaralé pluginy a slabé hlavičky ohrožují vaše zákazníky i vaši reputaci.",
-    color: "#dc2626",
-  },
-];
-
-type ArgumentCardProps = {
-  icon: string;
-  title: string;
-  desc: string;
-  color: string;
-  index: number;
+type Props = {
+  originalScreenshotUrl: string;
+  problems: string[];
 };
 
-const ArgumentCard: React.FC<ArgumentCardProps> = ({
-  icon,
-  title,
-  desc,
-  color,
-  index,
+export const Scene1Outdated: React.FC<Props> = ({
+  originalScreenshotUrl,
+  problems,
 }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  const entrance = spring({
-    frame,
-    fps,
-    delay: index * 25,
-    config: { damping: 200 },
-  });
-
-  const opacity = interpolate(entrance, [0, 1], [0, 1]);
-  const translateX = interpolate(entrance, [0, 1], [80, 0]);
-
-  return (
-    <div
-      style={{
-        opacity,
-        transform: `translateX(${translateX}px)`,
-        display: "flex",
-        alignItems: "flex-start",
-        gap: 24,
-        padding: "24px 32px",
-        background: "rgba(255,255,255,0.04)",
-        borderRadius: 16,
-        borderLeft: `4px solid ${color}`,
-        marginBottom: 16,
-      }}
-    >
-      <div style={{ fontSize: 44, lineHeight: 1, flexShrink: 0 }}>{icon}</div>
-      <div>
-        <div
-          style={{
-            fontSize: 28,
-            fontWeight: 700,
-            color: "#ffffff",
-            marginBottom: 6,
-          }}
-        >
-          {title}
-        </div>
-        <div
-          style={{
-            fontSize: 18,
-            color: "rgba(255,255,255,0.65)",
-            lineHeight: 1.5,
-          }}
-        >
-          {desc}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-export const Scene1Outdated: React.FC = () => {
-  const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
-
-  const titleEntrance = spring({ frame, fps, config: { damping: 200 } });
-  const titleOpacity = interpolate(titleEntrance, [0, 1], [0, 1]);
-  const titleY = interpolate(titleEntrance, [0, 1], [30, 0]);
+  const titleSpring = spring({ frame, fps, config: { damping: 200 } });
+  const titleOpacity = interpolate(titleSpring, [0, 1], [0, 1]);
+  const titleY = interpolate(titleSpring, [0, 1], [30, 0]);
 
   return (
     <AbsoluteFill style={{ fontFamily }}>
-      <GradientBackground colors={["#1a0a0a", "#2a0a1a", "#1a0a2e"]} />
-      <GridOverlay />
+      <GradientBackground colors={["#09090b", "#1a0a12", "#09090b"]} />
+      <FloatingOrbs count={4} color="239, 68, 68" />
+      <NoiseOverlay />
 
-      <AbsoluteFill style={{ padding: "60px 100px" }}>
-        {/* Title */}
-        <div
-          style={{
-            opacity: titleOpacity,
-            transform: `translateY(${titleY}px)`,
-            marginBottom: 48,
-          }}
-        >
+      <AbsoluteFill
+        style={{
+          padding: "56px 80px",
+          display: "flex",
+          flexDirection: "row",
+          gap: 56,
+        }}
+      >
+        {/* Left: Title + Problems */}
+        <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+          {/* Section label + title */}
           <div
             style={{
-              fontSize: 20,
-              color: "#ef4444",
-              fontWeight: 600,
-              textTransform: "uppercase",
-              letterSpacing: 3,
-              marginBottom: 12,
+              opacity: titleOpacity,
+              transform: `translateY(${titleY}px)`,
+              marginBottom: 40,
             }}
           >
-            Problém
+            <div
+              style={{
+                fontSize: 15,
+                color: "#ef4444",
+                fontWeight: 700,
+                textTransform: "uppercase",
+                letterSpacing: 4,
+                marginBottom: 14,
+              }}
+            >
+              Problém
+            </div>
+            <div
+              style={{
+                fontSize: 46,
+                fontWeight: 900,
+                color: "#ffffff",
+                lineHeight: 1.15,
+              }}
+            >
+              Proč váš web
+              <br />
+              <span
+                style={{
+                  background: "linear-gradient(135deg, #ef4444, #f97316)",
+                  backgroundClip: "text",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                }}
+              >
+                ztrácí zákazníky
+              </span>
+            </div>
           </div>
-          <div
-            style={{
-              fontSize: 52,
-              fontWeight: 900,
-              color: "#ffffff",
-              lineHeight: 1.2,
-            }}
-          >
-            Proč váš web{" "}
-            <span style={{ color: "#ef4444" }}>ztrácí zákazníky</span>
-          </div>
+
+          {/* Problem list */}
+          <Sequence from={25} layout="none">
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              {problems.slice(0, 4).map((problem, i) => {
+                const pSpring = spring({
+                  frame: frame - 25,
+                  fps,
+                  delay: i * 18,
+                  config: { damping: 200 },
+                });
+                const pOpacity = interpolate(pSpring, [0, 1], [0, 1]);
+                const pX = interpolate(pSpring, [0, 1], [40, 0]);
+
+                return (
+                  <div
+                    key={i}
+                    style={{
+                      opacity: pOpacity,
+                      transform: `translateX(${pX}px)`,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 16,
+                      padding: "18px 24px",
+                      background: "rgba(239, 68, 68, 0.06)",
+                      borderRadius: 14,
+                      borderLeft: "3px solid rgba(239, 68, 68, 0.5)",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: 8,
+                        background: "rgba(239, 68, 68, 0.15)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: 16,
+                        color: "#ef4444",
+                        fontWeight: 900,
+                        flexShrink: 0,
+                      }}
+                    >
+                      ✗
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 19,
+                        color: "rgba(255,255,255,0.75)",
+                        lineHeight: 1.4,
+                        fontWeight: 500,
+                      }}
+                    >
+                      {problem}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </Sequence>
         </div>
 
-        {/* Arguments */}
-        <Sequence from={20} layout="none">
-          <div style={{ display: "flex", flexDirection: "column" }}>
-            {ARGUMENTS.map((arg, i) => (
-              <ArgumentCard key={i} {...arg} index={i} />
-            ))}
-          </div>
-        </Sequence>
+        {/* Right: Screenshot of original web in browser frame */}
+        <div
+          style={{
+            flex: 0.9,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Sequence from={10} layout="none">
+            <BrowserFrame
+              url="uzlateholva.cz"
+              screenshotUrl={originalScreenshotUrl}
+              width={720}
+              height={500}
+              delay={10}
+              problemOverlay
+              badge="Zastaralý"
+              badgeColor="#ef4444"
+            />
+          </Sequence>
+        </div>
       </AbsoluteFill>
     </AbsoluteFill>
   );

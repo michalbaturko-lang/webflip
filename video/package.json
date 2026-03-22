@@ -4,8 +4,8 @@
   "description": "Webflip outreach video - Remotion",
   "scripts": {
     "start": "npx remotion studio src/index.ts",
-    "build": "npx remotion render src/index.ts OutreachVideo out/outreach-video.mp4",
-    "build:gif": "npx remotion render src/index.ts OutreachVideo out/outreach-video.gif --image-format png",
+    "build": "npx remotion render src/index.ts WebflipVideo out/outreach-video.mp4",
+    "build:gif": "npx remotion render src/index.ts WebflipVideo out/outreach-video.gif --image-format png",
     "preview": "npx remotion preview src/index.ts"
   },
   "keywords": [],
@@ -14,6 +14,7 @@
   "dependencies": {
     "@remotion/cli": "^4.0.438",
     "@remotion/google-fonts": "^4.0.438",
+    "@remotion/media": "^4.0.438",
     "@remotion/transitions": "^4.0.438",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
