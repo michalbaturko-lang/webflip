@@ -1,6 +1,6 @@
 {
   "meta": {
-    "title": "Webflip — Váš web, pretvorený umelou inteligenciou",
+    "title": "Webflipper — Váš web, pretvorený umelou inteligenciou",
     "description": "Zadajte URL. Získajte kompletnú analýzu a 3 návrhy redizajnu. Plaťte len keď sa vám to páči."
   },
   "nav": {
@@ -69,9 +69,9 @@
     "totalTraditionalPrice": "10 500 €+",
     "totalTraditionalTime": "4–8 týždňov",
     "vsLabel": "VS",
-    "webflipPrice": "997 €",
-    "webflipTime": "7 dní na rozhodnutie",
-    "webflipIncludes": "Všetko v cene",
+    "webflipperPrice": "997 €",
+    "webflipperTime": "7 dní na rozhodnutie",
+    "webflipperIncludes": "Všetko v cene",
     "includes1": "Kompletný zdrojový kód",
     "includes2": "Žiadna závislosť na platforme",
     "includes3": "3 dizajnové varianty na výber",

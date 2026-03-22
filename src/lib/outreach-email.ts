@@ -5,7 +5,7 @@ import {
   getOutreachFinalPushHtml,
 } from "./outreach-email-templates";
 
-const FROM_ADDRESS = "Webflip <noreply@webflip.io>";
+const FROM_ADDRESS = "Webflipper <noreply@webflipper.app>";
 
 type OutreachEmailType = "cold_intro" | "follow_up" | "final_push";
 

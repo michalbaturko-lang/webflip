@@ -156,7 +156,7 @@ export const Scene4AIEditor: React.FC = () => {
                     color: "rgba(255,255,255,0.35)",
                   }}
                 >
-                  🔒 webflip.cz/editor
+                  🔒 webflipper.app/editor
                 </div>
               </div>
 

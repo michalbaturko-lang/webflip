@@ -129,18 +129,18 @@ export async function getVideoData(
         screenshotUrl:
           v.screenshotUrl ??
           v.previewUrl ??
-          `https://webflip.cz/api/screenshot/${record.domain}/${v.name.toLowerCase()}`,
+          `https://webflipper.app/api/screenshot/${record.domain}/${v.name.toLowerCase()}`,
         features: v.features,
       }))
     : [
         {
           name: "Moderní",
-          screenshotUrl: `https://webflip.cz/api/screenshot/${record.domain}/modern`,
+          screenshotUrl: `https://webflipper.app/api/screenshot/${record.domain}/modern`,
           features: ["Responzivní design", "Rychlé načítání", "Moderní vzhled"],
         },
         {
           name: "Profesionální",
-          screenshotUrl: `https://webflip.cz/api/screenshot/${record.domain}/professional`,
+          screenshotUrl: `https://webflipper.app/api/screenshot/${record.domain}/professional`,
           features: [
             "Firemní branding",
             "SEO optimalizace",
@@ -149,17 +149,17 @@ export async function getVideoData(
         },
         {
           name: "Konverzní",
-          screenshotUrl: `https://webflip.cz/api/screenshot/${record.domain}/conversion`,
+          screenshotUrl: `https://webflipper.app/api/screenshot/${record.domain}/conversion`,
           features: ["Lead magnet", "Social proof", "A/B testovaný"],
         },
       ];
 
-  const landingPageUrl = `https://webflip.cz/preview/${record.domain}?ref=video&rid=${recordId}`;
+  const landingPageUrl = `https://webflipper.app/preview/${record.domain}?ref=video&rid=${recordId}`;
 
   // Original website screenshot
   const originalScreenshotUrl =
     (meta.originalScreenshotUrl as string) ??
-    `https://webflip.cz/api/screenshot/${record.domain}/original`;
+    `https://webflipper.app/api/screenshot/${record.domain}/original`;
 
   return {
     companyName: record.company_name ?? record.domain,

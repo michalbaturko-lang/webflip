@@ -474,7 +474,7 @@ function mapTemplateToEmailType(template: string): "cold_intro" | "follow_up" | 
  * Get landing page URL for a record
  */
 export function getLandingPageUrl(record: CrmRecord): string {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://webflip.io";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://webflipper.app";
   const slug = record.company_name
     ? record.company_name
         .toLowerCase()

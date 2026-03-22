@@ -251,6 +251,6 @@ export async function GET(request: NextRequest) {
   }
   return NextResponse.json({
     status: "ok",
-    service: "webflip-resend-webhook",
+    service: "webflipper-resend-webhook",
   });
 }

@@ -7,7 +7,7 @@ export async function GET() {
     return new NextResponse(csv, {
       headers: {
         "Content-Type": "text/csv",
-        "Content-Disposition": `attachment; filename="webflip-crm-export-${new Date().toISOString().slice(0, 10)}.csv"`,
+        "Content-Disposition": `attachment; filename="webflipper-crm-export-${new Date().toISOString().slice(0, 10)}.csv"`,
       },
     });
   } catch (err) {

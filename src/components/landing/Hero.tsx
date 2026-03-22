@@ -191,7 +191,7 @@ export default function Hero({ onAnalyze }: HeroProps) {
                 <div className="h-2.5 w-2.5 rounded-full bg-yellow-500/50" />
                 <div className="h-2.5 w-2.5 rounded-full bg-green-500/50" />
                 <div className="ml-4 flex-1 h-7 rounded-lg flex items-center px-3" style={{ background: "var(--bg-card)" }}>
-                  <span className="text-xs font-mono" style={{ color: "var(--text-faint)" }}>webflip.io/analyze/your-website</span>
+                  <span className="text-xs font-mono" style={{ color: "var(--text-faint)" }}>webflipper.app/analyze/your-website</span>
                 </div>
               </div>
               {/* Mock analysis grid */}

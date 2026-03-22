@@ -2,7 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import type { BusinessProfile, ExtractedAssets } from "./supabase";
 
 /**
- * Business Interpretation Layer — the intelligence core of Webflip.
+ * Business Interpretation Layer — the intelligence core of Webflipper.
  *
  * Analyzes crawled website content to build a deep business profile that
  * drives all downstream content generation (FAQ, blog posts, variant design).

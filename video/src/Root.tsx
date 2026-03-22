@@ -38,7 +38,7 @@ const DEFAULT_PROPS: OutreachVideoProps = {
     },
   ],
   originalScreenshotUrl: "https://placehold.co/1200x800/1a1a2e/666666?text=Original+Web",
-  landingPageUrl: "https://webflip.cz/preview/uzlateholva.cz",
+  landingPageUrl: "https://webflipper.app/preview/uzlateholva.cz",
 };
 
 // Total frames: 120 + 360 + 360 + 420 + 300 + 300 - (5 transitions * 18) = 1770
@@ -47,7 +47,7 @@ const TOTAL_FRAMES = 1770;
 export const RemotionRoot = () => {
   return (
     <Composition
-      id="WebflipVideo"
+      id="WebflipperVideo"
       component={OutreachVideo}
       durationInFrames={TOTAL_FRAMES}
       fps={30}

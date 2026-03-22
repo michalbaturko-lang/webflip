@@ -1,7 +1,7 @@
-# Webflip — Master Prompts pro generování webů
+# Webflipper — Master Prompts pro generování webů
 
 ## Zdroj
-Extrahováno z viral tweetu (9 Claude + Figma Make promptů) + vlastní úpravy pro Webflip workflow.
+Extrahováno z viral tweetu (9 Claude + Figma Make promptů) + vlastní úpravy pro Webflipper workflow.
 
 ---
 

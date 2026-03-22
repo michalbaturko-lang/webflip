@@ -150,6 +150,6 @@ export async function GET(request: NextRequest) {
   }
   return NextResponse.json({
     status: "ok",
-    service: "webflip-phantombuster-webhook",
+    service: "webflipper-phantombuster-webhook",
   });
 }

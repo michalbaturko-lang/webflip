@@ -313,7 +313,7 @@ export default async function OutreachLandingPage({ params }: PageProps) {
       {/* Video Placeholder */}
       <section className="py-16 px-4 bg-slate-800/50">
         <div className="max-w-3xl mx-auto text-center">
-          <h2 className="text-2xl font-bold mb-4">Jak Webflip funguje</h2>
+          <h2 className="text-2xl font-bold mb-4">Jak Webflipper funguje</h2>
           <p className="text-slate-400 mb-8">
             Podívejte se na krátké video, jak AI analyzuje a redesignuje weby
           </p>
@@ -335,7 +335,7 @@ export default async function OutreachLandingPage({ params }: PageProps) {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <a
-              href="mailto:info@webflip.io"
+              href="mailto:info@webflipper.app"
               className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-semibold py-4 px-8 rounded-xl text-lg transition-all"
             >
               Napište nám
@@ -353,9 +353,9 @@ export default async function OutreachLandingPage({ params }: PageProps) {
       {/* Footer */}
       <footer className="py-8 px-4 border-t border-slate-800">
         <div className="max-w-4xl mx-auto text-center text-sm text-slate-500">
-          <p>Webflip — AI-powered website redesign</p>
+          <p>Webflipper — AI-powered website redesign</p>
           <p className="mt-1">
-            © {new Date().getFullYear()} Webflip. Všechna práva vyhrazena.
+            © {new Date().getFullYear()} Webflipper. Všechna práva vyhrazena.
           </p>
         </div>
       </footer>
@@ -369,8 +369,8 @@ export async function generateMetadata({ params }: PageProps) {
 
   return {
     title: data?.company?.name
-      ? `Redesign pro ${data.company.name} | Webflip`
-      : "Váš personalizovaný redesign | Webflip",
+      ? `Redesign pro ${data.company.name} | Webflipper`
+      : "Váš personalizovaný redesign | Webflipper",
     description: `Podívejte se na AI-generovaný redesign vašeho webu ${data?.company?.domain || ""}`,
     robots: "noindex, nofollow",
   };

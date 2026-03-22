@@ -21,7 +21,7 @@ export interface DiffLine {
 }
 
 export interface InlineEditMessage {
-  type: "webflip-inline-edit";
+  type: "webflipper-inline-edit";
   selector: string;
   text: string;
   rect: { left: number; top: number; width: number; height: number };

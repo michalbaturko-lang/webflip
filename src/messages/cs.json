@@ -1,6 +1,6 @@
 {
   "meta": {
-    "title": "Webflip — Váš web, přetvořený umělou inteligencí",
+    "title": "Webflipper — Váš web, přetvořený umělou inteligencí",
     "description": "Zadejte URL. Získejte kompletní analýzu a 3 návrhy redesignu. Plaťte jen když se vám to líbí."
   },
   "nav": {
@@ -69,9 +69,9 @@
     "totalTraditionalPrice": "262 500 Kč+",
     "totalTraditionalTime": "4–8 týdnů",
     "vsLabel": "VS",
-    "webflipPrice": "24 900 Kč",
-    "webflipTime": "7 dní na rozhodnutí",
-    "webflipIncludes": "Vše v ceně",
+    "webflipperPrice": "24 900 Kč",
+    "webflipperTime": "7 dní na rozhodnutí",
+    "webflipperIncludes": "Vše v ceně",
     "includes1": "Kompletní zdrojový kód",
     "includes2": "Žádná závislost na platformě",
     "includes3": "3 designové varianty na výběr",

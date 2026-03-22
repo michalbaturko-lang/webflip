@@ -1,6 +1,6 @@
 {
   "meta": {
-    "title": "Webflip — Ihre Website, neu gestaltet durch KI",
+    "title": "Webflipper — Ihre Website, neu gestaltet durch KI",
     "description": "Geben Sie Ihre URL ein. Erhalten Sie eine vollständige Analyse und 3 beeindruckende Redesign-Vorschläge. Zahlen Sie nur, wenn Sie begeistert sind."
   },
   "nav": {
@@ -69,9 +69,9 @@
     "totalTraditionalPrice": "10.500 €+",
     "totalTraditionalTime": "4-8 Wochen",
     "vsLabel": "VS",
-    "webflipPrice": "997 €",
-    "webflipTime": "7 Tage zum Entscheiden",
-    "webflipIncludes": "Alles inklusive",
+    "webflipperPrice": "997 €",
+    "webflipperTime": "7 Tage zum Entscheiden",
+    "webflipperIncludes": "Alles inklusive",
     "includes1": "Vollständiger Quellcode-Besitz",
     "includes2": "Kein Plattform-Lock-in",
     "includes3": "3 Design-Varianten zur Auswahl",

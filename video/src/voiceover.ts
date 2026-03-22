@@ -1,5 +1,5 @@
 /**
- * Voiceover configuration for the Webflip outreach video.
+ * Voiceover configuration for the Webflipper outreach video.
  *
  * The video uses a SINGLE pre-recorded Czech voiceover that plays over all scenes.
  * Scene timings are designed to sync with the voiceover segments below.
@@ -39,7 +39,7 @@ To znamená, že přicházíte o zákazníky každý den.`,
   scene2_analysis: {
     startSec: 16,
     endSec: 28,
-    text: `Náš systém Webflip váš web kompletně analyzoval.
+    text: `Náš systém Webflipper váš web kompletně analyzoval.
 Celkové skóre je pouhých {overallScore} bodů ze sta.
 Největší problémy jsou v rychlosti, mobilní optimalizaci a SEO.
 Ale máme pro vás řešení.`,

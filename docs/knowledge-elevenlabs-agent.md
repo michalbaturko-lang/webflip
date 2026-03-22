@@ -1,7 +1,7 @@
-# Webflip — Knowledge Base pro ElevenLabs Voice Agenta
+# Webflipper — Knowledge Base pro ElevenLabs Voice Agenta
 
-## Co je Webflip
-Webflip je AI-powered SaaS, který automaticky analyzuje existující weby firem a vytváří 3 redesign návrhy. Zákazník platí $997 (24 900 Kč / 997 EUR) pouze pokud se mu redesign líbí. Má 7 dní na rozhodnutí.
+## Co je Webflipper
+Webflipper je AI-powered SaaS, který automaticky analyzuje existující weby firem a vytváří 3 redesign návrhy. Zákazník platí $997 (24 900 Kč / 997 EUR) pouze pokud se mu redesign líbí. Má 7 dní na rozhodnutí.
 
 ## Hlavní value proposition
 - **Za 5 minut máte nový web** — ne za měsíce
@@ -32,7 +32,7 @@ Webflip je AI-powered SaaS, který automaticky analyzuje existující weby firem
 - **AI Visibility**: AI crawlovatelnost, FAQ schéma, struktura pro AI souhrny
 
 ## Ceník a porovnání
-| Položka | Tradiční cesta | Webflip |
+| Položka | Tradiční cesta | Webflipper |
 |---------|---------------|---------|
 | UI/UX designér | $3,000 | Zahrnuto |
 | Frontend vývojář | $5,000 | Zahrnuto |
@@ -71,5 +71,5 @@ Webflip je AI-powered SaaS, který automaticky analyzuje existující weby firem
 EN, DE, CZ, SK (+ další plánované)
 
 ## Kontakt
-- Web: webflip.io (doména)
-- Produkt: Webflip
+- Web: webflipper.app (doména)
+- Produkt: Webflipper

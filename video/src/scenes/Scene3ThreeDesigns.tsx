@@ -130,7 +130,7 @@ export const Scene3ThreeDesigns: React.FC<Props> = ({ variants }) => {
                 >
                   {/* Browser frame with real screenshot */}
                   <BrowserFrame
-                    url={`webflip.cz/preview/${i + 1}`}
+                    url={`webflipper.app/preview/${i + 1}`}
                     screenshotUrl={variant.screenshotUrl}
                     width={520}
                     height={340}

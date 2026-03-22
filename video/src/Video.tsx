@@ -4,7 +4,7 @@ import { fade } from "@remotion/transitions/fade";
 import { slide } from "@remotion/transitions/slide";
 import { SceneIntro } from "./scenes/SceneIntro";
 import { Scene1Outdated } from "./scenes/Scene1Outdated";
-import { Scene2Webflip } from "./scenes/Scene2Webflip";
+import { Scene2Webflipper } from "./scenes/Scene2Webflipper";
 import { Scene3ThreeDesigns } from "./scenes/Scene3ThreeDesigns";
 import { Scene4AIEditor } from "./scenes/Scene4AIEditor";
 import { Scene5Decision } from "./scenes/Scene5Decision";
@@ -70,9 +70,9 @@ export const OutreachVideo: React.FC<OutreachVideoProps> = (props) => {
           timing={linearTiming({ durationInFrames: TRANSITION })}
         />
 
-        {/* Scene 2: Webflip analyzed - 12s */}
+        {/* Scene 2: Webflipper analyzed - 12s */}
         <TransitionSeries.Sequence durationInFrames={360}>
-          <Scene2Webflip
+          <Scene2Webflipper
             companyDomain={props.companyDomain}
             overallScore={props.overallScore}
             scores={props.scores}

@@ -43,22 +43,22 @@ export async function GET(request: NextRequest) {
       variants: [
         {
           name: "Modern",
-          previewUrl: `https://webflip.cz/api/preview/${domain}/modern`,
+          previewUrl: `https://webflipper.app/api/preview/${domain}/modern`,
           features: ["Responzivní design", "Rychlé načítání", "Moderní vzhled"],
         },
         {
           name: "Professional",
-          previewUrl: `https://webflip.cz/api/preview/${domain}/professional`,
+          previewUrl: `https://webflipper.app/api/preview/${domain}/professional`,
           features: ["Firemní branding", "SEO optimalizace", "Kontaktní formuláře"],
         },
         {
           name: "E-commerce",
-          previewUrl: `https://webflip.cz/api/preview/${domain}/ecommerce`,
+          previewUrl: `https://webflipper.app/api/preview/${domain}/ecommerce`,
           features: ["Online objednávky", "Platební brány", "Správa produktů"],
         },
       ],
-      qrCodeUrl: `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`https://webflip.cz/preview/${domain}?ref=flyer`)}`,
-      landingPageUrl: `https://webflip.cz/preview/${domain}?ref=flyer`,
+      qrCodeUrl: `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`https://webflipper.app/preview/${domain}?ref=flyer`)}`,
+      landingPageUrl: `https://webflipper.app/preview/${domain}?ref=flyer`,
       expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
     };
 

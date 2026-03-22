@@ -1,5 +1,5 @@
 /**
- * Comprehensive Data Extraction Engine for Webflip Analysis
+ * Comprehensive Data Extraction Engine for Webflipper Analysis
  *
  * Extracts 150+ data points per page across 9 categories:
  * Performance, On-Page SEO, Technical SEO, Content Quality,

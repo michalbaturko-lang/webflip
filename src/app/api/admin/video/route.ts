@@ -100,7 +100,7 @@ function buildRenderCommand(
   const propsB64 = Buffer.from(JSON.stringify(props)).toString("base64");
   return [
     `npx remotion render`,
-    `WebflipVideo`,
+    `WebflipperVideo`,
     `out/video-${recordId}.mp4`,
     `--props='${propsB64}'`,
     `--codec=h264`,

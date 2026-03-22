@@ -1,4 +1,4 @@
--- Webflip: Analysis pipeline schema
+-- Webflipper: Analysis pipeline schema
 -- Run this in Supabase SQL Editor
 
 CREATE TABLE IF NOT EXISTS analyses (

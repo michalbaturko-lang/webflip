@@ -22,7 +22,7 @@ export default function ThemeProvider({ children }: { children: React.ReactNode 
 
   useEffect(() => {
     setMounted(true);
-    const stored = localStorage.getItem("webflip-theme") as Theme | null;
+    const stored = localStorage.getItem("webflipper-theme") as Theme | null;
     if (stored) {
       setTheme(stored);
       document.documentElement.classList.toggle("dark", stored === "dark");
@@ -33,7 +33,7 @@ export default function ThemeProvider({ children }: { children: React.ReactNode 
   const toggleTheme = () => {
     const next = theme === "dark" ? "light" : "dark";
     setTheme(next);
-    localStorage.setItem("webflip-theme", next);
+    localStorage.setItem("webflipper-theme", next);
     document.documentElement.classList.toggle("dark", next === "dark");
     document.documentElement.classList.toggle("light", next === "light");
   };

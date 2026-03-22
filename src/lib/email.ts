@@ -5,7 +5,7 @@ import {
   getAnalysisErrorHtml,
 } from "./email-templates";
 
-const FROM_ADDRESS = "Webflip <noreply@webflip.io>";
+const FROM_ADDRESS = "Webflipper <noreply@webflipper.app>";
 
 type EmailType = "analysis-started" | "analysis-complete" | "analysis-error";
 
@@ -38,7 +38,7 @@ function getResend(): Resend | null {
 }
 
 function getAppUrl(): string {
-  return process.env.NEXT_PUBLIC_APP_URL || "https://webflip.io";
+  return process.env.NEXT_PUBLIC_APP_URL || "https://webflipper.app";
 }
 
 export async function sendAnalysisEmail(params: SendAnalysisEmailParams): Promise<void> {

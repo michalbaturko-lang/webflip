@@ -215,7 +215,7 @@ export async function preScan(inputUrl: string): Promise<PreScanData> {
       signal: controller.signal,
       headers: {
         "User-Agent":
-          "Mozilla/5.0 (compatible; WebflipBot/1.0; +https://webflip.cz)",
+          "Mozilla/5.0 (compatible; WebflipperBot/1.0; +https://webflipper.app)",
         Accept: "text/html",
       },
       redirect: "follow",

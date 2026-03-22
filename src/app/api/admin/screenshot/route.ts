@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
     const url =
       variant === "original"
         ? `https://${domain}`
-        : `https://webflip.cz/preview/${domain}/${variant}`;
+        : `https://webflipper.app/preview/${domain}/${variant}`;
 
     const result = await captureScreenshot(url, {
       domain,
@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
   try {
     const variantUrls = variants.map((v) => ({
       variant: v,
-      url: `https://webflip.cz/preview/${domain}/${v}`,
+      url: `https://webflipper.app/preview/${domain}/${v}`,
     }));
 
     const results = await captureAllScreenshots(domain, variantUrls);

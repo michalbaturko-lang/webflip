@@ -1,6 +1,6 @@
 {
   "meta": {
-    "title": "Webflip — Your Website, Redesigned by AI",
+    "title": "Webflipper — Your Website, Redesigned by AI",
     "description": "Enter your URL. Get a full analysis and 3 stunning redesign proposals. Pay only if you love it."
   },
   "nav": {
@@ -69,9 +69,9 @@
     "totalTraditionalPrice": "$10,500+",
     "totalTraditionalTime": "4-8 weeks",
     "vsLabel": "VS",
-    "webflipPrice": "$997",
-    "webflipTime": "7 days to decide",
-    "webflipIncludes": "Everything included",
+    "webflipperPrice": "$997",
+    "webflipperTime": "7 days to decide",
+    "webflipperIncludes": "Everything included",
     "includes1": "Full source code ownership",
     "includes2": "No platform lock-in",
     "includes3": "3 design variants to choose from",

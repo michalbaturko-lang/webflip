@@ -55,7 +55,7 @@ export async function captureScreenshot(
   const db = supabase();
 
   const { error: uploadError } = await db.storage
-    .from("webflip-assets")
+    .from("webflipper-assets")
     .upload(storagePath, imageBuffer, {
       contentType: "image/png",
       upsert: true,
@@ -75,7 +75,7 @@ export async function captureScreenshot(
 
   const {
     data: { publicUrl },
-  } = db.storage.from("webflip-assets").getPublicUrl(storagePath);
+  } = db.storage.from("webflipper-assets").getPublicUrl(storagePath);
 
   // 4. Save to DB cache
   await db.from("website_screenshots").upsert(

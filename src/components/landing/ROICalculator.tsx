@@ -105,7 +105,7 @@ export default function ROICalculator() {
             </div>
           </motion.div>
 
-          {/* Webflip */}
+          {/* Webflipper */}
           <motion.div
             initial={{ opacity: 0, x: 30 }}
             whileInView={{ opacity: 1, x: 0 }}
@@ -118,18 +118,18 @@ export default function ROICalculator() {
             <div className="flex items-center gap-2 mb-8">
               <Zap className="h-4 w-4 text-blue-400" />
               <span className="text-xs text-blue-400 uppercase tracking-wider font-medium">
-                Webflip
+                Webflipper
               </span>
             </div>
 
             <div className="mb-8">
               <div className="text-5xl sm:text-6xl font-bold gradient-text mb-2">
-                {t("webflipPrice")}
+                {t("webflipperPrice")}
               </div>
-              <div className="text-gray-400 text-sm">{t("webflipIncludes")}</div>
+              <div className="text-gray-400 text-sm">{t("webflipperIncludes")}</div>
               <div className="flex items-center gap-1.5 mt-2 text-xs text-gray-500">
                 <Clock className="h-3.5 w-3.5" />
-                {t("webflipTime")}
+                {t("webflipperTime")}
               </div>
             </div>
 

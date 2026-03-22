@@ -1,5 +1,5 @@
 /**
- * Weighted Scoring System for Webflip Analysis
+ * Weighted Scoring System for Webflipper Analysis
  *
  * Uses log-normal distribution for performance metrics (like Lighthouse)
  * and penalty-based scoring for other categories.

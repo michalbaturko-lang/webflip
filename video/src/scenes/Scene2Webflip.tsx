@@ -27,7 +27,7 @@ type Props = {
   scores: ScoreDetail[];
 };
 
-export const Scene2Webflip: React.FC<Props> = ({
+export const Scene2Webflipper: React.FC<Props> = ({
   companyDomain,
   overallScore,
   scores,
@@ -99,7 +99,7 @@ export const Scene2Webflip: React.FC<Props> = ({
               lineHeight: 1.15,
             }}
           >
-            Webflip analyzoval{" "}
+            Webflipper analyzoval{" "}
             <span style={{ color: "#6366f1" }}>{companyDomain}</span>
           </div>
         </div>

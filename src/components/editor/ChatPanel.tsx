@@ -240,7 +240,7 @@ export default function ChatPanel({
 
   const handleContactClick = useCallback(() => {
     window.location.href =
-      "mailto:info@webflip.ai?subject=Professional%20website%20services%20inquiry";
+      "mailto:info@webflipper.app?subject=Professional%20website%20services%20inquiry";
   }, []);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {

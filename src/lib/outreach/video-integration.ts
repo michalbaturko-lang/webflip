@@ -43,7 +43,7 @@ export async function getVideoTemplateVars(
 
   // Get or generate thumbnail
   const thumbnailResult = await captureScreenshot(
-    `https://webflip.cz/video/${recordId}`,
+    `https://webflipper.app/video/${recordId}`,
     {
       domain,
       variant: "video-thumb",
@@ -54,9 +54,9 @@ export async function getVideoTemplateVars(
 
   const thumbnailUrl =
     thumbnailResult?.url ??
-    `https://webflip.cz/api/video-thumbnail/${recordId}`;
+    `https://webflipper.app/api/video-thumbnail/${recordId}`;
 
-  const videoLandingUrl = `https://webflip.cz/preview/${domain}?ref=video&rid=${recordId}&play=1`;
+  const videoLandingUrl = `https://webflipper.app/preview/${domain}?ref=video&rid=${recordId}&play=1`;
 
   return {
     video_url: status.videoUrl,

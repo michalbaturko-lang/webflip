@@ -14,7 +14,7 @@ export default function Footer() {
           <div className="flex flex-col items-center sm:items-start gap-1">
             <div className="flex items-center gap-2">
               <Zap className="h-5 w-5 text-blue-400" />
-              <span className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>Webflip</span>
+              <span className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>Webflipper</span>
             </div>
             <span className="text-sm" style={{ color: "var(--text-muted)" }}>{t("tagline")}</span>
           </div>
@@ -36,7 +36,7 @@ export default function Footer() {
               </a>
             </div>
             <span className="text-sm" style={{ color: "var(--text-faint)" }}>
-              &copy; {new Date().getFullYear()} Webflip. {t("rights")}
+              &copy; {new Date().getFullYear()} Webflipper. {t("rights")}
             </span>
           </div>
         </div>

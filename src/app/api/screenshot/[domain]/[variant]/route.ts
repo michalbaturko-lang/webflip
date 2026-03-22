@@ -27,7 +27,7 @@ export async function GET(
     const url =
       variant === "original"
         ? `https://${domain}`
-        : `https://webflip.cz/preview/${domain}/${variant}`;
+        : `https://webflipper.app/preview/${domain}/${variant}`;
 
     const result = await captureScreenshot(url, {
       domain,

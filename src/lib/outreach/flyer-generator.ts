@@ -49,7 +49,7 @@ export async function getFlyerData(recordId: string): Promise<FlyerData | null> 
   const problems = detectProblems(scores, analysis);
 
   // Build landing page URL with tracking
-  const landingPageUrl = `https://webflip.cz/preview/${record.domain}?ref=flyer&rid=${recordId}`;
+  const landingPageUrl = `https://webflipper.app/preview/${record.domain}?ref=flyer&rid=${recordId}`;
   const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(landingPageUrl)}`;
 
   // Calculate expiry (7 days from now)
@@ -57,9 +57,9 @@ export async function getFlyerData(recordId: string): Promise<FlyerData | null> 
 
   // Get variant info
   const variants = (meta.variants as Array<{ name: string; previewUrl: string; features: string[] }>) ?? [
-    { name: "Modern", previewUrl: `https://webflip.cz/api/preview/${record.domain}/modern`, features: ["Responzivní design", "Rychlé načítání", "Moderní vzhled"] },
-    { name: "Professional", previewUrl: `https://webflip.cz/api/preview/${record.domain}/professional`, features: ["Firemní branding", "SEO optimalizace", "Kontaktní formuláře"] },
-    { name: "E-commerce", previewUrl: `https://webflip.cz/api/preview/${record.domain}/ecommerce`, features: ["Online objednávky", "Platební brány", "Správa produktů"] },
+    { name: "Modern", previewUrl: `https://webflipper.app/api/preview/${record.domain}/modern`, features: ["Responzivní design", "Rychlé načítání", "Moderní vzhled"] },
+    { name: "Professional", previewUrl: `https://webflipper.app/api/preview/${record.domain}/professional`, features: ["Firemní branding", "SEO optimalizace", "Kontaktní formuláře"] },
+    { name: "E-commerce", previewUrl: `https://webflipper.app/api/preview/${record.domain}/ecommerce`, features: ["Online objednávky", "Platební brány", "Správa produktů"] },
   ];
 
   return {
@@ -202,7 +202,7 @@ export function generateFlyerHtml(data: FlyerData): string {
         <div style="width:32px;height:32px;background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:8px;display:flex;align-items:center;justify-content:center;">
           <span style="color:white;font-weight:800;font-size:14px;">W</span>
         </div>
-        <span style="font-size:20px;font-weight:800;background:linear-gradient(135deg,#6366f1,#8b5cf6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">Webflip</span>
+        <span style="font-size:20px;font-weight:800;background:linear-gradient(135deg,#6366f1,#8b5cf6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">Webflipper</span>
       </div>
       <div style="font-size:11px;color:#9ca3af;">Váš web, nová éra</div>
     </div>
@@ -231,7 +231,7 @@ export function generateFlyerHtml(data: FlyerData): string {
         Celkové skóre: <span style="color:${overallColor};">${scoreLabel(data.overallScore)}</span>
       </div>
       <div style="font-size:11px;color:#6b7280;line-height:1.5;">
-        Webflip analyzoval <strong>${data.domain}</strong> a identifikoval oblasti ke zlepšení.
+        Webflipper analyzoval <strong>${data.domain}</strong> a identifikoval oblasti ke zlepšení.
         ${data.contactName ? `${data.contactName}, p` : "P"}řipravili jsme 3 návrhy redesignu na míru vaší firmě.
       </div>
     </div>
@@ -314,7 +314,7 @@ export function generateFlyerHtml(data: FlyerData): string {
 
   <!-- Footer -->
   <div style="margin-top:10px;text-align:center;font-size:9px;color:#9ca3af;">
-    Webflip.cz · AI-powered web redesign · info@webflip.cz · Vaše data jsou v bezpečí dle GDPR
+    webflipper.app · AI-powered web redesign · info@webflipper.app · Vaše data jsou v bezpečí dle GDPR
   </div>
 
 </div>

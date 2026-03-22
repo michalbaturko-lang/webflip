@@ -1,17 +1,17 @@
 {
-  "name": "webflip-video",
+  "name": "webflipper-video",
   "version": "1.0.0",
-  "description": "Webflip outreach video - Remotion",
+  "description": "Webflipper outreach video - Remotion",
   "scripts": {
     "start": "npx remotion studio src/index.ts",
-    "build": "npx remotion render src/index.ts WebflipVideo out/outreach-video.mp4",
-    "build:gif": "npx remotion render src/index.ts WebflipVideo out/outreach-video.gif --image-format png",
+    "build": "npx remotion render src/index.ts WebflipperVideo out/outreach-video.mp4",
+    "build:gif": "npx remotion render src/index.ts WebflipperVideo out/outreach-video.gif --image-format png",
     "preview": "npx remotion preview src/index.ts",
     "worker": "npx tsx scripts/render-worker.ts",
     "worker:watch": "npx tsx scripts/render-worker.ts --watch"
   },
   "keywords": [],
-  "author": "Webflip",
+  "author": "Webflipper",
   "license": "ISC",
   "dependencies": {
     "@remotion/cli": "^4.0.438",

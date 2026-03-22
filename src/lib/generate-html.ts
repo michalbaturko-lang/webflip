@@ -118,7 +118,7 @@ export async function generateHtmlVariants(
 
       // Inject Unsplash attribution if applicable
       if (heroImage?.source === "unsplash" && heroImage.photographer) {
-        const attrHtml = `<a href="${heroImage.photographerUrl || '#'}?utm_source=webflip&utm_medium=referral" target="_blank" rel="noopener noreferrer" style="position:absolute;bottom:0.75rem;right:1rem;z-index:20;font-size:0.625rem;color:rgba(255,255,255,0.5);text-decoration:none;font-family:system-ui">Photo: ${heroImage.photographer} / Unsplash</a>`;
+        const attrHtml = `<a href="${heroImage.photographerUrl || '#'}?utm_source=webflipper&utm_medium=referral" target="_blank" rel="noopener noreferrer" style="position:absolute;bottom:0.75rem;right:1rem;z-index:20;font-size:0.625rem;color:rgba(255,255,255,0.5);text-decoration:none;font-family:system-ui">Photo: ${heroImage.photographer} / Unsplash</a>`;
         html = html.replace(/<\/section>\s*(?=\s*<main)/, `${attrHtml}</section>\n`);
       }
 

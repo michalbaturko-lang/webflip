@@ -116,7 +116,7 @@ export const SceneIntro: React.FC<Props> = ({ companyDomain, contactName }) => {
               letterSpacing: -2,
             }}
           >
-            Webflip
+            Webflipper
           </div>
         </div>
 

@@ -40,12 +40,12 @@ export default function InlineEditor({
         const doc = iframe.contentDocument;
         if (!doc) return undefined;
 
-        const styleId = "webflip-inline-edit-styles";
+        const styleId = "webflipper-inline-edit-styles";
         if (!doc.getElementById(styleId)) {
           const style = doc.createElement("style");
           style.id = styleId;
           style.textContent = `
-            .webflip-editable-hover {
+            .webflipper-editable-hover {
               outline: 2px solid #3b82f6 !important;
               outline-offset: 2px !important;
               cursor: text !important;
@@ -105,7 +105,7 @@ export default function InlineEditor({
           if (hoverRafId !== null) cancelAnimationFrame(hoverRafId);
           hoverRafId = requestAnimationFrame(() => {
             if (isEditableText(target)) {
-              target.classList.add("webflip-editable-hover");
+              target.classList.add("webflipper-editable-hover");
               target.style.position = target.style.position || "relative";
             }
           });
@@ -114,7 +114,7 @@ export default function InlineEditor({
         const handleMouseOut = (e: MouseEvent) => {
           const target = e.target as HTMLElement;
           if (target === lastHoverTarget) lastHoverTarget = null;
-          target.classList.remove("webflip-editable-hover");
+          target.classList.remove("webflipper-editable-hover");
         };
 
         const handleClick = (e: MouseEvent) => {
@@ -130,7 +130,7 @@ export default function InlineEditor({
           const selector = getSelector(target);
 
           const message: InlineEditMessage = {
-            type: "webflip-inline-edit",
+            type: "webflipper-inline-edit",
             selector,
             text,
             rect: {
@@ -182,7 +182,7 @@ export default function InlineEditor({
 
     const handleMessage = (e: MessageEvent) => {
       if (e.origin !== window.location.origin) return;
-      if (e.data?.type === "webflip-inline-edit") {
+      if (e.data?.type === "webflipper-inline-edit") {
         const data = e.data as InlineEditMessage;
         setEditingElement({
           selector: data.selector,

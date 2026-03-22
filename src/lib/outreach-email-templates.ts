@@ -1,5 +1,5 @@
 /**
- * HTML email templates for Webflip outreach campaigns.
+ * HTML email templates for Webflipper outreach campaigns.
  *
  * All templates use:
  * - Table-based layout for Outlook compatibility
@@ -36,7 +36,7 @@ function wrapLayout(content: string): string {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="color-scheme" content="light dark">
   <meta name="supported-color-schemes" content="light dark">
-  <title>Webflip</title>
+  <title>Webflipper</title>
   ${DARK_MODE_STYLES}
 </head>
 <body class="email-body" style="margin: 0; padding: 0; background-color: #f4f4f8; font-family: ${FONT_STACK};">
@@ -50,7 +50,7 @@ function wrapLayout(content: string): string {
         <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width: 600px; width: 100%; margin-top: 16px;">
           <tr>
             <td class="email-text-muted" align="center" style="padding: 16px; font-family: ${FONT_STACK}; font-size: 12px; color: #888; line-height: 1.5;">
-              Webflip &mdash; AI-powered website redesign<br>
+              Webflipper &mdash; AI-powered website redesign<br>
               Tento email byl odeslán automaticky. Neodpovídejte na něj.
             </td>
           </tr>

@@ -38,7 +38,7 @@ export default function AdminLoginPage() {
     <div className="min-h-screen bg-gray-950 flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-8">
-          <h1 className="text-xl font-semibold text-white mb-1">Webflip Admin</h1>
+          <h1 className="text-xl font-semibold text-white mb-1">Webflipper Admin</h1>
           <p className="text-sm text-gray-400 mb-6">Enter your admin token to continue</p>
 
           <form onSubmit={handleSubmit} className="space-y-4">

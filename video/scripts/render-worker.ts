@@ -10,7 +10,7 @@
  *   SUPABASE_SERVICE_KEY — Service role key (bypasses RLS)
  *   REMOTION_CONCURRENCY — Render concurrency (default: 50%)
  *   RENDER_OUTPUT_DIR    — Output directory (default: ./out)
- *   STORAGE_BUCKET       — Supabase storage bucket (default: webflip-assets)
+ *   STORAGE_BUCKET       — Supabase storage bucket (default: webflipper-assets)
  *
  * The worker:
  *   1. Picks up the next 'queued' job (ordered by priority DESC, queued_at ASC)
@@ -30,7 +30,7 @@ const SUPABASE_URL = process.env.SUPABASE_URL ?? "";
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY ?? "";
 const CONCURRENCY = process.env.REMOTION_CONCURRENCY ?? "50%";
 const OUTPUT_DIR = process.env.RENDER_OUTPUT_DIR ?? path.join(__dirname, "..", "out");
-const BUCKET = process.env.STORAGE_BUCKET ?? "webflip-assets";
+const BUCKET = process.env.STORAGE_BUCKET ?? "webflipper-assets";
 const WATCH_MODE = process.argv.includes("--watch");
 const POLL_INTERVAL = 10_000; // 10 seconds
 
@@ -95,7 +95,7 @@ async function renderVideo(job: RenderJob): Promise<string> {
     execSync(
       [
         "npx remotion render",
-        "WebflipVideo",
+        "WebflipperVideo",
         outputFile,
         `--props="${propsFile}"`,
         "--codec=h264",
@@ -219,7 +219,7 @@ async function processOne(): Promise<boolean> {
 }
 
 async function run() {
-  console.log(`🎥 Webflip Render Worker started${WATCH_MODE ? " (watch mode)" : ""}`);
+  console.log(`🎥 Webflipper Render Worker started${WATCH_MODE ? " (watch mode)" : ""}`);
   console.log(`   Output: ${OUTPUT_DIR}`);
   console.log(`   Concurrency: ${CONCURRENCY}`);
   console.log("");

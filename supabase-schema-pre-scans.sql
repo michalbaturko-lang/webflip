@@ -1,4 +1,4 @@
--- Webflip: Pre-scan suitability table
+-- Webflipper: Pre-scan suitability table
 -- Run this in Supabase SQL Editor after the main schema
 
 CREATE TABLE IF NOT EXISTS pre_scans (
