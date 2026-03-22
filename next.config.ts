@@ -7,7 +7,7 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
-        // Preview API routes serve HTML for same-origin iframes — no X-Frame-Options
+        // Preview API routes serve HTML for same-origin iframes â no X-Frame-Options
         source: "/api/analyze/:token/preview/:path*",
         headers: [
           { key: "X-Content-Type-Options", value: "nosniff" },
@@ -48,6 +48,7 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  serverExternalPackages: ["playwright"],
 };
 
 export default withNextIntl(nextConfig);
