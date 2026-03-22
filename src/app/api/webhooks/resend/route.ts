@@ -1,17 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
+import { timingSafeEqual } from "crypto";
 
-// Webhook secret for verification
+// Webhook secret for verification — MUST be configured in production
 function verifyWebhookSecret(request: NextRequest): boolean {
   const secret = process.env.RESEND_WEBHOOK_SECRET;
-  if (!secret) return true; // No secret configured = accept all (dev mode)
+  if (!secret) {
+    console.error("[resend-webhook] RESEND_WEBHOOK_SECRET is not configured");
+    return false; // Reject if no secret configured
+  }
 
   // Try header first, then query param
   const provided =
     request.headers.get("x-webhook-secret") ||
     request.nextUrl.searchParams.get("secret");
 
-  return provided === secret;
+  if (!provided) return false;
+  // Use timing-safe comparison to prevent timing attacks
+  try {
+    const a = Buffer.from(secret);
+    const b = Buffer.from(provided);
+    return a.length === b.length && timingSafeEqual(a, b);
+  } catch {
+    return false;
+  }
 }
 
 interface ResendWebhookEvent {
@@ -101,12 +113,10 @@ export async function POST(request: NextRequest) {
         timestampField = "bounced_at";
         timestampValue = new Date().toISOString();
         bounceReason = data.bounce?.diagnostic_code || "bounced";
-        // Will handle special logic below
         break;
 
       case "email.complained":
         statusToSet = "complained";
-        // Will handle special logic below
         break;
 
       default:
@@ -176,7 +186,7 @@ export async function POST(request: NextRequest) {
       // Log bounce activity
       await supabase.from("crm_activities").insert({
         crm_record_id: emailLog.crm_record_id,
-        type: "email_opened", // Use a valid type from the enum
+        type: "email_opened",
         subject: emailLog.subject,
         metadata: {
           webhook_source: "resend",
@@ -187,7 +197,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Handle complaints: add 'unsubscribed' tag and stop sequences
+    // Handle complaints: add unsubscribed tag and stop sequences
     if (eventType === "email.complained" && emailLog.crm_record_id) {
       const { data: record } = await supabase
         .from("crm_records")
@@ -209,7 +219,7 @@ export async function POST(request: NextRequest) {
       // Log complaint activity
       await supabase.from("crm_activities").insert({
         crm_record_id: emailLog.crm_record_id,
-        type: "email_opened", // Use a valid type
+        type: "email_opened",
         subject: emailLog.subject,
         metadata: {
           webhook_source: "resend",
@@ -231,13 +241,9 @@ export async function POST(request: NextRequest) {
     });
   } catch (err) {
     console.error("[resend-webhook] POST error:", err);
+    // Do not leak internal error details to the client
     return NextResponse.json(
-      {
-        error:
-          err instanceof Error
-            ? err.message
-            : "Webhook processing failed",
-      },
+      { error: "Webhook processing failed" },
       { status: 500 }
     );
   }
