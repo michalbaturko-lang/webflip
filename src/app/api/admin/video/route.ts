@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       recordId: id,
       videoProps: data,
-      renderCommand: buildRenderCommand(id, data as Record<string, unknown>),
+      renderCommand: buildRenderCommand(id, data),
     });
   }
 
@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
     return {
       recordId: id,
       videoProps: props,
-      renderCommand: buildRenderCommand(id, props as Record<string, unknown>),
+      renderCommand: buildRenderCommand(id, props),
     };
   });
 
@@ -95,7 +95,8 @@ export async function POST(req: NextRequest) {
  */
 function buildRenderCommand(
   recordId: string,
-  props: Record<string, unknown>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  props: any
 ): string {
   const propsB64 = Buffer.from(JSON.stringify(props)).toString("base64");
   return [
