@@ -7,15 +7,21 @@
     "build": "npx remotion render src/index.ts WebflipperVideo out/outreach-video.mp4",
     "build:gif": "npx remotion render src/index.ts WebflipperVideo out/outreach-video.gif --image-format png",
     "preview": "npx remotion preview src/index.ts",
+    "deploy:lambda": "npx tsx scripts/deploy-lambda.ts",
     "worker": "npx tsx scripts/render-worker.ts",
-    "worker:watch": "npx tsx scripts/render-worker.ts --watch"
+    "worker:watch": "npx tsx scripts/render-worker.ts --watch",
+    "worker:local": "RENDER_MODE=local npx tsx scripts/render-worker.ts",
+    "worker:local:watch": "RENDER_MODE=local npx tsx scripts/render-worker.ts --watch"
   },
   "keywords": [],
   "author": "Webflipper",
   "license": "ISC",
   "dependencies": {
+    "@aws-sdk/client-lambda": "^3.1014.0",
+    "@aws-sdk/client-s3": "^3.1014.0",
     "@remotion/cli": "^4.0.438",
     "@remotion/google-fonts": "^4.0.438",
+    "@remotion/lambda": "^4.0.438",
     "@remotion/media": "^4.0.438",
     "@remotion/transitions": "^4.0.438",
     "react": "^19.2.4",

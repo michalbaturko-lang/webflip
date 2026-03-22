@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, use } from "react";
+import { useState, use, useEffect } from "react";
 import Link from "next/link";
 import { useAdminFetch, adminFetch } from "@/lib/admin/use-admin-fetch";
 import { CRM_STAGES, ACTIVITY_TYPES, type CrmRecord, type CrmActivity, type CrmStage, type ActivityType } from "@/types/admin";
@@ -14,6 +14,8 @@ import {
   ExternalLink,
   Save,
   Plus,
+  Copy,
+  Check,
 } from "lucide-react";
 
 const ACTIVITY_ICONS: Partial<Record<ActivityType, string>> = {
@@ -45,6 +47,31 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
   const [saving, setSaving] = useState(false);
   const [newActivity, setNewActivity] = useState({ type: "" as ActivityType, subject: "", body: "" });
   const [showAddActivity, setShowAddActivity] = useState(false);
+  const [qrData, setQrData] = useState<{ qr_image_url?: string; qr_svg?: string; tracking_url?: string; short_id?: string } | null>(null);
+  const [qrLoading, setQrLoading] = useState(false);
+  const [copiedUrl, setCopiedUrl] = useState(false);
+  const [copiedQr, setCopiedQr] = useState(false);
+
+  useEffect(() => {
+    async function fetchQrCode() {
+      setQrLoading(true);
+      try {
+        const response = await fetch(`/api/outreach/qr/${id}`);
+        if (response.ok) {
+          const data = await response.json();
+          setQrData(data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch QR code:", err);
+      } finally {
+        setQrLoading(false);
+      }
+    }
+
+    if (id) {
+      fetchQrCode();
+    }
+  }, [id]);
 
   function startEdit() {
     if (!record) return;
@@ -80,6 +107,28 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
       refetchActivities();
     } catch (err) {
       console.error("Add activity failed:", err);
+    }
+  }
+
+  async function copyTrackingUrl() {
+    if (!qrData?.tracking_url) return;
+    try {
+      await navigator.clipboard.writeText(qrData.tracking_url);
+      setCopiedUrl(true);
+      setTimeout(() => setCopiedUrl(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy URL:", err);
+    }
+  }
+
+  async function copyQrSvg() {
+    if (!qrData?.qr_svg) return;
+    try {
+      await navigator.clipboard.writeText(qrData.qr_svg);
+      setCopiedQr(true);
+      setTimeout(() => setCopiedQr(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy QR SVG:", err);
     }
   }
 
@@ -201,6 +250,65 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
               <InfoRow icon={<MapPin size={14} />} label="Location"
                 value={[record.address_city, record.address_country].filter(Boolean).join(", ") || null} />
             </div>
+          </div>
+
+          {/* QR Code */}
+          <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+            <h2 className="text-sm font-semibold text-gray-400 uppercase mb-3">QR kód outreachového odkazu</h2>
+            {qrLoading ? (
+              <div className="animate-pulse h-64 bg-gray-800 rounded-lg" />
+            ) : qrData?.qr_image_url ? (
+              <div className="space-y-3">
+                <div className="flex justify-center bg-gray-800 rounded-lg p-4">
+                  <img
+                    src={qrData.qr_image_url}
+                    alt="QR Code"
+                    className="w-40 h-40"
+                  />
+                </div>
+                {qrData.tracking_url && (
+                  <div className="text-xs text-gray-400 break-all text-center">
+                    {qrData.tracking_url}
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <button
+                    onClick={copyTrackingUrl}
+                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg text-xs text-white transition-colors"
+                  >
+                    {copiedUrl ? (
+                      <>
+                        <Check size={12} />
+                        <span>Zkopírován odkaz</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy size={12} />
+                        <span>Kopírovat odkaz</span>
+                      </>
+                    )}
+                  </button>
+                  <button
+                    onClick={copyQrSvg}
+                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg text-xs text-white transition-colors"
+                  >
+                    {copiedQr ? (
+                      <>
+                        <Check size={12} />
+                        <span>Zkopírován QR</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy size={12} />
+                        <span>Kopírovat QR SVG</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500 text-center py-4">Chyba při načítání QR kódu</p>
+            )}
           </div>
 
           {/* Notes */}

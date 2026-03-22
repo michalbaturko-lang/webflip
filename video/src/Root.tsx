@@ -1,5 +1,11 @@
-import { Composition } from "remotion";
+import { Composition, staticFile } from "remotion";
 import { OutreachVideo, type OutreachVideoProps } from "./Video";
+
+/**
+ * Lambda version for deployment tracking
+ * Increment when making changes to the video composition
+ */
+export const outreachVideoLambdaVersion = "1.0.0";
 
 const DEFAULT_PROPS: OutreachVideoProps = {
   companyName: "Restaurace U Zlatého Lva",
@@ -24,25 +30,28 @@ const DEFAULT_PROPS: OutreachVideoProps = {
     {
       name: "Moderní",
       screenshotUrl: "https://placehold.co/1200x800/3b82f6/ffffff?text=Modern+Design",
-      features: ["Responzivní", "Rychlé načítání", "Čistý design"],
+      features: ["Responzivní design", "Optimalizované SEO", "AI viditelnost", "Rychlé načítání", "SSL zabezpečení", "Kontaktní formulář"],
     },
     {
       name: "Profesionální",
       screenshotUrl: "https://placehold.co/1200x800/8b5cf6/ffffff?text=Professional",
-      features: ["Firemní branding", "SEO ready", "Kontaktní formuláře"],
+      features: ["Responzivní design", "Optimalizované SEO", "AI viditelnost", "Rychlé načítání", "SSL zabezpečení", "Kontaktní formulář"],
     },
     {
       name: "Konverzní",
       screenshotUrl: "https://placehold.co/1200x800/06b6d4/ffffff?text=Conversion",
-      features: ["Lead magnet", "Social proof", "A/B testovaný"],
+      features: ["Responzivní design", "Optimalizované SEO", "AI viditelnost", "Rychlé načítání", "SSL zabezpečení", "Kontaktní formulář"],
     },
   ],
   originalScreenshotUrl: "https://placehold.co/1200x800/1a1a2e/666666?text=Original+Web",
+  voiceoverUrl: staticFile("voiceover.mp3"),
   landingPageUrl: "https://webflipper.app/preview/uzlateholva.cz",
 };
 
-// Total frames: 120 + 360 + 360 + 420 + 300 + 300 - (5 transitions * 18) = 1770
-const TOTAL_FRAMES = 1770;
+// Scene durations: 150 + 480 + 570 + 510 + 420 + 540 = 2670
+// Transitions: 5 × 18 = 90
+// Total: 2670 - 90 = 2580 frames = 86s
+const TOTAL_FRAMES = 2580;
 
 export const RemotionRoot = () => {
   return (

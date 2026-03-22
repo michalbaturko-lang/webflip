@@ -35,7 +35,7 @@ interface VoiceoverResult {
 function getConfig() {
   const apiKey = process.env.ELEVENLABS_API_KEY;
   const voiceId = process.env.ELEVENLABS_VOICE_ID;
-  const bucket = process.env.STORAGE_BUCKET ?? "webflipper-assets";
+  const bucket = process.env.STORAGE_BUCKET ?? "webflip-assets";
 
   if (!apiKey) throw new Error("ELEVENLABS_API_KEY not configured");
   if (!voiceId) throw new Error("ELEVENLABS_VOICE_ID not configured");

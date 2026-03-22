@@ -113,7 +113,7 @@ export async function getVideoData(
 
   const problems = detectProblems(rawScores, analysis as Record<string, unknown>);
 
-  // Variants — use stored variants or generate defaults
+  // Variants — use stored variants with screenshot URLs from cache or API
   const storedVariants = meta.variants as
     | Array<{
         name: string;
@@ -123,24 +123,36 @@ export async function getVideoData(
       }>
     | undefined;
 
+  // Helper to get screenshot URL, preferring cached URLs
+  const getScreenshotUrl = (variantName: string, storedUrl?: string) => {
+    // 1. Use stored screenshot URL if available
+    if (storedUrl) return storedUrl;
+
+    // 2. Check if we have cached screenshots in metadata
+    const cachedScreenshots = meta.screenshots as Record<string, string> | undefined;
+    if (cachedScreenshots?.[variantName.toLowerCase()]) {
+      return cachedScreenshots[variantName.toLowerCase()];
+    }
+
+    // 3. Fall back to API endpoint (will cache/capture on-demand)
+    return `https://webflipper.app/api/screenshot/${record.domain}/${variantName.toLowerCase()}`;
+  };
+
   const variants = storedVariants?.length
     ? storedVariants.map((v) => ({
         name: v.name,
-        screenshotUrl:
-          v.screenshotUrl ??
-          v.previewUrl ??
-          `https://webflipper.app/api/screenshot/${record.domain}/${v.name.toLowerCase()}`,
+        screenshotUrl: getScreenshotUrl(v.name, v.screenshotUrl),
         features: v.features,
       }))
     : [
         {
           name: "Moderní",
-          screenshotUrl: `https://webflipper.app/api/screenshot/${record.domain}/modern`,
+          screenshotUrl: getScreenshotUrl("modern"),
           features: ["Responzivní design", "Rychlé načítání", "Moderní vzhled"],
         },
         {
           name: "Profesionální",
-          screenshotUrl: `https://webflipper.app/api/screenshot/${record.domain}/professional`,
+          screenshotUrl: getScreenshotUrl("professional"),
           features: [
             "Firemní branding",
             "SEO optimalizace",
@@ -149,16 +161,18 @@ export async function getVideoData(
         },
         {
           name: "Konverzní",
-          screenshotUrl: `https://webflipper.app/api/screenshot/${record.domain}/conversion`,
+          screenshotUrl: getScreenshotUrl("conversion"),
           features: ["Lead magnet", "Social proof", "A/B testovaný"],
         },
       ];
 
   const landingPageUrl = `https://webflipper.app/preview/${record.domain}?ref=video&rid=${recordId}`;
 
-  // Original website screenshot
+  // Original website screenshot — prefer cached URL
+  const cachedScreenshots = meta.screenshots as Record<string, string> | undefined;
   const originalScreenshotUrl =
     (meta.originalScreenshotUrl as string) ??
+    cachedScreenshots?.original ??
     `https://webflipper.app/api/screenshot/${record.domain}/original`;
 
   return {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
+import { generateQrCode } from "@/lib/outreach/qr-generator";
 import type { CrmRecord } from "@/types/admin";
 
 const supabase = () => createServerClient();
@@ -12,22 +13,6 @@ function generateShortId(): string {
     result += chars.charAt(Math.floor(Math.random() * chars.length));
   }
   return result;
-}
-
-/**
- * Generate a simple QR code SVG using a third-party QR service
- * For production, consider using the 'qrcode' npm package or a service like QR Code API
- */
-function generateQrSvg(text: string): string {
-  // Use a simple data URL approach with a QR code generation service
-  // For now, return a placeholder that encodes the text
-  // In production, you'd use a library like 'qrcode' or an external API
-
-  // Create a simple SVG-based approach using encoded data
-  const encoded = encodeURIComponent(text);
-  // Return a data URL that points to an online QR service
-  // For actual implementation, use: npm install qrcode
-  return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encoded}`;
 }
 
 export async function GET(
@@ -73,8 +58,8 @@ export async function GET(
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
     const trackingUrl = `${appUrl}/r/${shortId}`;
 
-    // Generate QR code
-    const qrImageUrl = generateQrSvg(trackingUrl);
+    // Generate QR code using local library
+    const { svg: qrSvg, dataUrl: qrDataUrl } = await generateQrCode(trackingUrl);
 
     // Create activity log for QR code generation
     await db.from("crm_activities").insert({
@@ -84,12 +69,13 @@ export async function GET(
       metadata: {
         short_id: shortId,
         tracking_url: trackingUrl,
-        qr_image_url: qrImageUrl,
+        qr_image_url: qrDataUrl,
       },
     });
 
     return NextResponse.json({
-      qr_image_url: qrImageUrl,
+      qr_image_url: qrDataUrl,
+      qr_svg: qrSvg,
       tracking_url: trackingUrl,
       short_id: shortId,
     });

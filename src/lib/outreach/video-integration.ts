@@ -144,6 +144,34 @@ export async function ensureVideoReady(
 
   // Queue a render if not already queued
   if (!existing || existing.status === "error") {
+    // Load record to get domain for screenshot batch capture
+    const db = supabase();
+    const { data: record } = await db
+      .from("crm_records")
+      .select("domain")
+      .eq("id", recordId)
+      .single();
+
+    if (record?.domain) {
+      // Ensure screenshots are captured before video rendering
+      try {
+        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://webflip.cz";
+        await fetch(`${baseUrl}/api/admin/screenshot/batch`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            recordId,
+            domain: record.domain,
+            forceRefresh: false,
+          }),
+        }).catch(() => {
+          // Non-critical — screenshots can be captured on-demand by video renderer
+        });
+      } catch {
+        // Non-critical — continue with video render even if screenshot batch fails
+      }
+    }
+
     await queueVideoRender(recordId, {
       voiceoverUrl: options?.voiceoverUrl,
       priority: 10, // Higher priority for immediate outreach

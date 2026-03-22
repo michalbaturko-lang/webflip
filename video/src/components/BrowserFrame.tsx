@@ -14,9 +14,7 @@ type BrowserFrameProps = {
   height?: number;
   delay?: number;
   style?: React.CSSProperties;
-  /** If true, shows a subtle red overlay to signal "problems" */
   problemOverlay?: boolean;
-  /** Label badge shown top-right */
   badge?: string;
   badgeColor?: string;
 };
@@ -39,24 +37,23 @@ export const BrowserFrame: React.FC<BrowserFrameProps> = ({
     frame,
     fps,
     delay,
-    config: { damping: 200 },
+    config: { damping: 14, stiffness: 80 },
   });
 
   const opacity = interpolate(entrance, [0, 1], [0, 1]);
-  const scale = interpolate(entrance, [0, 1], [0.92, 1]);
-  const translateY = interpolate(entrance, [0, 1], [20, 0]);
+  const scale = interpolate(entrance, [0, 1], [0.88, 1]);
+  const translateY = interpolate(entrance, [0, 1], [30, 0]);
 
-  // Image reveal (loads slightly after frame)
   const imgReveal = spring({
     frame,
     fps,
-    delay: delay + 8,
+    delay: delay + 10,
     config: { damping: 200 },
   });
   const imgOpacity = interpolate(imgReveal, [0, 1], [0, 1]);
 
-  const TOOLBAR_HEIGHT = 44;
-  const BORDER_RADIUS = 14;
+  const TOOLBAR_HEIGHT = 40;
+  const BORDER_RADIUS = 18;
 
   return (
     <div
@@ -66,39 +63,40 @@ export const BrowserFrame: React.FC<BrowserFrameProps> = ({
         transform: `scale(${scale}) translateY(${translateY}px)`,
         borderRadius: BORDER_RADIUS,
         overflow: "hidden",
-        background: "#1a1a2e",
-        border: "1px solid rgba(255,255,255,0.08)",
-        boxShadow: "0 24px 80px rgba(0,0,0,0.6), 0 8px 24px rgba(0,0,0,0.4)",
+        background: "rgba(255, 255, 255, 0.06)",
+        border: "1px solid rgba(255, 255, 255, 0.12)",
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
+        boxShadow:
+          "0 24px 80px rgba(0,0,0,0.3), 0 4px 16px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.06)",
         position: "relative",
         ...style,
       }}
     >
-      {/* Chrome toolbar */}
+      {/* Glassmorphism toolbar */}
       <div
         style={{
           height: TOOLBAR_HEIGHT,
-          background: "linear-gradient(180deg, #2a2a3e, #222236)",
-          borderBottom: "1px solid rgba(255,255,255,0.06)",
+          background: "rgba(255, 255, 255, 0.05)",
+          borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
           display: "flex",
           alignItems: "center",
           padding: "0 16px",
           gap: 12,
         }}
       >
-        {/* Traffic lights */}
         <div style={{ display: "flex", gap: 7, marginRight: 8 }}>
-          <div style={{ width: 11, height: 11, borderRadius: "50%", background: "#ff5f57" }} />
-          <div style={{ width: 11, height: 11, borderRadius: "50%", background: "#febc2e" }} />
-          <div style={{ width: 11, height: 11, borderRadius: "50%", background: "#28c840" }} />
+          <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#ff5f57" }} />
+          <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#febc2e" }} />
+          <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#28c840" }} />
         </div>
-
-        {/* URL bar */}
         <div
           style={{
             flex: 1,
-            height: 28,
-            borderRadius: 7,
-            background: "rgba(0,0,0,0.3)",
+            height: 26,
+            borderRadius: 8,
+            background: "rgba(255, 255, 255, 0.06)",
+            border: "1px solid rgba(255, 255, 255, 0.06)",
             display: "flex",
             alignItems: "center",
             padding: "0 12px",
@@ -119,7 +117,7 @@ export const BrowserFrame: React.FC<BrowserFrameProps> = ({
           height: height - TOOLBAR_HEIGHT,
           position: "relative",
           overflow: "hidden",
-          background: "#111118",
+          background: "rgba(0, 0, 0, 0.2)",
         }}
       >
         <div style={{ opacity: imgOpacity, width: "100%", height: "100%" }}>
@@ -134,13 +132,13 @@ export const BrowserFrame: React.FC<BrowserFrameProps> = ({
           />
         </div>
 
-        {/* Problem overlay — subtle red vignette */}
         {problemOverlay && (
           <div
             style={{
               position: "absolute",
               inset: 0,
-              background: "linear-gradient(135deg, rgba(239,68,68,0.12) 0%, transparent 60%)",
+              background:
+                "linear-gradient(135deg, rgba(239,68,68,0.15) 0%, transparent 50%)",
               pointerEvents: "none",
             }}
           />
@@ -160,7 +158,7 @@ export const BrowserFrame: React.FC<BrowserFrameProps> = ({
             fontWeight: 700,
             padding: "5px 14px",
             borderRadius: 20,
-            boxShadow: "0 4px 12px rgba(0,0,0,0.4)",
+            boxShadow: `0 4px 16px ${badgeColor}44`,
           }}
         >
           {badge}

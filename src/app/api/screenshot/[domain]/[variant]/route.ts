@@ -24,10 +24,13 @@ export async function GET(
   }
 
   try {
+    // Determine the base URL for preview endpoints
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://webflip.cz";
+
     const url =
       variant === "original"
         ? `https://${domain}`
-        : `https://webflipper.app/preview/${domain}/${variant}`;
+        : `${baseUrl}/preview/${domain}/${variant}`;
 
     const result = await captureScreenshot(url, {
       domain,

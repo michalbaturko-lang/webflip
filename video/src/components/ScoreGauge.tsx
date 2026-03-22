@@ -1,5 +1,6 @@
 import React from "react";
 import { useCurrentFrame, useVideoConfig, spring, interpolate } from "remotion";
+import { GlassCard } from "./GradientBackground";
 
 type ScoreGaugeProps = {
   score: number;
@@ -9,9 +10,9 @@ type ScoreGaugeProps = {
 };
 
 function scoreColor(score: number): string {
-  if (score >= 80) return "#22c55e";
-  if (score >= 50) return "#f59e0b";
-  return "#ef4444";
+  if (score >= 80) return "#34d399";
+  if (score >= 50) return "#fbbf24";
+  return "#f87171";
 }
 
 export const ScoreGauge: React.FC<ScoreGaugeProps> = ({
@@ -33,35 +34,41 @@ export const ScoreGauge: React.FC<ScoreGaugeProps> = ({
 
   const animatedScore = Math.round(interpolate(progress, [0, 1], [0, score]));
   const circumference = 2 * Math.PI * 54;
-  const strokeDashoffset = circumference - (circumference * animatedScore) / 100;
+  const strokeDashoffset =
+    circumference - (circumference * animatedScore) / 100;
   const color = scoreColor(score);
 
-  const entrance = spring({ frame, fps, delay: delay, config: { damping: 200 } });
+  const entrance = spring({
+    frame,
+    fps,
+    delay,
+    config: { damping: 14, stiffness: 80 },
+  });
   const scale = interpolate(entrance, [0, 1], [0.5, 1]);
   const opacity = interpolate(entrance, [0, 1], [0, 1]);
 
   return (
-    <div
+    <GlassCard
+      intensity="light"
       style={{
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        gap: 12,
+        gap: 10,
         transform: `scale(${scale})`,
         opacity,
+        padding: "16px 12px",
       }}
     >
       <svg width={size} height={size} viewBox="0 0 120 120">
-        {/* Background circle */}
         <circle
           cx="60"
           cy="60"
           r="54"
           fill="none"
-          stroke="rgba(255,255,255,0.1)"
+          stroke="rgba(255,255,255,0.06)"
           strokeWidth="8"
         />
-        {/* Progress circle */}
         <circle
           cx="60"
           cy="60"
@@ -73,8 +80,10 @@ export const ScoreGauge: React.FC<ScoreGaugeProps> = ({
           strokeDashoffset={strokeDashoffset}
           strokeLinecap="round"
           transform="rotate(-90 60 60)"
+          style={{
+            filter: `drop-shadow(0 0 6px ${color}55)`,
+          }}
         />
-        {/* Score text */}
         <text
           x="60"
           y="60"
@@ -90,8 +99,8 @@ export const ScoreGauge: React.FC<ScoreGaugeProps> = ({
       </svg>
       <div
         style={{
-          fontSize: 16,
-          color: "rgba(255,255,255,0.7)",
+          fontSize: 14,
+          color: "rgba(255,255,255,0.65)",
           textTransform: "uppercase",
           letterSpacing: 1,
           fontWeight: 600,
@@ -99,6 +108,6 @@ export const ScoreGauge: React.FC<ScoreGaugeProps> = ({
       >
         {label}
       </div>
-    </div>
+    </GlassCard>
   );
 };

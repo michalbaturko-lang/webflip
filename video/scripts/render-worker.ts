@@ -1,44 +1,51 @@
 /**
- * Render Worker — polls the outreach_video_renders queue and renders videos.
+ * Remotion Lambda Render Worker
+ *
+ * Polls the outreach_video_renders queue and renders videos using Remotion Lambda.
+ * This worker supports both Lambda rendering (cloud-based, scalable) and local CLI
+ * rendering (fallback/development).
  *
  * Usage:
  *   npx tsx scripts/render-worker.ts          # Process one batch then exit
  *   npx tsx scripts/render-worker.ts --watch   # Continuous polling
  *
- * Environment:
- *   SUPABASE_URL        — Supabase project URL
- *   SUPABASE_SERVICE_KEY — Service role key (bypasses RLS)
- *   REMOTION_CONCURRENCY — Render concurrency (default: 50%)
- *   RENDER_OUTPUT_DIR    — Output directory (default: ./out)
- *   STORAGE_BUCKET       — Supabase storage bucket (default: webflipper-assets)
+ * Environment Variables:
+ *   SUPABASE_URL             — Supabase project URL
+ *   SUPABASE_SERVICE_KEY     — Service role key (bypasses RLS)
+ *   RENDER_MODE              — "lambda" (default) or "local"
+ *   AWS_ACCESS_KEY_ID        — AWS IAM credentials (for Lambda)
+ *   AWS_SECRET_ACCESS_KEY    — AWS IAM credentials (for Lambda)
+ *   REMOTION_LAMBDA_FUNCTION_NAME — Lambda function name
+ *   REMOTION_S3_BUCKET       — S3 bucket for video output
+ *   ELEVENLABS_API_KEY       — ElevenLabs API key (optional)
+ *   ELEVENLABS_VOICE_ID      — Voice ID for Czech voiceover (optional)
+ *   SKIP_VOICEOVER           — Set to "1" to skip voiceover generation
+ *
+ * Render Modes:
+ * - Lambda (default): Scalable cloud rendering via AWS Lambda
+ * - Local: Fallback local rendering using Remotion CLI
  *
  * The worker:
- *   1. Picks up the next 'queued' job (ordered by priority DESC, queued_at ASC)
- *   2. Updates status to 'rendering'
- *   3. Generates voiceover via ElevenLabs (if no voiceoverUrl in props)
- *   4. Runs `npx remotion render` with inputProps from the job
- *   5. Uploads the .mp4 to Supabase Storage
- *   6. Updates job status to 'done' with the video URL
- *   7. Updates crm_records.video_url for quick access
- *
- * ElevenLabs voiceover (optional):
- *   ELEVENLABS_API_KEY   — API key
- *   ELEVENLABS_VOICE_ID  — Voice ID for Czech voiceover
- *   Set SKIP_VOICEOVER=1 to skip voiceover generation
+ *   1. Polls Supabase for queued render jobs
+ *   2. Claims the next job (optimistic locking)
+ *   3. Generates voiceover via ElevenLabs (if needed)
+ *   4. Triggers render via Lambda (or local CLI)
+ *   5. Updates job status in database
+ *   6. Continuous polling in watch mode (--watch)
  */
 
 import { createClient } from "@supabase/supabase-js";
-import { execSync } from "child_process";
-import * as fs from "fs";
-import * as path from "path";
+import type { OutreachVideoProps } from "../src/Video";
+
+// ──────────────────────────────────────────────────────────────
+// Configuration
+// ──────────────────────────────────────────────────────────────
 
 const SUPABASE_URL = process.env.SUPABASE_URL ?? "";
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY ?? "";
-const CONCURRENCY = process.env.REMOTION_CONCURRENCY ?? "50%";
-const OUTPUT_DIR = process.env.RENDER_OUTPUT_DIR ?? path.join(__dirname, "..", "out");
-const BUCKET = process.env.STORAGE_BUCKET ?? "webflipper-assets";
+const RENDER_MODE = (process.env.RENDER_MODE || "lambda") as "lambda" | "local";
 const WATCH_MODE = process.argv.includes("--watch");
-const POLL_INTERVAL = 10_000; // 10 seconds
+const POLL_INTERVAL = 10_000; // 10 seconds between polls when idle
 const SKIP_VOICEOVER = process.env.SKIP_VOICEOVER === "1";
 
 // ElevenLabs config
@@ -46,6 +53,7 @@ const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY ?? "";
 const ELEVENLABS_VOICE_ID = process.env.ELEVENLABS_VOICE_ID ?? "";
 const ELEVENLABS_MODEL = "eleven_multilingual_v2"; // Czech support
 
+// Validate configuration
 if (!SUPABASE_URL || !SUPABASE_KEY) {
   console.error("❌ SUPABASE_URL and SUPABASE_SERVICE_KEY are required");
   process.exit(1);
@@ -53,12 +61,20 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
 
 const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 
+// ──────────────────────────────────────────────────────────────
+// Types
+// ──────────────────────────────────────────────────────────────
+
 interface RenderJob {
   id: string;
   crm_record_id: string;
-  input_props: Record<string, unknown>;
+  input_props: OutreachVideoProps & { voiceoverUrl?: string };
   priority: number;
 }
+
+// ──────────────────────────────────────────────────────────────
+// Job Management
+// ──────────────────────────────────────────────────────────────
 
 async function claimNextJob(): Promise<RenderJob | null> {
   // Atomically claim the next queued job
@@ -91,11 +107,42 @@ async function claimNextJob(): Promise<RenderJob | null> {
   return data as RenderJob;
 }
 
-// ─── ElevenLabs Voiceover ───
+async function markDone(jobId: string, recordId: string, videoUrl: string) {
+  await db
+    .from("outreach_video_renders")
+    .update({
+      status: "done",
+      video_url: videoUrl,
+      completed_at: new Date().toISOString(),
+    })
+    .eq("id", jobId);
 
-async function generateVoiceover(
-  job: RenderJob
-): Promise<string | null> {
+  // Also update CRM record for quick access
+  await db
+    .from("crm_records")
+    .update({
+      video_url: videoUrl,
+      video_rendered_at: new Date().toISOString(),
+    })
+    .eq("id", recordId);
+}
+
+async function markError(jobId: string, errorMessage: string) {
+  await db
+    .from("outreach_video_renders")
+    .update({
+      status: "error",
+      error_message: errorMessage.slice(0, 1000),
+      completed_at: new Date().toISOString(),
+    })
+    .eq("id", jobId);
+}
+
+// ──────────────────────────────────────────────────────────────
+// ElevenLabs Voiceover
+// ──────────────────────────────────────────────────────────────
+
+async function generateVoiceover(job: RenderJob): Promise<string | null> {
   if (SKIP_VOICEOVER || !ELEVENLABS_API_KEY || !ELEVENLABS_VOICE_ID) {
     if (!SKIP_VOICEOVER && !ELEVENLABS_API_KEY) {
       console.log("⏭️  Skipping voiceover (ELEVENLABS_API_KEY not set)");
@@ -103,17 +150,17 @@ async function generateVoiceover(
     return null;
   }
 
-  const props = job.input_props as Record<string, unknown>;
+  const props = job.input_props;
 
-  // Already has a voiceover URL — skip generation
+  // Already has voiceover
   if (props.voiceoverUrl) {
     console.log(`🔊 Using existing voiceover: ${props.voiceoverUrl}`);
-    return props.voiceoverUrl as string;
+    return props.voiceoverUrl;
   }
 
-  // Build personalized script from the voiceover segments
-  const domain = (props.companyDomain as string) ?? "vašeho webu";
-  const score = (props.overallScore as number) ?? 0;
+  // Build personalized Czech script
+  const domain = props.companyDomain ?? "vašeho webu";
+  const score = props.overallScore ?? 0;
 
   const script = [
     `Váš web ${domain} má několik vážných problémů. Načítá se příliš pomalu, na mobilu je prakticky nepoužitelný a vyhledávače ho téměř nevidí. To znamená, že přicházíte o zákazníky každý den.`,
@@ -123,7 +170,9 @@ async function generateVoiceover(
     `Máte sedm dní na vyzkoušení — zcela zdarma. Podívejte se na návrhy na odkazu níže. Pokud se vám líbí, zaplaťte a web je váš. Pokud ne — smažeme vše. Žádný závazek.`,
   ].join("\n\n");
 
-  console.log(`🎙️  Generating voiceover for ${domain} (${script.length} chars)...`);
+  console.log(
+    `🎙️  Generating voiceover for ${domain} (${script.length} chars)...`
+  );
 
   try {
     const response = await fetch(
@@ -150,7 +199,9 @@ async function generateVoiceover(
 
     if (!response.ok) {
       const errorText = await response.text().catch(() => "");
-      console.error(`❌ ElevenLabs error ${response.status}: ${errorText.slice(0, 200)}`);
+      console.error(
+        `❌ ElevenLabs error ${response.status}: ${errorText.slice(0, 200)}`
+      );
       return null; // Proceed without voiceover
     }
 
@@ -160,7 +211,7 @@ async function generateVoiceover(
     // Upload to Supabase Storage
     const storagePath = `voiceovers/${job.crm_record_id}/voiceover-${Date.now()}.mp3`;
     const { error: uploadError } = await db.storage
-      .from(BUCKET)
+      .from("webflip-assets")
       .upload(storagePath, audioBuffer, {
         contentType: "audio/mpeg",
         upsert: true,
@@ -171,33 +222,56 @@ async function generateVoiceover(
       return null;
     }
 
-    const {
-      data: { publicUrl },
-    } = db.storage.from(BUCKET).getPublicUrl(storagePath);
+    const { data: publicUrlData } = db.storage
+      .from("webflip-assets")
+      .getPublicUrl(storagePath);
 
-    console.log(`🔊 Voiceover ready: ${publicUrl}`);
-    return publicUrl;
+    console.log(`🔊 Voiceover ready: ${publicUrlData.publicUrl}`);
+    return publicUrlData.publicUrl;
   } catch (err) {
     console.error("❌ Voiceover generation failed:", err);
-    return null; // Proceed without voiceover — video still works
+    return null; // Proceed without voiceover
   }
 }
 
-// ─── Remotion Render ───
+// ──────────────────────────────────────────────────────────────
+// Rendering Backends
+// ──────────────────────────────────────────────────────────────
 
-async function renderVideo(job: RenderJob): Promise<string> {
-  const outputFile = path.join(OUTPUT_DIR, `video-${job.crm_record_id}.mp4`);
-
-  // Ensure output dir exists
-  fs.mkdirSync(OUTPUT_DIR, { recursive: true });
-
-  // Write props to a temp file (avoids shell escaping issues)
-  const propsFile = path.join(OUTPUT_DIR, `props-${job.crm_record_id}.json`);
-  fs.writeFileSync(propsFile, JSON.stringify(job.input_props));
-
-  console.log(`🎬 Rendering video for ${(job.input_props as Record<string, string>).companyDomain ?? job.crm_record_id}...`);
-
+async function renderViaLambda(job: RenderJob): Promise<string> {
   try {
+    const { renderVideoOnLambda } = await import("../src/render-video");
+    const props = job.input_props;
+    const result = await renderVideoOnLambda(props);
+    return result.videoUrl;
+  } catch (err) {
+    throw new Error(
+      `Lambda render failed: ${err instanceof Error ? err.message : String(err)}`
+    );
+  }
+}
+
+async function renderViaLocal(job: RenderJob): Promise<string> {
+  try {
+    const { execSync } = await import("child_process");
+    const fs = await import("fs");
+    const path = await import("path");
+
+    const OUTPUT_DIR = process.env.RENDER_OUTPUT_DIR || path.join(__dirname, "..", "out");
+    const outputFile = path.join(
+      OUTPUT_DIR,
+      `video-${job.crm_record_id}.mp4`
+    );
+
+    fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+
+    const propsFile = path.join(OUTPUT_DIR, `props-${job.crm_record_id}.json`);
+    fs.writeFileSync(propsFile, JSON.stringify(job.input_props));
+
+    console.log(
+      `🎬 Rendering locally for ${job.input_props.companyDomain}...`
+    );
+
     execSync(
       [
         "npx remotion render",
@@ -207,7 +281,7 @@ async function renderVideo(job: RenderJob): Promise<string> {
         "--codec=h264",
         "--image-format=jpeg",
         "--jpeg-quality=90",
-        `--concurrency=${CONCURRENCY}`,
+        "--concurrency=50%",
         "--log=error",
       ].join(" "),
       {
@@ -216,80 +290,45 @@ async function renderVideo(job: RenderJob): Promise<string> {
         timeout: 5 * 60 * 1000, // 5 minute timeout
       }
     );
-  } finally {
-    // Clean up props file
+
+    if (!fs.existsSync(outputFile)) {
+      throw new Error("Render completed but output file not found");
+    }
+
+    // Upload to Supabase Storage
+    const fileBuffer = fs.readFileSync(outputFile);
+    const storagePath = `videos/${job.crm_record_id}/outreach-${Date.now()}.mp4`;
+
+    const { error } = await db.storage
+      .from("webflip-assets")
+      .upload(storagePath, fileBuffer, {
+        contentType: "video/mp4",
+        upsert: true,
+      });
+
+    if (error) {
+      throw new Error(`Upload failed: ${error.message}`);
+    }
+
+    const { data: publicUrlData } = db.storage
+      .from("webflip-assets")
+      .getPublicUrl(storagePath);
+
+    // Clean up
     if (fs.existsSync(propsFile)) fs.unlinkSync(propsFile);
+    if (fs.existsSync(outputFile)) fs.unlinkSync(outputFile);
+
+    return publicUrlData.publicUrl;
+  } catch (err) {
+    throw new Error(
+      `Local render failed: ${err instanceof Error ? err.message : String(err)}`
+    );
   }
-
-  if (!fs.existsSync(outputFile)) {
-    throw new Error("Render completed but output file not found");
-  }
-
-  return outputFile;
 }
 
-async function uploadVideo(
-  filePath: string,
-  recordId: string
-): Promise<string> {
-  const fileBuffer = fs.readFileSync(filePath);
-  const storagePath = `videos/${recordId}/outreach-${Date.now()}.mp4`;
-
-  const { error } = await db.storage.from(BUCKET).upload(storagePath, fileBuffer, {
-    contentType: "video/mp4",
-    upsert: true,
-  });
-
-  if (error) {
-    throw new Error(`Upload failed: ${error.message}`);
-  }
-
-  const {
-    data: { publicUrl },
-  } = db.storage.from(BUCKET).getPublicUrl(storagePath);
-
-  // Clean up local file
-  fs.unlinkSync(filePath);
-
-  return publicUrl;
-}
-
-async function markDone(
-  jobId: string,
-  recordId: string,
-  videoUrl: string,
-  fileSizeBytes: number
-) {
-  await db
-    .from("outreach_video_renders")
-    .update({
-      status: "done",
-      video_url: videoUrl,
-      file_size_bytes: fileSizeBytes,
-      completed_at: new Date().toISOString(),
-    })
-    .eq("id", jobId);
-
-  // Also update the CRM record for quick access
-  await db
-    .from("crm_records")
-    .update({
-      video_url: videoUrl,
-      video_rendered_at: new Date().toISOString(),
-    })
-    .eq("id", recordId);
-}
-
-async function markError(jobId: string, errorMessage: string) {
-  await db
-    .from("outreach_video_renders")
-    .update({
-      status: "error",
-      error_message: errorMessage.slice(0, 1000),
-      completed_at: new Date().toISOString(),
-    })
-    .eq("id", jobId);
-}
+// ──────────────────────────────────────────────────────────────
+// Main Processing
+// ──────────────────────────────────────────────────────────────
 
 async function processOne(): Promise<boolean> {
   const job = await claimNextJob();
@@ -301,21 +340,24 @@ async function processOne(): Promise<boolean> {
     // Generate voiceover if needed
     const voiceoverUrl = await generateVoiceover(job);
     if (voiceoverUrl) {
-      (job.input_props as Record<string, unknown>).voiceoverUrl = voiceoverUrl;
+      job.input_props.voiceoverUrl = voiceoverUrl;
     }
 
-    const outputFile = await renderVideo(job);
-    const stat = fs.statSync(outputFile);
-    const videoUrl = await uploadVideo(outputFile, job.crm_record_id);
+    // Render video
+    const videoUrl =
+      RENDER_MODE === "lambda"
+        ? await renderViaLambda(job)
+        : await renderViaLocal(job);
 
+    // Mark done
     const durationMs = Date.now() - startTime;
-    await markDone(job.id, job.crm_record_id, videoUrl, stat.size);
+    await markDone(job.id, job.crm_record_id, videoUrl);
 
     console.log(
-      `✅ Done: ${(job.input_props as Record<string, string>).companyDomain} — ${(durationMs / 1000).toFixed(1)}s, ${(stat.size / 1024 / 1024).toFixed(1)} MB`
+      `✅ Done: ${job.input_props.companyDomain} — ${(durationMs / 1000).toFixed(1)}s`
     );
 
-    // Update duration
+    // Update duration in database
     await db
       .from("outreach_video_renders")
       .update({ duration_ms: durationMs })
@@ -332,8 +374,7 @@ async function processOne(): Promise<boolean> {
 
 async function run() {
   console.log(`🎥 Webflipper Render Worker started${WATCH_MODE ? " (watch mode)" : ""}`);
-  console.log(`   Output: ${OUTPUT_DIR}`);
-  console.log(`   Concurrency: ${CONCURRENCY}`);
+  console.log(`   Mode: ${RENDER_MODE}`);
   console.log("");
 
   if (WATCH_MODE) {
