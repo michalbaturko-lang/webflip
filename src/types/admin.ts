@@ -13,7 +13,7 @@ export const ACTIVITY_TYPES = [
   'physical_mail_sent', 'qr_scanned', 'website_visit',
   'analysis_started', 'email_captured', 'trial_started',
   'trial_page_view', 'editor_used', 'card_added',
-  'payment_received', 'note_added', 'stage_changed', 'call_logged',
+  'payment_received', 'note_added', 'stage_changed', 'call_logged', 'page_viewed',
 ] as const;
 export type ActivityType = typeof ACTIVITY_TYPES[number];
 
