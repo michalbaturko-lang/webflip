@@ -14,7 +14,7 @@ export async function generateQrCode(url: string): Promise<QrCodeResult> {
   try {
     // Generate SVG string
     const svg = await QRCode.toString(url, {
-      type: "image/svg+xml",
+      type: "svg",
       width: 200,
       margin: 2,
       color: {
