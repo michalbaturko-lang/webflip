@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin/auth";
 import { createServerClient } from "@/lib/supabase";
+import {
+  getVideoTemplateVars,
+  processVideoPlaceholders,
+} from "@/lib/outreach/video-integration";
 
 export async function POST(request: NextRequest) {
   try {
@@ -124,6 +128,16 @@ export async function POST(request: NextRequest) {
             continue;
           }
 
+          // Inject video template variables if available
+          const videoVars = await getVideoTemplateVars(record.id);
+          const processedTemplate = processVideoPlaceholders(
+            nextStep.template,
+            videoVars
+          );
+          const processedSubject = nextStep.subject
+            ? processVideoPlaceholders(nextStep.subject, videoVars)
+            : nextStep.subject;
+
           // Create outreach email log
           const { error: emailLogError } = await supabase
             .from("outreach_email_logs")
@@ -131,13 +145,15 @@ export async function POST(request: NextRequest) {
               crm_record_id: record.id,
               sequence_id: record.outreach_sequence_id,
               sequence_step: nextStep.step_number,
-              template_name: nextStep.template,
-              subject: nextStep.subject,
+              template_name: processedTemplate,
+              subject: processedSubject,
               status: "sent",
               sent_at: now,
               metadata: {
                 channel: "sequence",
                 step: nextStep.step_number,
+                has_video: !!videoVars,
+                video_url: videoVars?.video_url ?? null,
               },
             });
 
