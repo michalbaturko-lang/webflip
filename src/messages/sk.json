@@ -211,6 +211,9 @@
     "variantCarousel": "Karusel variantov",
     "compareVariants": "Porovnať varianty",
     "selectThisVariant": "Vybrať tento variant",
+    "confirmAndPay": "Potvrdiť a zaplatiť",
+    "checkoutLoading": "Presmerovanie...",
+    "selectFailed": "Nepodarilo sa vybrať variant. Skúste to prosím znova.",
     "closeComparison": "Zavrieť porovnanie",
     "selectFailed": "Nepodarilo sa uložiť výber. Variant si môžete stále prezrieť.",
     "networkError": "Chyba siete. Skúste to prosím znova.",
@@ -301,5 +304,13 @@
     "stepAnalyze": "Analýza",
     "stepGenerate": "Generovanie",
     "stepResults": "Výsledky"
+  },
+  "success": {
+    "title": "Platba prebehla úspešne!",
+    "description": "Ďakujeme za nákup. Váš redesign je potvrdený a náš tím začne proces odovzdania.",
+    "nextStep1": "1. Pripravíme vami vybraný redesign na nasadenie.",
+    "nextStep2": "2. Dostanete email s kompletným zdrojovým kódom a inštrukciami na nasadenie.",
+    "nextStep3": "3. Náš tím je vám k dispozícii pre akékoľvek otázky počas prechodu.",
+    "backToPreview": "Späť na analýzu"
   }
 }

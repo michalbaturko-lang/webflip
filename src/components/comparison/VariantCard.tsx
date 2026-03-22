@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { Monitor, Smartphone, Eye, Check } from "lucide-react";
+import { Monitor, Smartphone, Eye, Check, CreditCard, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import RecommendBadge, { type RecommendBadgeProps } from "./RecommendBadge";
 import type { DesignVariant, ViewMode } from "@/types/design";
 
@@ -32,14 +32,37 @@ export default function VariantCard({
   onSelect,
 }: VariantCardProps) {
   const t = useTranslations("comparison");
+  const locale = useLocale();
   const [viewMode, setViewMode] = useState<ViewMode>("desktop");
   const [iframeError, setIframeError] = useState(false);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
 
   const iframeSrc = `/api/analyze/${token}/preview/${index}`;
 
   const handleIframeError = useCallback(() => {
     setIframeError(true);
   }, []);
+
+  const handleCheckout = useCallback(async () => {
+    setCheckoutLoading(true);
+    try {
+      const res = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, variantIndex: index, locale }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.url) {
+          window.location.href = data.url;
+          return;
+        }
+      }
+    } catch {
+      // Fall through to reset loading
+    }
+    setCheckoutLoading(false);
+  }, [token, index, locale]);
 
   return (
     <motion.div
@@ -219,6 +242,26 @@ export default function VariantCard({
             </>
           )}
         </button>
+
+        {isSelected && (
+          <button
+            onClick={handleCheckout}
+            disabled={checkoutLoading}
+            className="flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-all cursor-pointer bg-purple-600 hover:bg-purple-500 disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {checkoutLoading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                {t("checkoutLoading")}
+              </>
+            ) : (
+              <>
+                <CreditCard className="h-4 w-4" />
+                {t("confirmAndPay")}
+              </>
+            )}
+          </button>
+        )}
       </div>
     </motion.div>
   );
