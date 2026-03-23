@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, Suspense } from "react";
 import Navbar from "@/components/landing/Navbar";
 import Hero from "@/components/landing/Hero";
 import ConversionStepper from "@/components/landing/ConversionStepper";
@@ -52,9 +52,9 @@ export default function HomePage() {
     setVariantCount(variants);
     setAnalysisError(error);
   }, []);
-
   return (
-    <main className="min-h-screen bg-background">
+    <main className="min-h-screenbg-background">
+       <Suspense fallback={null}>
       <Navbar />
       <Hero onAnalyze={handleAnalyze} />
 
@@ -80,6 +80,7 @@ export default function HomePage() {
       <FAQ />
       <FinalCTA onAnalyze={handleAnalyze} />
       <Footer />
+       </Suspense>
     </main>
   );
 }
