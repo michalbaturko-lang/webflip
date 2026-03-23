@@ -1,9 +1,7 @@
-
 import type { Metadata } from "next";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import { NextIntlClientProvider, hasLocale } from "next-intl";
-import { getMessages } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
 import ThemeProvider from "@/components/ThemeProvider";
@@ -38,7 +36,7 @@ export default async function LocaleLayout({
     notFound();
   }
 
-  const messages = await getMessages();
+  const messages = (await import(`@/messages/${locale}.json`)).default;
 
   return (
     <html lang={locale} className="dark" suppressHydrationWarning>
