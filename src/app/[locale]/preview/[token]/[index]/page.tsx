@@ -15,9 +15,16 @@ import {
 } from "lucide-react";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useTranslations, useLocale } from "next-intl";
-import AIEditor from "@/components/editor/AIEditor";
-import VisualEditor from "@/components/editor/VisualEditor";
+import dynamic from "next/dynamic";
 import type { EditorMode } from "@/lib/visual-editor/messages";
+
+// Dynamically import heavy editor components — skip SSR to prevent Vercel hang
+const AIEditor = dynamic(() => import("@/components/editor/AIEditor"), {
+  ssr: false,
+});
+const VisualEditor = dynamic(() => import("@/components/editor/VisualEditor"), {
+  ssr: false,
+});
 
 type ViewMode = "desktop" | "mobile";
 

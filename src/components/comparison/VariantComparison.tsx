@@ -82,7 +82,7 @@ export default function VariantComparison({
   }, [token]);
 
   const handleSelectVariant = useCallback(
-    async (index: number) => {
+    (index: number) => {
       setSelectError(null);
 
       if (onSelectVariant) {
@@ -90,23 +90,26 @@ export default function VariantComparison({
         return;
       }
 
-      // Persist selection — always open preview regardless of persistence result
-      try {
-        const res = await fetch(`/api/analyze/${token}/select`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ variantIndex: index }),
-        });
-        if (res.ok) {
-          setSelectedVariant(index);
-        } else {
-          setSelectError(t("selectFailed"));
-        }
-      } catch (err) {
-        console.error("Failed to persist variant selection:", err);
-        setSelectError(t("selectFailed"));
-      }
+      // Open preview FIRST (synchronous, in user gesture context) to avoid popup blocker
       window.open(`/${locale}/preview/${token}/${index}`, "_blank");
+
+      // Persist selection in background — fire and forget
+      fetch(`/api/analyze/${token}/select`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ variantIndex: index }),
+      })
+        .then((res) => {
+          if (res.ok) {
+            setSelectedVariant(index);
+          } else {
+            setSelectError(t("selectFailed"));
+          }
+        })
+        .catch((err) => {
+          console.error("Failed to persist variant selection:", err);
+          setSelectError(t("selectFailed"));
+        });
     },
     [token, locale, onSelectVariant, t]
   );
