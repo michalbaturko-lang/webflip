@@ -11,10 +11,10 @@ export async function GET(request: NextRequest) {
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
 
-    // Get records enrolled in sequences, pending email
+    // Get records enrolled in sequences with full details for UI
     const { data: pendingEmailRecords, error: emailError } = await supabase
       .from("crm_records")
-      .select("id, outreach_sequence_id, outreach_sequence_step")
+      .select("id, outreach_sequence_id, outreach_sequence_step, company_name, domain, first_contact_date, last_contact_date, created_at, tags")
       .not("outreach_sequence_id", "is", null);
 
     if (emailError) throw new Error(`Failed to fetch email pending: ${emailError.message}`);
@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
       if (sequenceIds.length > 0) {
         const { data: sequences, error: seqError } = await supabase
           .from("outreach_sequences")
-          .select("id, steps")
+          .select("id, name, steps")
           .in("id", sequenceIds);
 
         if (seqError) throw new Error(`Failed to fetch sequences: ${seqError.message}`);
@@ -39,47 +39,50 @@ export async function GET(request: NextRequest) {
           seqMap[seq.id] = seq;
         });
 
-        // Get enrollment dates to calculate if delay has passed
-        const { data: activities, error: actError } = await supabase
-          .from("crm_records")
-          .select(
-            "id, outreach_sequence_id, outreach_sequence_step, first_contact_date"
-          )
-          .not("outreach_sequence_id", "is", null);
-
-        if (actError) throw new Error(`Failed to fetch activity dates: ${actError.message}`);
-
-        const recordMap: Record<string, any> = {};
-        (activities || []).forEach((r: any) => {
-          recordMap[r.id] = r;
-        });
-
         // Check which records are due for next email step
         pendingEmailTasks = (pendingEmailRecords || [])
           .filter((record: any) => {
             const seq = seqMap[record.outreach_sequence_id];
             if (!seq) return false;
 
-            const currentStep = record.outreach_sequence_step || 0;
-            const nextStep = seq.steps.find((s: any) => s.step_number === currentStep + 1);
+            // Skip bounced/unsubscribed
+            const tags: string[] = record.tags || [];
+            if (tags.includes("bounced") || tags.includes("unsubscribed")) return false;
+
+            // outreach_sequence_step = last completed step (0 = none)
+            const completedStep = record.outreach_sequence_step || 0;
+            const nextStep = seq.steps.find((s: any) => s.step_number === completedStep + 1);
 
             if (!nextStep || nextStep.channel !== "email") return false;
 
-            const recordData = recordMap[record.id];
-            if (!recordData || !recordData.first_contact_date) return false;
+            // Use last_contact_date for delay calculation (falls back to created_at)
+            const referenceDate = record.last_contact_date || record.first_contact_date || record.created_at;
+            if (!referenceDate) return false;
 
-            const firstContactDate = new Date(recordData.first_contact_date);
+            const lastContact = new Date(referenceDate);
             const dueDate = new Date(
-              firstContactDate.getTime() + nextStep.delay_days * 24 * 60 * 60 * 1000
+              lastContact.getTime() + nextStep.delay_days * 24 * 60 * 60 * 1000
             );
 
             return dueDate <= now;
           })
-          .map((record: any) => ({
-            record_id: record.id,
-            sequence_id: record.outreach_sequence_id,
-            current_step: record.outreach_sequence_step,
-          }));
+          .map((record: any) => {
+            const seq = seqMap[record.outreach_sequence_id];
+            const completedStep = record.outreach_sequence_step || 0;
+            const nextStep = seq?.steps.find((s: any) => s.step_number === completedStep + 1);
+
+            return {
+              record_id: record.id,
+              company_name: record.company_name,
+              domain: record.domain,
+              sequence_id: record.outreach_sequence_id,
+              sequence_name: seq?.name || "Unknown",
+              current_step: completedStep,
+              template: nextStep?.template || "",
+              subject: nextStep?.subject || "",
+              first_contact_date: record.last_contact_date || record.first_contact_date || record.created_at,
+            };
+          });
       }
     }
 
