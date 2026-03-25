@@ -29,7 +29,7 @@ const VisualEditor = dynamic(() => import("@/components/editor/VisualEditor"), {
 type ViewMode = "desktop" | "mobile";
 
 export default function PreviewClient() {
-  const params = useParams<{ token: string; index: string }>();
+  const params = useParams<{ domain: string; index: string }>();
   const router = useRouter();
   const t = useTranslations("editor");
   const tc = useTranslations("comparison");
@@ -42,7 +42,7 @@ export default function PreviewClient() {
   const [initialHtml, setInitialHtml] = useState<string | undefined>(undefined);
   const [editorMode, setEditorMode] = useState<EditorMode>("browse");
 
-  const iframeSrc = `/api/analyze/${params.token}/preview/${params.index}`;
+  const iframeSrc = `/api/analyze/${params.domain}/preview/${params.index}`;
   const variantNum = Number(params.index) + 1;
 
   // Capture initial HTML once iframe loads — with race condition fix (#7)
@@ -117,7 +117,7 @@ export default function PreviewClient() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          token: params.token,
+          token: params.domain,
           variantIndex: Number(params.index),
           locale,
         }),
@@ -133,7 +133,7 @@ export default function PreviewClient() {
       // Fall through
     }
     setCheckoutLoading(false);
-  }, [params.token, params.index, locale]);
+  }, [params.domain, params.index, locale]);
 
   return (
     <div
@@ -304,7 +304,7 @@ export default function PreviewClient() {
       {/* Visual Editor overlay — active when in select/edit mode */}
       {initialHtml !== undefined && (
         <VisualEditor
-          token={params.token}
+          token={params.domain}
           variantIndex={Number(params.index)}
           iframeRef={iframeRef}
           editorMode={editorMode}
@@ -315,7 +315,7 @@ export default function PreviewClient() {
       {/* AI Editor — render only after initial HTML captured */}
       {initialHtml !== undefined && (
         <AIEditor
-          token={params.token}
+          token={params.domain}
           variantIndex={Number(params.index)}
           onHtmlUpdate={handleHtmlUpdate}
           iframeRef={iframeRef}
