@@ -33,7 +33,7 @@ export async function GET() {
     // 3. Screenshot stats
     const { data: screenshots, error: ssErr } = await db
       .from("website_screenshots")
-      .select("id, domain, variant, url, created_at");
+      .select("id, domain, variant, url:screenshot_url, created_at");
 
     if (ssErr) throw ssErr;
 
