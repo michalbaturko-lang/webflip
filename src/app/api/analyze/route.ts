@@ -28,6 +28,7 @@ import { applyBusinessContext } from "@/lib/business-context";
 import { generateExplanations } from "@/lib/llm-explainer";
 import { generateSEOSuggestions } from "@/lib/seo-suggestions";
 import { sendAnalysisEmail } from "@/lib/email";
+import { runQualityGate, validateDeterministic } from "@/lib/quality-gate";
 import type { Finding, BusinessProfile, EnrichmentResults, PageSpeedMetricsData, SEOSuggestionsData } from "@/lib/supabase";
 
 // Vercel Pro supports up to 300s. Pipeline needs time for crawl+analyze+generate.
@@ -624,6 +625,49 @@ async function runPipeline(url: string, token: string, locale?: string, email?: 
         console.error(`HTML generation failed for variant ${i}:`, err);
         htmlVariants.push(buildQuickFallbackHtml(variants[i], url, extractedAssets, businessProfile));
       }
+    }
+  }
+
+  // ─── Stage 4.5: Quality Gate ───
+  console.log(`[pipeline:${token}] Stage 4.5: Running quality gate on ${htmlVariants.length} variants...`);
+  await updateAnalysis(token, {
+    variant_progress: { current: 0, total: 0, message: "Kontrola kvality generovaných návrhů..." },
+  }).catch(() => {});
+
+  const qualityReports: Array<{ variantIndex: number; passed: boolean; score: number; issueCount: number; criticalCount: number }> = [];
+
+  for (let i = 0; i < htmlVariants.length; i++) {
+    if (!htmlVariants[i]) continue;
+    try {
+      // Use deterministic-only checks if time is tight, otherwise both levels
+      const level = timeLeft() > 60_000 ? "both" : "deterministic";
+      const report = await runQualityGate(htmlVariants[i], url, businessProfile, extractedAssets, level);
+
+      qualityReports.push({
+        variantIndex: i,
+        passed: report.passed,
+        score: report.score,
+        issueCount: report.issues.length,
+        criticalCount: report.issues.filter(iss => iss.severity === "critical").length,
+      });
+
+      console.log(
+        `[pipeline:${token}] QA variant ${i}: score=${report.score}, passed=${report.passed}, issues=${report.issues.length} (${report.issues.filter(iss => iss.severity === "critical").length} critical)`
+      );
+
+      // Log individual issues for debugging
+      for (const issue of report.issues) {
+        console.log(`  [QA:${issue.severity}] ${issue.category}: ${issue.message}`);
+      }
+
+      // Auto-fix: remove unfilled template variables (Level 1 autofix)
+      const autoFixableIssues = report.issues.filter(iss => iss.autoFixable);
+      if (autoFixableIssues.some(iss => iss.category === "template")) {
+        htmlVariants[i] = htmlVariants[i].replace(/TEMPLATE_VAR_\w+/g, "");
+        console.log(`[pipeline:${token}] Auto-fixed: removed unfilled template variables from variant ${i}`);
+      }
+    } catch (err) {
+      console.error(`[pipeline:${token}] Quality gate failed for variant ${i} (non-fatal):`, err);
     }
   }
 

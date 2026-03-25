@@ -85,6 +85,148 @@ const INDUSTRY_QUERIES: Record<string, string[]> = {
   corporate: ["modern corporate office", "professional business environment", "corporate building architecture"],
 };
 
+// ── Industry keyword aliases (map non-English and variant terms to INDUSTRY_QUERIES keys) ──
+
+const INDUSTRY_ALIASES: Record<string, string> = {
+  // Czech
+  "hotelnictví": "hotel",
+  "ubytování": "accommodation",
+  "ubytovani": "accommodation",
+  "pohostinství": "hospitality",
+  "pohostinstvi": "hospitality",
+  "gastronomie": "gastronomy",
+  "restaurace": "restaurant",
+  "kavárna": "cafe",
+  "kavarna": "cafe",
+  "penzion": "pension",
+  "lázně": "wellness",
+  "lazne": "wellness",
+  "cestovní ruch": "travel",
+  "cestovni ruch": "travel",
+  "turismus": "travel",
+  "vinařství": "wine",
+  "vinarstvi": "wine",
+  "pekárna": "bakery",
+  "pekarna": "bakery",
+  "cukrárna": "bakery",
+  "cukrarna": "bakery",
+  "stravování": "catering",
+  "stravovani": "catering",
+  "stavebnictví": "construction",
+  "stavebnictvi": "construction",
+  "technologie": "technology",
+  "vzdělávání": "education",
+  "vzdelavani": "education",
+  "zdravotnictví": "healthcare",
+  "zdravotnictvi": "healthcare",
+  "právo": "legal",
+  "pravo": "legal",
+  "finance": "finance",
+  "účetnictví": "accounting",
+  "ucetnictvi": "accounting",
+  "nemovitosti": "real estate",
+  "výroba": "manufacturing",
+  "vyroba": "manufacturing",
+  "obchod": "ecommerce",
+  "maloobchod": "retail",
+  "marketing": "marketing",
+  "design": "design",
+  "fotografie": "photography",
+  "automobily": "automotive",
+  "zemědělství": "agriculture",
+  "zemedelstvi": "agriculture",
+  "fitness": "fitness",
+  "poradenství": "consulting",
+  "poradenstvi": "consulting",
+  // Slovak
+  "hotelníctvo": "hotel",
+  "ubytovacie": "accommodation",
+  "pohostinstvo": "hospitality",
+  "gastronómia": "gastronomy",
+  "reštaurácia": "restaurant",
+  "kaviareň": "cafe",
+  "cestovný ruch": "travel",
+  "vinárstvo": "wine",
+  "pekáreň": "bakery",
+  "stavebníctvo": "construction",
+  // German
+  "gastgewerbe": "hospitality",
+  "unterkunft": "accommodation",
+  "gaststätte": "restaurant",
+  "bäckerei": "bakery",
+  "weingut": "wine",
+  "bauwesen": "construction",
+  // "technologie" already defined in Czech section
+  "bildung": "education",
+  "gesundheitswesen": "healthcare",
+  // English variants / multi-word
+  "hospitality and tourism": "hospitality",
+  "hospitality & tourism": "hospitality",
+  "hotel and restaurant": "hotel",
+  "hotel & restaurant": "hotel",
+  "food and beverage": "restaurant",
+  "food & beverage": "restaurant",
+  "food service": "restaurant",
+  "food and drink": "restaurant",
+  "lodging": "hotel",
+  "accommodation and food": "hotel",
+  "tourism": "travel",
+  "spa": "wellness",
+  "bed & breakfast": "bed and breakfast",
+  "b&b": "bed and breakfast",
+  "guest house": "pension",
+  "guesthouse": "pension",
+  "inn": "pension",
+  "motel": "hotel",
+  "hostel": "accommodation",
+  "it": "technology",
+  "information technology": "technology",
+  "web development": "software",
+  "software development": "software",
+  "law": "legal",
+  "law firm": "legal",
+  "medical": "healthcare",
+  "health": "healthcare",
+  "gym": "fitness",
+  "sport": "fitness",
+  "real estate": "real estate",
+  "property": "real estate",
+};
+
+function resolveIndustryKey(text: string): string | null {
+  const lower = text.toLowerCase().trim();
+
+  // 1. Direct match in INDUSTRY_QUERIES
+  if (INDUSTRY_QUERIES[lower]) return lower;
+
+  // 2. Direct match in aliases
+  if (INDUSTRY_ALIASES[lower]) return INDUSTRY_ALIASES[lower];
+
+  // 3. Check if any alias is contained in the text
+  for (const [alias, key] of Object.entries(INDUSTRY_ALIASES)) {
+    if (lower.includes(alias)) return key;
+  }
+
+  // 4. Check if any INDUSTRY_QUERIES key is contained in the text
+  for (const key of Object.keys(INDUSTRY_QUERIES)) {
+    if (lower.includes(key)) return key;
+  }
+
+  // 5. Check if text words appear in any key
+  const words = lower.split(/[\s&,/]+/).filter(w => w.length > 3);
+  for (const word of words) {
+    for (const key of Object.keys(INDUSTRY_QUERIES)) {
+      if (key.includes(word) || word.includes(key)) return key;
+    }
+    // Also check aliases
+    for (const [alias, key] of Object.entries(INDUSTRY_ALIASES)) {
+      if (alias.includes(word) || word.includes(alias)) return key;
+    }
+  }
+
+  return null;
+}
+
 function getSearchQueries(
   businessProfile?: BusinessProfile | null,
   assets?: ExtractedAssets | null
@@ -93,25 +235,20 @@ function getSearchQueries(
 
   if (businessProfile) {
     console.log(`[hero-image] Industry: "${businessProfile.industry}", Segment: "${businessProfile.industrySegment}"`);
-    // Try exact industry match
-    const industry = businessProfile.industry.toLowerCase();
-    const segment = businessProfile.industrySegment?.toLowerCase() || "";
+    const industry = businessProfile.industry;
+    const segment = businessProfile.industrySegment || "";
 
-    if (INDUSTRY_QUERIES[segment]) {
-      queries.push(...INDUSTRY_QUERIES[segment]);
-    }
-    if (INDUSTRY_QUERIES[industry]) {
-      queries.push(...INDUSTRY_QUERIES[industry]);
-    }
+    // Resolve industry through aliases and fuzzy matching
+    const industryKey = resolveIndustryKey(industry);
+    const segmentKey = resolveIndustryKey(segment);
 
-    // Partial/fuzzy industry match if no exact match found
-    if (queries.length === 0) {
-      for (const [key, values] of Object.entries(INDUSTRY_QUERIES)) {
-        if (industry.includes(key) || key.includes(industry) || segment.includes(key) || key.includes(segment)) {
-          queries.push(...values);
-          break;
-        }
-      }
+    console.log(`[hero-image] Resolved keys: industry="${industryKey}", segment="${segmentKey}"`);
+
+    if (segmentKey && INDUSTRY_QUERIES[segmentKey]) {
+      queries.push(...INDUSTRY_QUERIES[segmentKey]);
+    }
+    if (industryKey && INDUSTRY_QUERIES[industryKey] && industryKey !== segmentKey) {
+      queries.push(...INDUSTRY_QUERIES[industryKey]);
     }
 
     // Build query from business context
@@ -123,9 +260,11 @@ function getSearchQueries(
       queries.push(`${serviceTerms} professional`);
     }
 
-    // Add industry-specific query
+    // Add industry-specific query as fallback
     if (queries.length === 0) {
+      // Use the original industry text for Unsplash search
       queries.push(`${industry} professional business`);
+      console.warn(`[hero-image] No INDUSTRY_QUERIES match for "${industry}" / "${segment}" — using raw industry text`);
     }
   }
 
@@ -150,7 +289,7 @@ function getSearchQueries(
     queries.push("modern professional business", "corporate office architecture");
   }
 
-  return [...new Set(queries)]; // Deduplicate
+  return Array.from(new Set(queries)); // Deduplicate
 }
 
 // ── Tier 1: Unsplash API ──
@@ -194,8 +333,21 @@ async function searchUnsplash(query: string): Promise<HeroImageResult | null> {
 
     if (!results || results.length === 0) return null;
 
-    // Pick the first result (Unsplash ranks by relevance)
-    const photo = results[0];
+    // Filter out obviously irrelevant results (e.g. sports images for hotels)
+    const BLACKLISTED_TERMS = [
+      "football", "soccer", "basketball", "baseball", "nfl", "nba",
+      "touchdown", "quarterback", "stadium crowd", "sports fan",
+      "cat ", "dog ", "puppy", "kitten", "pet ",
+      "cartoon", "meme", "anime",
+    ];
+    const filtered = results.filter(photo => {
+      const desc = `${photo.description || ""} ${photo.alt_description || ""}`.toLowerCase();
+      return !BLACKLISTED_TERMS.some(term => desc.includes(term));
+    });
+
+    // Pick the first non-blacklisted result, or fall back to first result
+    const photo = filtered.length > 0 ? filtered[0] : results[0];
+    console.log(`[hero-image] Selected photo: "${photo.alt_description || photo.description || "no description"}"`);
 
     // Trigger download event (required by Unsplash API guidelines)
     fetch(`${photo.links.download_location}?client_id=${accessKey}`).catch(() => {});
