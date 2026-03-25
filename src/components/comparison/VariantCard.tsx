@@ -43,23 +43,27 @@ export default function VariantCard({
     setIframeError(true);
   }, []);
 
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+
   const handleCheckout = useCallback(async () => {
     setCheckoutLoading(true);
+    setCheckoutError(null);
     try {
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token, variantIndex: index, locale }),
       });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.url) {
-          window.location.href = data.url;
-          return;
-        }
+      const data = await res.json();
+      if (res.ok && data.url) {
+        window.location.href = data.url;
+        return;
       }
-    } catch {
-      // Fall through to reset loading
+      console.error("Checkout API error:", res.status, data);
+      setCheckoutError(data.error || `Checkout failed (${res.status})`);
+    } catch (err) {
+      console.error("Checkout network error:", err);
+      setCheckoutError("Network error — please try again");
     }
     setCheckoutLoading(false);
   }, [token, index, locale]);
@@ -206,7 +210,7 @@ export default function VariantCard({
 
         {/* Key features */}
         <div className="flex flex-wrap gap-1">
-          {variant.keyFeatures.slice(0, 3).map((feature, i) => (
+          {variant.keyFeatures.slice(0, 4).map((feature, i) => (
             <span
               key={i}
               className="text-[10px] px-2 py-0.5 rounded-full border border-white/10"
@@ -244,23 +248,28 @@ export default function VariantCard({
         </button>
 
         {isSelected && (
-          <button
-            onClick={handleCheckout}
-            disabled={checkoutLoading}
-            className="flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-all cursor-pointer bg-purple-600 hover:bg-purple-500 disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            {checkoutLoading ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                {t("checkoutLoading")}
-              </>
-            ) : (
-              <>
-                <CreditCard className="h-4 w-4" />
-                {t("confirmAndPay")}
-              </>
+          <>
+            <button
+              onClick={handleCheckout}
+              disabled={checkoutLoading}
+              className="flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-all cursor-pointer bg-purple-600 hover:bg-purple-500 disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {checkoutLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  {t("checkoutLoading")}
+                </>
+              ) : (
+                <>
+                  <CreditCard className="h-4 w-4" />
+                  {t("confirmAndPay")}
+                </>
+              )}
+            </button>
+            {checkoutError && (
+              <p className="text-xs text-red-400 text-center">{checkoutError}</p>
             )}
-          </button>
+          </>
         )}
       </div>
     </motion.div>

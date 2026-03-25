@@ -1172,7 +1172,14 @@ export default function AnalysisOrchestrator({ url, token, email, onStatusChange
     // Auto-redirect to results page when analysis completes on the homepage
     if (apiStatus === "complete" && onStatusChange) {
       const resultToken = data?.token || token;
-      router.push(`/${locale}/analyze/${resultToken}`);
+      // Use pathname locale as fallback — useLocale() can mismatch during hydration
+      const pathLocale = typeof window !== "undefined"
+        ? window.location.pathname.split("/")[1]
+        : undefined;
+      const safeLocale = (pathLocale && ["cs", "en", "de", "sk"].includes(pathLocale))
+        ? pathLocale
+        : locale;
+      router.push(`/${safeLocale}/analyze/${resultToken}`);
     }
   }, [data?.status, data?.variantsCount, data?.variants?.length, error, onStatusChange, data?.token, token, locale, router]);
 

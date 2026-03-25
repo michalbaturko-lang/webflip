@@ -110,8 +110,11 @@ export default function PreviewClient() {
     setEditorMode((prev) => (prev === "browse" ? "select" : "browse"));
   }, []);
 
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+
   const handleCheckout = useCallback(async () => {
     setCheckoutLoading(true);
+    setCheckoutError(null);
     try {
       const res = await fetch("/api/checkout", {
         method: "POST",
@@ -122,15 +125,17 @@ export default function PreviewClient() {
           locale,
         }),
       });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.url) {
-          window.location.href = data.url;
-          return;
-        }
+      const data = await res.json();
+      if (res.ok && data.url) {
+        window.location.href = data.url;
+        return;
       }
-    } catch {
-      // Fall through
+      // API returned an error
+      console.error("Checkout API error:", res.status, data);
+      setCheckoutError(data.error || `Checkout failed (${res.status})`);
+    } catch (err) {
+      console.error("Checkout network error:", err);
+      setCheckoutError("Network error — please try again");
     }
     setCheckoutLoading(false);
   }, [params.domain, params.index, locale]);
@@ -284,6 +289,14 @@ export default function PreviewClient() {
           )}
         </button>
       </div>
+
+      {/* Checkout error toast */}
+      {checkoutError && (
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-[60] bg-red-600/95 text-white text-sm px-4 py-2 rounded-lg shadow-xl flex items-center gap-2 max-w-md">
+          <span>{checkoutError}</span>
+          <button onClick={() => setCheckoutError(null)} className="ml-2 text-white/70 hover:text-white">✕</button>
+        </div>
+      )}
 
       {/* Iframe */}
       <div className="flex-1 flex items-center justify-center p-4 pt-16">
