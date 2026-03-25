@@ -97,6 +97,8 @@ export async function getVideoData(
 
   if (error || !record) return null;
 
+  const meta = (record.metadata as Record<string, unknown>) ?? {};
+
   // Fetch scores from analyses table via analysis_id
   let analysisData: Record<string, unknown> | null = null;
   if (record.analysis_id) {
@@ -128,7 +130,7 @@ export async function getVideoData(
     scores.reduce((sum, s) => sum + s.score, 0) / Math.max(scores.length, 1)
   );
 
-  const problems = detectProblems(rawScores, analysis as Record<string, unknown>);
+  const problems = detectProblems(rawScores, analysisData as Record<string, unknown>);
 
   // Variants — use stored variants with screenshot URLs from cache or API
   const storedVariants = meta.variants as
