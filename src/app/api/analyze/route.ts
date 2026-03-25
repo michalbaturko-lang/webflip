@@ -593,7 +593,7 @@ async function runPipeline(url: string, token: string, locale?: string, email?: 
       // Skip if less than 30s remaining
       if (timeLeft() < 30_000) {
         console.warn(`[pipeline:${token}] Time guard: skipping HTML variant ${i+1}, only ${Math.round(timeLeft()/1000)}s left`);
-        htmlVariants.push(buildQuickFallbackHtml(variants[i], url, extractedAssets));
+        htmlVariants.push(buildQuickFallbackHtml(variants[i], url, extractedAssets, businessProfile));
         continue;
       }
       await updateAnalysis(token, {
@@ -622,7 +622,7 @@ async function runPipeline(url: string, token: string, locale?: string, email?: 
         htmlVariants.push(html[0]);
       } catch (err) {
         console.error(`HTML generation failed for variant ${i}:`, err);
-        htmlVariants.push(buildQuickFallbackHtml(variants[i], url, extractedAssets));
+        htmlVariants.push(buildQuickFallbackHtml(variants[i], url, extractedAssets, businessProfile));
       }
     }
   }

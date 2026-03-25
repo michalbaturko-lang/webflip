@@ -78,7 +78,7 @@ export async function generateHtmlVariants(
     templateData = contentResult.value;
   } else {
     console.error("[generate-html] Content extraction failed:", contentResult.reason);
-    templateData = buildFallbackTemplateData(analysis.url, content, assets);
+    templateData = buildFallbackTemplateData(analysis.url, content, assets, businessProfile);
   }
 
   if (heroResult.status === "fulfilled") {
@@ -126,7 +126,7 @@ export async function generateHtmlVariants(
       return validateHtml(html, variantData.companyName);
     } catch (err) {
       console.error(`[generate-html] Template fill failed for ${variant.name}:`, err);
-      return buildFallbackHtml(variant, analysis.url, content, assets);
+      return buildFallbackHtml(variant, analysis.url, content, assets, businessProfile);
     }
   });
 
@@ -135,17 +135,29 @@ export async function generateHtmlVariants(
 
 // ── Language Detection Heuristic ──
 
+function detectLanguageFromUrl(url: string): string {
+  try {
+    const hostname = new URL(url).hostname;
+    if (hostname.endsWith('.cz')) return 'cs';
+    if (hostname.endsWith('.sk')) return 'sk';
+    if (hostname.endsWith('.de') || hostname.endsWith('.at') || hostname.endsWith('.ch')) return 'de';
+    if (hostname.endsWith('.pl')) return 'pl';
+    if (hostname.endsWith('.hu')) return 'hu';
+    return '';
+  } catch { return ''; }
+}
+
 function detectLanguageFromContent(text: string): string {
   const czechPatterns = [
-    /\\b(jako|více|služby|kontakt|o\\s+nás|společnost|reference|galerie|novinky|články|blog|cena|ceník|tým|tím|která|které|který|kterou|kterých|kterým|kterými|jsme|jsme|máme|máte|mají|jste|ste|jsou|jest|nejde|nejsme|nejste|nejsou)\\b/gi,
-    /[àáâäåæèéêëìíîïòóôöœùúûüñ]/gi,
+    /\b(jako|více|služby|kontakt|společnost|reference|galerie|novinky|články|cena|ceník|která|které|který|jsme|máme|máte|mají|jste|jsou|nejsme|nejste|nejsou|nebo|také|protože|každý|vždy|stránky|úvod|domů)\b/gi,
+    /[čřšžěůďťň]/gi,
   ];
   const slovakPatterns = [
-    /\\b(ako|viac|služby|kontakt|o\\s+nás|spoločnosť|referencie|galéria|správy|články|blog|cena|cenník|tím|ktorá|ktoré|ktorý|ktorého|ktorému|ktorí|ktorých|ktorým|ktorými|sme|máme|máte|majú|ste|sú|je|je|nemáme|nemáte|nemajú)\\b/gi,
-    /[àáâäåæèéêëìíîïòóôöœùúûüñ]/gi,
+    /\b(ako|viac|služby|kontakt|spoločnosť|referencie|galéria|správy|články|cena|cenník|ktorá|ktoré|ktorý|sme|máme|máte|majú|ste|sú|nemáme|nemáte|nemajú|alebo|tiež|pretože|každý|vždy|stránky|domov)\b/gi,
+    /[ľĺŕďťňčšž]/gi,
   ];
   const germanPatterns = [
-    /\\b(wie|mehr|Dienstleistungen|Kontakt|über|Unternehmen|Referenzen|Galerie|Nachrichten|Artikel|Blog|Preis|Preisliste|Team|welche|welcher|welches|sind|haben|habt|sei|seid|haben|wir|sie|ihr|gibt)\\b/gi,
+    /\b(wie|mehr|Dienstleistungen|Kontakt|über|Unternehmen|Referenzen|Galerie|Nachrichten|Artikel|Preis|Preisliste|welche|welcher|welches|sind|haben|habt|wir|sie|ihr|gibt|oder|auch|Impressum|Datenschutz)\b/gi,
     /[ßäöü]/gi,
   ];
   let czechScore = 0, slovakScore = 0, germanScore = 0;
@@ -262,7 +274,7 @@ Return ONLY valid JSON (no markdown fences, no explanation) with this exact stru
     parsed = JSON.parse(jsonStr);
   } catch {
     console.error("[generate-html] Failed to parse Haiku response as JSON, using fallback");
-    return buildFallbackTemplateData(url, "", assets);
+    return buildFallbackTemplateData(url, "", assets, businessProfile);
   }
 
   // Use ONLY real blog posts from crawled data — never generated content
@@ -306,7 +318,7 @@ Return ONLY valid JSON (no markdown fences, no explanation) with this exact stru
 
   // Build TemplateData from parsed response, with fallbacks
   // Use heuristic language detection as fallback
-  const parsedLanguage = businessProfile?.language || (parsed.language as string) || detectLanguageFromContent(crawledContent) || "en";
+  const parsedLanguage = businessProfile?.language || (parsed.language as string) || detectLanguageFromUrl(url) || detectLanguageFromContent(crawledContent) || "en";
 
   return {
     companyName: (parsed.companyName as string) || companyName,
@@ -702,7 +714,8 @@ function validateHtml(html: string, companyName: string): string {
 function buildFallbackTemplateData(
   url: string,
   crawledContent: string,
-  assets?: ExtractedAssets | null
+  assets?: ExtractedAssets | null,
+  businessProfile?: BusinessProfile | null
 ): TemplateData {
   let siteHost: string;
   try { siteHost = new URL(url).hostname; } catch { siteHost = url; }
@@ -720,7 +733,7 @@ function buildFallbackTemplateData(
     logoUrl: assets?.logo || "",
     faviconUrl: assets?.favicon || "",
     primaryColor: "#1B2A4A",
-    language: "en",
+    language: businessProfile?.language || detectLanguageFromUrl(url) || detectLanguageFromContent(crawledContent) || "en",
     heroImageUrl: assets?.heroImageUrl || "",
     siteUrl: url,
     siteType: assets?.siteType || "corporate",
@@ -756,9 +769,10 @@ function buildFallbackHtml(
   variant: DesignVariant,
   url: string,
   crawledContent?: string,
-  assets?: ExtractedAssets | null
+  assets?: ExtractedAssets | null,
+  businessProfile?: BusinessProfile | null
 ): string {
-  const templateData = buildFallbackTemplateData(url, crawledContent || "", assets);
+  const templateData = buildFallbackTemplateData(url, crawledContent || "", assets, businessProfile);
   templateData.primaryColor = variant.palette.primary;
 
   try {
@@ -784,9 +798,10 @@ function buildFallbackHtml(
 export function buildQuickFallbackHtml(
   variant: DesignVariant,
   url: string,
-  assets?: ExtractedAssets | null
+  assets?: ExtractedAssets | null,
+  businessProfile?: BusinessProfile | null
 ): string {
-  const data = buildFallbackTemplateData(url, "", assets);
+  const data = buildFallbackTemplateData(url, "", assets, businessProfile);
   data.primaryColor = variant.palette.primary;
   return buildMinimalFallbackHtml(data, variant);
 }

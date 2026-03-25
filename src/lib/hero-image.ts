@@ -37,6 +37,7 @@ const INDUSTRY_QUERIES: Record<string, string[]> = {
   // Food & Restaurant
   restaurant: ["fine dining restaurant interior", "modern restaurant design", "gourmet food plating"],
   food: ["gourmet food photography", "modern kitchen cooking", "artisan food preparation"],
+  gastronomy: ["gourmet food restaurant", "fine dining experience", "restaurant kitchen professional"],
   bakery: ["artisan bakery bread", "pastry shop interior", "fresh baked goods"],
   catering: ["catering event elegant", "banquet hall event", "gourmet catering service"],
   wine: ["wine cellar elegant", "vineyard landscape", "wine tasting event"],
@@ -91,6 +92,7 @@ function getSearchQueries(
   const queries: string[] = [];
 
   if (businessProfile) {
+    console.log(`[hero-image] Industry: "${businessProfile.industry}", Segment: "${businessProfile.industrySegment}"`);
     // Try exact industry match
     const industry = businessProfile.industry.toLowerCase();
     const segment = businessProfile.industrySegment?.toLowerCase() || "";
