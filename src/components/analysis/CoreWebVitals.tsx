@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { Activity, Gauge, Timer, Move, Zap, BarChart3 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 export interface PageSpeedMetricsProps {
   fcp: number;
@@ -56,6 +57,8 @@ function formatValue(key: MetricKey, value: number): string {
 }
 
 export default function CoreWebVitals({ metrics }: { metrics: PageSpeedMetricsProps | null | undefined }) {
+  const t = useTranslations("analysis");
+
   if (!metrics) {
     return (
       <div className="glass rounded-xl p-4 text-center">
@@ -66,7 +69,7 @@ export default function CoreWebVitals({ metrics }: { metrics: PageSpeedMetricsPr
           </span>
         </div>
         <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-          Metriky PageSpeed nejsou dostupné. Analýza probíhá nebo API není k dispozici.
+          {t("cwvUnavailable")}
         </p>
       </div>
     );
@@ -98,7 +101,7 @@ export default function CoreWebVitals({ metrics }: { metrics: PageSpeedMetricsPr
         <div className="flex items-center gap-2">
           {isEstimation && (
             <span className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-400/10 text-yellow-400 font-medium">
-              ODHAD
+              {t("cwvEstimate")}
             </span>
           )}
           {!isEstimation && (
@@ -170,7 +173,7 @@ export default function CoreWebVitals({ metrics }: { metrics: PageSpeedMetricsPr
         >
           <div className="flex items-center gap-1.5 mb-2">
             <span className="text-[10px] font-medium uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>
-              Chrome UX Report (reální uživatelé, p75)
+              {t("cwvFieldDataLabel")}
             </span>
           </div>
           <div className="flex flex-wrap gap-x-4 gap-y-1">
