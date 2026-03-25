@@ -1,7 +1,8 @@
+"use client";
+
 import dynamic from "next/dynamic";
 
 // Load the entire preview UI on client only — SSR hangs on Vercel serverless
-// due to next-intl/useTranslations interaction with getRequestConfig
 const PreviewClient = dynamic(() => import("./PreviewClient"), {
   ssr: false,
   loading: () => (
