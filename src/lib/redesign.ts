@@ -15,7 +15,7 @@ export async function generateVariants(
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error("Missing ANTHROPIC_API_KEY");
 
-  const anthropic = new Anthropic({ apiKey });
+  const anthropic = new Anthropic({ apiKey, timeout: 60_000 });
 
   const content = crawledContent.slice(0, 10000);
 
@@ -140,7 +140,7 @@ Return ONLY the JSON array. No markdown, no explanation.`,
   }
 }
 
-function getDefaultVariants(companyName: string): DesignVariant[] {
+export function getDefaultVariants(companyName: string): DesignVariant[] {
   return [
     {
       name: "Corporate Clean",

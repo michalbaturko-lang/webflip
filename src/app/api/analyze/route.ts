@@ -13,7 +13,7 @@ import { analyzeContent } from "@/lib/analyzers/content";
 import { analyzeAIVisibility } from "@/lib/analyzers/ai-visibility";
 import { analyzePerformance } from "@/lib/analyzers/performance";
 import { analyzeAccessibility } from "@/lib/analyzers/accessibility";
-import { generateVariants } from "@/lib/redesign";
+import { generateVariants, getDefaultVariants } from "@/lib/redesign";
 import { generateHtmlVariants, buildQuickFallbackHtml } from "@/lib/generate-html";
 import { interpretBusiness } from "@/lib/business-interpretation";
 import { analyzePage, analyzeSite, generateFindings } from "@/lib/analysis-engine";
@@ -573,8 +573,13 @@ async function runPipeline(url: string, token: string, locale?: string, email?: 
           variant_progress: { current: 0, total: 3, message: "Varianty navrženy, generujeme HTML..." },
         }).catch(() => {});
       } catch (err) {
-        console.error(`[pipeline:${token}] Variant generation failed:`, err);
-        variants = [];
+        console.error(`[pipeline:${token}] Variant generation failed, using defaults:`, err);
+        const companyName = extractedAssets?.companyName || (() => { try { return new URL(url).hostname; } catch { return "Unknown"; } })();
+        variants = getDefaultVariants(companyName);
+        await updateAnalysis(token, {
+          variants,
+          variant_progress: { current: 0, total: 3, message: "Varianty navrženy (výchozí), generujeme HTML..." },
+        }).catch(() => {});
       }
     })(),
   ]);
