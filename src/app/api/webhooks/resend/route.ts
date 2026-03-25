@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
 
     // Find email log by resend_email_id
     const { data: emailLogs, error: findError } = await supabase
-      .from("outreach_email_log")
+      .from("outreach_email_logs")
       .select("*")
       .eq("resend_email_id", emailId)
       .single();
@@ -138,7 +138,7 @@ export async function POST(request: NextRequest) {
     }
 
     const { error: updateError } = await supabase
-      .from("outreach_email_log")
+      .from("outreach_email_logs")
       .update(updatePayload)
       .eq("id", emailLog.id);
 
