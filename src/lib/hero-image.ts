@@ -35,9 +35,12 @@ const INDUSTRY_QUERIES: Record<string, string[]> = {
   retail: ["modern retail store interior", "shopping boutique elegant", "retail display design"],
 
   // Food & Restaurant
-  restaurant: ["fine dining restaurant interior", "modern restaurant design", "food preparation kitchen"],
+  restaurant: ["fine dining restaurant interior", "modern restaurant design", "gourmet food plating"],
   food: ["gourmet food photography", "modern kitchen cooking", "artisan food preparation"],
   bakery: ["artisan bakery bread", "pastry shop interior", "fresh baked goods"],
+  catering: ["catering event elegant", "banquet hall event", "gourmet catering service"],
+  wine: ["wine cellar elegant", "vineyard landscape", "wine tasting event"],
+  cafe: ["modern coffee shop interior", "cafe latte art", "cozy cafe atmosphere"],
 
   // Health & Medical
   healthcare: ["modern medical facility", "healthcare clinic interior", "medical technology"],
@@ -64,6 +67,12 @@ const INDUSTRY_QUERIES: Record<string, string[]> = {
   // Travel & Hospitality
   travel: ["luxury travel destination", "modern hotel lobby", "scenic travel landscape"],
   hotel: ["luxury hotel interior", "modern hotel room design", "hotel lobby elegant"],
+  hospitality: ["luxury hotel interior", "hotel restaurant dining", "hotel lobby elegant"],
+  accommodation: ["hotel room luxury interior", "modern hotel design", "hotel resort exterior"],
+  "bed and breakfast": ["cozy bed and breakfast interior", "boutique hotel room", "guesthouse garden"],
+  resort: ["luxury resort pool", "resort hotel exterior", "tropical resort beach"],
+  pension: ["guesthouse cozy interior", "boutique hotel room", "bed breakfast garden"],
+  wellness: ["wellness spa interior", "luxury spa treatment", "wellness hotel pool"],
 
   // Automotive
   automotive: ["modern car showroom", "automotive workshop", "luxury automobile"],
@@ -91,6 +100,16 @@ function getSearchQueries(
     }
     if (INDUSTRY_QUERIES[industry]) {
       queries.push(...INDUSTRY_QUERIES[industry]);
+    }
+
+    // Partial/fuzzy industry match if no exact match found
+    if (queries.length === 0) {
+      for (const [key, values] of Object.entries(INDUSTRY_QUERIES)) {
+        if (industry.includes(key) || key.includes(industry) || segment.includes(key) || key.includes(segment)) {
+          queries.push(...values);
+          break;
+        }
+      }
     }
 
     // Build query from business context

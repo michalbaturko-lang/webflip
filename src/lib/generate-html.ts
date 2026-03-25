@@ -306,7 +306,7 @@ Return ONLY valid JSON (no markdown fences, no explanation) with this exact stru
 
   // Build TemplateData from parsed response, with fallbacks
   // Use heuristic language detection as fallback
-  const parsedLanguage = (parsed.language as string) || detectLanguageFromContent(crawledContent) || "en";
+  const parsedLanguage = businessProfile?.language || (parsed.language as string) || detectLanguageFromContent(crawledContent) || "en";
 
   return {
     companyName: (parsed.companyName as string) || companyName,
@@ -1021,8 +1021,26 @@ function injectTheftProtection(html: string): string {
 
 // ── Helper Functions ──
 
-function escapeHtml(str: string): string {
+/** Strip markdown image/link syntax from text — prevents raw markdown showing in HTML */
+function stripMarkdownSyntax(str: string): string {
   return str
+    // ![alt](url) → alt (remove image syntax, keep alt text)
+    .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
+    // [text](url) → text (remove link syntax, keep text)
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    // **bold** or __bold__ → bold
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/__([^_]+)__/g, "$1")
+    // *italic* or _italic_ → italic
+    .replace(/\*([^*]+)\*/g, "$1")
+    // Remove leftover markdown artifacts
+    .replace(/^#+\s*/gm, "")
+    .replace(/^[-*]\s+/gm, "")
+    .trim();
+}
+
+function escapeHtml(str: string): string {
+  return stripMarkdownSyntax(str)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
@@ -1031,7 +1049,7 @@ function escapeHtml(str: string): string {
 
 /** Light escape for visible text (headlines, subheadlines) — keeps & as-is for readability */
 function escapeHtmlLight(str: string): string {
-  return str
+  return stripMarkdownSyntax(str)
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
 }
