@@ -316,20 +316,7 @@ const CATEGORY_CARDS = [
   { key: "accessibility", labelKey: "accessibility" as const, icon: Accessibility, color: "text-violet-400", gradient: "from-violet-500 to-purple-400" },
 ] as const;
 
-const EFFORT_LABELS: Record<number, string> = {
-  1: "Snadné",
-  2: "Jednoduché",
-  3: "Střední",
-  4: "Náročné",
-  5: "Složité",
-};
-
-const CATEGORY_LABELS: Record<string, string> = {
-  "quick-win": "Rychlá výhra",
-  strategic: "Strategické",
-  "low-priority": "Nízká priorita",
-  complex: "Složité",
-};
+// EFFORT_LABELS and CATEGORY_LABELS moved inside components that use useTranslations
 
 const CATEGORY_COLORS: Record<string, { bg: string; border: string; text: string }> = {
   "quick-win": { bg: "bg-green-400/10", border: "border-green-400/20", text: "text-green-400" },
@@ -373,6 +360,21 @@ function StageResults({
   const domain = getDomainFromUrl(url);
   const [activeTab, setActiveTab] = useState<"findings" | "recommendations">("findings");
   const [expandedFinding, setExpandedFinding] = useState<string | null>(null);
+
+  const EFFORT_LABELS: Record<number, string> = {
+    1: t("effortEasy"),
+    2: t("effortSimple"),
+    3: t("effortMedium"),
+    4: t("effortHard"),
+    5: t("effortComplex"),
+  };
+
+  const CATEGORY_LABELS: Record<string, string> = {
+    "quick-win": t("categoryQuickWin"),
+    strategic: t("categoryStrategic"),
+    "low-priority": t("categoryLowPriority"),
+    complex: t("categoryComplex"),
+  };
 
   // Build enriched finding map for quick lookup
   const enrichedMap = new Map<string, EnrichedFindingData>();
@@ -420,11 +422,11 @@ function StageResults({
                   {enrichment.letterGrade}
                 </div>
                 <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
-                  {enrichment.businessType === "e-commerce" ? "E-shop" :
-                   enrichment.businessType === "saas" ? "SaaS" :
-                   enrichment.businessType === "portfolio" ? "Portfolio" :
-                   enrichment.businessType === "blog" ? "Blog" :
-                   enrichment.businessType === "catalog" ? "Katalog" : "Firemní web"}
+                  {enrichment.businessType === "e-commerce" ? t("businessEshop") :
+                   enrichment.businessType === "saas" ? t("businessSaas") :
+                   enrichment.businessType === "portfolio" ? t("businessPortfolio") :
+                   enrichment.businessType === "blog" ? t("businessBlog") :
+                   enrichment.businessType === "catalog" ? t("businessCatalog") : t("businessCorporate")}
                 </p>
               </motion.div>
             )}
@@ -452,30 +454,30 @@ function StageResults({
           className="glass rounded-xl p-6"
         >
           <h3 className="text-lg font-bold mb-4" style={{ color: "var(--text-primary)" }}>
-            Shrnutí analýzy
+            {t("summaryTitle")}
           </h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
             <div className="text-center">
               <div className="text-2xl font-bold text-green-400">{enrichment.executiveSummary.quickWinCount}</div>
-              <div className="text-xs" style={{ color: "var(--text-muted)" }}>Rychlých výher</div>
+              <div className="text-xs" style={{ color: "var(--text-muted)" }}>{t("quickWinsLabel")}</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-yellow-400">+{enrichment.impactEstimates.trafficImprovement}%</div>
-              <div className="text-xs" style={{ color: "var(--text-muted)" }}>Potenciál návštěvnosti</div>
+              <div className="text-xs" style={{ color: "var(--text-muted)" }}>{t("trafficPotential")}</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-blue-400">+{enrichment.impactEstimates.conversionImprovement}%</div>
-              <div className="text-xs" style={{ color: "var(--text-muted)" }}>Potenciál konverzí</div>
+              <div className="text-xs" style={{ color: "var(--text-muted)" }}>{t("conversionPotential")}</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-purple-400">+{enrichment.impactEstimates.healthScoreImprovement}</div>
-              <div className="text-xs" style={{ color: "var(--text-muted)" }}>Bodů ke zlepšení</div>
+              <div className="text-xs" style={{ color: "var(--text-muted)" }}>{t("pointsToImprove")}</div>
             </div>
           </div>
           {enrichment.executiveSummary.topRecommendations.length > 0 && (
             <div>
               <p className="text-xs font-medium uppercase tracking-wider mb-2" style={{ color: "var(--text-muted)" }}>
-                Top 5 priorit
+                {t("topPriorities")}
               </p>
               <div className="flex flex-col gap-1">
                 {enrichment.executiveSummary.topRecommendations.map((rec, i) => (
@@ -536,7 +538,7 @@ function StageResults({
             }`}
             style={activeTab !== "findings" ? { color: "var(--text-secondary)" } : {}}
           >
-            Nálezy ({(quickWins.length + strategicFindings.length + otherFindings.length)})
+            {t("findingsTab", { count: quickWins.length + strategicFindings.length + otherFindings.length })}
           </button>
           <button
             onClick={() => setActiveTab("recommendations")}
@@ -547,7 +549,7 @@ function StageResults({
             }`}
             style={activeTab !== "recommendations" ? { color: "var(--text-secondary)" } : {}}
           >
-            Doporučení ({enrichment.recommendations.length})
+            {t("recommendationsTab", { count: enrichment.recommendations.length })}
           </button>
         </div>
       )}
@@ -561,14 +563,14 @@ function StageResults({
               <div className="flex items-center gap-2 mb-3">
                 <Sparkles className="h-4 w-4 text-green-400" />
                 <h3 className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>
-                  Rychlé výhry
+                  {t("quickWinsTitle")}
                 </h3>
                 <span className="text-xs px-2 py-0.5 rounded-full bg-green-400/10 border border-green-400/20 text-green-400">
-                  {quickWins.length} nálezů
+                  {t("findingCount", { count: quickWins.length })}
                 </span>
               </div>
               <p className="text-xs mb-3" style={{ color: "var(--text-muted)" }}>
-                Vysoký dopad, nízká náročnost — začněte těmito
+                {t("quickWinsDesc")}
               </p>
               <div className="flex flex-col gap-2">
                 {quickWins.map((ef, i) => (
@@ -590,14 +592,14 @@ function StageResults({
               <div className="flex items-center gap-2 mb-3">
                 <ArrowRight className="h-4 w-4 text-blue-400" />
                 <h3 className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>
-                  Strategická zlepšení
+                  {t("strategicTitle")}
                 </h3>
                 <span className="text-xs px-2 py-0.5 rounded-full bg-blue-400/10 border border-blue-400/20 text-blue-400">
-                  {strategicFindings.length} nálezů
+                  {t("findingCount", { count: strategicFindings.length })}
                 </span>
               </div>
               <p className="text-xs mb-3" style={{ color: "var(--text-muted)" }}>
-                Vysoký dopad, vyšší náročnost — naplánujte tyto
+                {t("strategicDesc")}
               </p>
               <div className="flex flex-col gap-2">
                 {strategicFindings.map((ef, i) => (
@@ -617,7 +619,7 @@ function StageResults({
           {otherFindings.length > 0 && (
             <div>
               <h3 className="text-lg font-bold mb-3" style={{ color: "var(--text-primary)" }}>
-                Ostatní nálezy
+                {t("otherFindings")}
               </h3>
               <div className="flex flex-col gap-2">
                 {otherFindings.slice(0, 8).map((ef, i) => (
@@ -639,7 +641,7 @@ function StageResults({
       {enrichment && activeTab === "recommendations" && (
         <div className="space-y-3">
           <h3 className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>
-            Akční plán doporučení
+            {t("actionPlan")}
           </h3>
           {enrichment.recommendations.map((rec, i) => (
             <motion.div
@@ -659,7 +661,7 @@ function StageResults({
                       {rec.title}
                     </span>
                     <span className={`text-xs font-medium ${IMPACT_COLORS[rec.impact]}`}>
-                      {rec.impact === "high" ? "Vysoký dopad" : rec.impact === "medium" ? "Střední dopad" : "Nízký dopad"}
+                      {rec.impact === "high" ? t("highImpact") : rec.impact === "medium" ? t("mediumImpact") : t("lowImpact")}
                     </span>
                   </div>
                   <p className="text-xs" style={{ color: "var(--text-muted)" }}>
@@ -711,11 +713,11 @@ function StageResults({
           <div className="flex items-center gap-2">
             <Layers className="h-5 w-5 text-indigo-400" />
             <h3 className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>
-              Šablony ({templateClusters.length})
+              {t("templates", { count: templateClusters.length })}
             </h3>
           </div>
           <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-            Stránky sdílející stejnou HTML šablonu. Opravou šablony vyřešíte problém na všech stránkách najednou.
+            {t("templatesDesc")}
           </p>
           <div className="grid gap-3 md:grid-cols-2">
             {templateClusters.map((cluster, i) => (
@@ -731,7 +733,7 @@ function StageResults({
                     {cluster.name}
                   </span>
                   <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-400/10 border border-indigo-400/20 text-indigo-400">
-                    {cluster.pageCount} stránek
+                    {t("templatePages", { count: cluster.pageCount })}
                   </span>
                 </div>
                 {cluster.commonIssues.length > 0 && (
@@ -743,7 +745,7 @@ function StageResults({
                           <span className={`inline-block h-1.5 w-1.5 rounded-full ${cfg.color.replace("text-", "bg-")}`} />
                           <span>{issue.title}</span>
                           <span className="text-[10px] px-1 py-0.5 rounded bg-indigo-400/10 text-indigo-400 ml-auto whitespace-nowrap">
-                            Ovlivňuje {cluster.pageCount} stránek
+                            {t("templateAffects", { count: cluster.pageCount })}
                           </span>
                         </div>
                       );
@@ -785,9 +787,25 @@ function EnrichedFindingCard({
   expanded: boolean;
   onToggle: () => void;
 }) {
+  const t = useTranslations("analysis");
   const config = severityConfig[ef.finding.severity] || severityConfig.info;
   const Icon = config.icon;
   const catColors = CATEGORY_COLORS[ef.category] || CATEGORY_COLORS["low-priority"];
+
+  const EFFORT_LABELS: Record<number, string> = {
+    1: t("effortEasy"),
+    2: t("effortSimple"),
+    3: t("effortMedium"),
+    4: t("effortHard"),
+    5: t("effortComplex"),
+  };
+
+  const CATEGORY_LABELS: Record<string, string> = {
+    "quick-win": t("categoryQuickWin"),
+    strategic: t("categoryStrategic"),
+    "low-priority": t("categoryLowPriority"),
+    complex: t("categoryComplex"),
+  };
 
   return (
     <motion.div
@@ -810,7 +828,7 @@ function EnrichedFindingCard({
               {CATEGORY_LABELS[ef.category]}
             </span>
             <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-white/5 border border-white/10" style={{ color: "var(--text-muted)" }}>
-              {EFFORT_LABELS[ef.effortScore] || "Střední"}
+              {EFFORT_LABELS[ef.effortScore] || t("effortMedium")}
             </span>
           </div>
           {ef.explanation && (
@@ -838,26 +856,26 @@ function EnrichedFindingCard({
             <div className="px-3 pb-3 pt-0 ml-7 space-y-2 border-t border-white/5 pt-2">
               {ef.howToFix && (
                 <div>
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-blue-400">Jak opravit</span>
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-blue-400">{t("howToFix")}</span>
                   <p className="text-xs mt-0.5" style={{ color: "var(--text-secondary)" }}>{ef.howToFix}</p>
                 </div>
               )}
               {ef.expectedImprovement && (
                 <div>
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-green-400">Očekávané zlepšení</span>
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-green-400">{t("expectedImprovement")}</span>
                   <p className="text-xs mt-0.5" style={{ color: "var(--text-secondary)" }}>{ef.expectedImprovement}</p>
                 </div>
               )}
               {ef.businessImpact && (
                 <div>
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-purple-400">Dopad na podnikání</span>
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-purple-400">{t("businessImpact")}</span>
                   <p className="text-xs mt-0.5" style={{ color: "var(--text-secondary)" }}>{ef.businessImpact}</p>
                 </div>
               )}
               <div className="flex items-center gap-3 text-[10px] pt-1" style={{ color: "var(--text-muted)" }}>
-                <span>Priorita: {ef.priorityScore}/10</span>
-                <span>Hodnota: {ef.businessValueScore}/100</span>
-                <span>ROI: {ef.roi}</span>
+                <span>{t("priority", { score: ef.priorityScore })}</span>
+                <span>{t("value", { score: ef.businessValueScore })}</span>
+                <span>{t("roi", { value: ef.roi })}</span>
               </div>
             </div>
           </motion.div>
