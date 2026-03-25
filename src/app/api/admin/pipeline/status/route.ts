@@ -15,7 +15,7 @@ export async function GET() {
     const { data: records, error: recErr } = await db
       .from("crm_records")
       .select(
-        "id, domain, company_name, stage, suitability_score, analysis_id, metadata, video_url, video_rendered_at, updated_at"
+        "id, domain, company_name, stage, suitability_score, analysis_id, video_url, video_rendered_at, updated_at"
       )
       .not("analysis_id", "is", null)
       .order("updated_at", { ascending: false })
@@ -51,7 +51,6 @@ export async function GET() {
     }
 
     const pipelineRecords = (records ?? []).map((rec) => {
-      const meta = (rec.metadata as Record<string, unknown>) ?? {};
       const render = renderByRecord.get(rec.id);
       const domainScreenshots = screenshotsByDomain.get(rec.domain) ?? [];
 
