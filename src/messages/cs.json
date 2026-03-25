@@ -346,7 +346,19 @@
     "businessImpact": "Dopad na podnikání",
     "priority": "Priorita: {score}/10",
     "value": "Hodnota: {score}/100",
-    "roi": "ROI: {value}"
+    "roi": "ROI: {value}",
+    "unlockReportTitle": "Odemkněte kompletní analýzu",
+    "unlockReportDesc": "Získejte detailní návody k opravě, očekávaná zlepšení, analýzu dopadu na podnikání a stažitelný PDF report pro každý nález.",
+    "unlockFeature1": "Návody k opravě",
+    "unlockFeature2": "Očekávaná zlepšení",
+    "unlockFeature3": "Analýza dopadu na business",
+    "unlockFeature4": "PDF report ke stažení",
+    "unlockReportCta": "Odemknout kompletní report",
+    "unlockReportLoading": "Přesměrování na platbu...",
+    "unlockReportGuarantee": "Jednorázová platba. Přístup k reportu navždy.",
+    "reportUnlockedLabel": "Kompletní report odemčen",
+    "downloadPdf": "Stáhnout PDF report",
+    "lockedFindingHint": "Odemkněte kompletní report pro detailní návody k opravě a očekávaná zlepšení."
   },
   "success": {
     "title": "Platba proběhla úspěšně!",
@@ -354,6 +366,13 @@
     "nextStep1": "1. Připravíme vámi vybraný redesign k nasazení.",
     "nextStep2": "2. Obdržíte email s kompletním zdrojovým kódem a instrukcemi k nasazení.",
     "nextStep3": "3. Náš tým je vám k dispozici pro jakékoli dotazy během přechodu.",
-    "backToPreview": "Zpět na analýzu"
+    "backToPreview": "Zpět na analýzu",
+    "reportTitle": "Report odemčen!",
+    "reportDescription": "Váš kompletní report analýzy je nyní dostupný. Můžete si stáhnout PDF nebo prohlédnout všechny nálezy s detailními návody k opravě.",
+    "reportNextStep1": "1. Všechny nálezy nyní obsahují detailní návody k opravě.",
+    "reportNextStep2": "2. PDF report si můžete stáhnout kdykoliv ze stránky analýzy.",
+    "reportNextStep3": "3. Použijte akční plán k priorizaci zlepšení.",
+    "backToReport": "Zobrazit kompletní report",
+    "downloadReport": "Stáhnout PDF report"
   }
 }

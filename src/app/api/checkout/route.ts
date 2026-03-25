@@ -15,8 +15,9 @@ import type { CrmRecord } from "@/types/admin";
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { token, variantIndex, domain, recordId, locale } = body;
+    const { token, variantIndex, domain, recordId, locale, productType } = body;
 
+    const isAnalysisReport = productType === "analysis-report";
     let analysis;
     let crmRecord: CrmRecord | null = null;
     let successUrl: string;
@@ -59,7 +60,8 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "Token is required" }, { status: 400 });
       }
 
-      if (typeof variantIndex !== "number" || variantIndex < 0) {
+      // variantIndex required for redesign, optional for analysis-report
+      if (!isAnalysisReport && (typeof variantIndex !== "number" || variantIndex < 0)) {
         return NextResponse.json(
           { error: "Invalid variantIndex" },
           { status: 400 }
@@ -101,13 +103,24 @@ export async function POST(request: Request) {
       );
     }
 
-    const priceId = process.env.STRIPE_PRICE_ID;
+    // Determine which product/price to use
+    const priceId = isAnalysisReport
+      ? process.env.STRIPE_PRICE_ID_ANALYSIS
+      : process.env.STRIPE_PRICE_ID;
+
     if (!priceId) {
-      console.error("Missing STRIPE_PRICE_ID env variable");
+      console.error(`Missing ${isAnalysisReport ? "STRIPE_PRICE_ID_ANALYSIS" : "STRIPE_PRICE_ID"} env variable`);
       return NextResponse.json(
         { error: "Payment configuration error" },
         { status: 500 }
       );
+    }
+
+    // For analysis report, override URLs
+    if (isAnalysisReport) {
+      const analysisToken = token || analysis.token;
+      successUrl = `${origin}/${localePrefix}/success/${analysisToken}?session_id={CHECKOUT_SESSION_ID}&product=analysis-report`;
+      cancelUrl = `${origin}/${localePrefix}/analyze/${analysisToken}`;
     }
 
     const session = await stripe.checkout.sessions.create({
@@ -119,6 +132,7 @@ export async function POST(request: Request) {
         analysisUrl: analysis.url,
         domain: domain || undefined,
         recordId: crmRecord?.id || recordId || undefined,
+        productType: isAnalysisReport ? "analysis-report" : "redesign",
       },
       success_url: successUrl,
       cancel_url: cancelUrl,

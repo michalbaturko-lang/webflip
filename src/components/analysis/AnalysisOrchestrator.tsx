@@ -74,6 +74,10 @@ interface ApiResponse {
   variantsCount?: number;
   htmlVariantsCount?: number;
   emailRequired?: boolean;
+  reportPaymentRequired?: boolean;
+  reportUnlocked?: boolean;
+  reportPrice?: number;
+  reportCurrency?: string;
   error?: string;
   enrichment?: EnrichmentData;
   seoSuggestions?: SEOSuggestionsData;
@@ -341,6 +345,10 @@ function StageResults({
   seoSuggestions,
   templateClusters,
   pagespeedMetrics,
+  reportPaymentRequired,
+  reportUnlocked,
+  reportPrice,
+  reportCurrency,
 }: {
   scores: ApiResponse["scores"];
   findings: Finding[];
@@ -351,6 +359,10 @@ function StageResults({
   seoSuggestions?: SEOSuggestionsData;
   templateClusters?: TemplateClusterInfo[];
   pagespeedMetrics?: ApiResponse["pagespeedMetrics"];
+  reportPaymentRequired?: boolean;
+  reportUnlocked?: boolean;
+  reportPrice?: number;
+  reportCurrency?: string;
 }) {
   const t = useTranslations("analysis");
   const locale = useLocale();
@@ -390,6 +402,31 @@ function StageResults({
   const otherFindings = enrichment?.enrichedFindings.filter(
     (ef) => (ef.category === "low-priority" || ef.category === "complex") && ef.businessValueScore > 0
   ) || [];
+
+  // Checkout handler for Plan B
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const handleReportCheckout = async () => {
+    setCheckoutLoading(true);
+    try {
+      const res = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token,
+          productType: "analysis-report",
+          locale,
+        }),
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    } catch (err) {
+      console.error("Checkout error:", err);
+    } finally {
+      setCheckoutLoading(false);
+    }
+  };
 
   // Fallback to old display if no enrichment
   const displayFindings = enrichment
@@ -525,6 +562,85 @@ function StageResults({
 
       {/* Core Web Vitals */}
       <CoreWebVitals metrics={pagespeedMetrics} />
+
+      {/* Plan B: Unlock Full Report CTA */}
+      {reportPaymentRequired && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="relative overflow-hidden rounded-2xl border border-blue-500/30 bg-gradient-to-br from-blue-500/10 via-purple-500/5 to-blue-500/10 p-6 md:p-8"
+        >
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-purple-500/5 animate-pulse" />
+          <div className="relative z-10 flex flex-col md:flex-row items-center gap-6">
+            <div className="flex-1 text-center md:text-left">
+              <div className="flex items-center gap-2 justify-center md:justify-start mb-2">
+                <Lock className="h-5 w-5 text-blue-400" />
+                <h3 className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>
+                  {t("unlockReportTitle")}
+                </h3>
+              </div>
+              <p className="text-sm mb-3" style={{ color: "var(--text-muted)" }}>
+                {t("unlockReportDesc")}
+              </p>
+              <div className="flex flex-wrap gap-2 text-xs justify-center md:justify-start" style={{ color: "var(--text-secondary)" }}>
+                <span className="px-2 py-1 rounded-full bg-green-400/10 border border-green-400/20 text-green-400">
+                  {t("unlockFeature1")}
+                </span>
+                <span className="px-2 py-1 rounded-full bg-blue-400/10 border border-blue-400/20 text-blue-400">
+                  {t("unlockFeature2")}
+                </span>
+                <span className="px-2 py-1 rounded-full bg-purple-400/10 border border-purple-400/20 text-purple-400">
+                  {t("unlockFeature3")}
+                </span>
+                <span className="px-2 py-1 rounded-full bg-yellow-400/10 border border-yellow-400/20 text-yellow-400">
+                  {t("unlockFeature4")}
+                </span>
+              </div>
+            </div>
+            <div className="flex flex-col items-center gap-2">
+              <div className="text-3xl font-black text-blue-400">
+                {reportPrice?.toLocaleString(locale)} {reportCurrency}
+              </div>
+              <button
+                onClick={handleReportCheckout}
+                disabled={checkoutLoading}
+                className="px-8 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-400 hover:to-purple-400 text-white font-bold text-sm transition-all shadow-lg shadow-blue-500/25 disabled:opacity-50"
+              >
+                {checkoutLoading ? t("unlockReportLoading") : t("unlockReportCta")}
+              </button>
+              <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+                {t("unlockReportGuarantee")}
+              </span>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Report unlocked: PDF download */}
+      {reportUnlocked && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center justify-between rounded-xl border border-green-500/30 bg-green-500/5 p-4"
+        >
+          <div className="flex items-center gap-2">
+            <CheckCircle className="h-5 w-5 text-green-400" />
+            <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
+              {t("reportUnlockedLabel")}
+            </span>
+          </div>
+          <a
+            href={`/api/analyze/${token}/report-pdf`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-green-500/10 border border-green-500/20 text-green-400 text-sm font-medium hover:bg-green-500/20 transition-colors"
+          >
+            <FileText className="h-4 w-4" />
+            {t("downloadPdf")}
+          </a>
+        </motion.div>
+      )}
 
       {/* Tab selector: Findings vs Recommendations */}
       {enrichment && (
@@ -664,9 +780,15 @@ function StageResults({
                       {rec.impact === "high" ? t("highImpact") : rec.impact === "medium" ? t("mediumImpact") : t("lowImpact")}
                     </span>
                   </div>
-                  <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-                    {rec.description}
-                  </p>
+                  {(rec as any).locked ? (
+                    <p className="text-xs blur-sm select-none" style={{ color: "var(--text-muted)" }}>
+                      {t("lockedFindingHint")}
+                    </p>
+                  ) : (
+                    <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+                      {rec.description}
+                    </p>
+                  )}
                 </div>
               </div>
             </motion.div>
@@ -806,6 +928,38 @@ function EnrichedFindingCard({
     "low-priority": t("categoryLowPriority"),
     complex: t("categoryComplex"),
   };
+
+  const isLocked = !!(ef as any).locked;
+
+  // Locked finding: show title + lock icon, no expandable details
+  if (isLocked) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, x: 20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ delay: 0.1 + index * 0.05 }}
+        className={`rounded-lg border ${config.border} ${config.bg} overflow-hidden opacity-60`}
+      >
+        <div className="w-full text-left p-3 flex items-start gap-3">
+          <Icon className={`h-4 w-4 ${config.color} shrink-0 mt-0.5`} />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
+                {ef.finding.title}
+              </span>
+              <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${catColors.border} ${catColors.bg} ${catColors.text}`}>
+                {CATEGORY_LABELS[ef.category]}
+              </span>
+            </div>
+            <p className="text-xs mt-0.5 blur-sm select-none" style={{ color: "var(--text-muted)" }}>
+              {t("lockedFindingHint")}
+            </p>
+          </div>
+          <Lock className="h-3.5 w-3.5 shrink-0 mt-1" style={{ color: "var(--text-muted)" }} />
+        </div>
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div
@@ -1240,6 +1394,10 @@ export default function AnalysisOrchestrator({ url, token, email, onStatusChange
                   seoSuggestions={data?.seoSuggestions}
                   pagespeedMetrics={data?.pagespeedMetrics}
                   templateClusters={data?.templateClusters}
+                  reportPaymentRequired={data?.reportPaymentRequired}
+                  reportUnlocked={data?.reportUnlocked}
+                  reportPrice={data?.reportPrice}
+                  reportCurrency={data?.reportCurrency}
                 />
               )}
               {stage === 5 && (
@@ -1255,6 +1413,10 @@ export default function AnalysisOrchestrator({ url, token, email, onStatusChange
                   enrichment={data?.enrichment}
                   seoSuggestions={data?.seoSuggestions}
                   templateClusters={data?.templateClusters}
+                  reportPaymentRequired={data?.reportPaymentRequired}
+                  reportUnlocked={data?.reportUnlocked}
+                  reportPrice={data?.reportPrice}
+                  reportCurrency={data?.reportCurrency}
                 />
               )}
             </AnimatePresence>

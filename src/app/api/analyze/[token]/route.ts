@@ -95,14 +95,47 @@ export async function GET(
         response.templateClusters = templateClusters;
       }
 
-      // Only show full results if email is provided (email gate)
+      // 3-tier access: no email → email (freemium) → paid (full)
+      const reportUnlocked = !!(analysis as any).report_unlocked;
+
       if (analysis.email) {
         response.findings = analysis.findings;
         response.variants = analysis.variants;
         response.htmlVariantsCount = (analysis.html_variants || []).length;
         response.completedAt = analysis.completed_at;
+
+        if (reportUnlocked) {
+          // Full paid access — everything visible + PDF download
+          response.reportUnlocked = true;
+        } else {
+          // Freemium: findings visible, but enriched details limited to first 5
+          // Strip howToFix/expectedImprovement/businessImpact from enriched findings after first 5
+          response.reportPaymentRequired = true;
+          response.reportPrice = 3499;
+          response.reportCurrency = "CZK";
+          if (enrichment) {
+            const FREE_ENRICHED_LIMIT = 5;
+            const gated = { ...enrichment };
+            gated.enrichedFindings = enrichment.enrichedFindings.map(
+              (ef: any, idx: number) => {
+                if (idx < FREE_ENRICHED_LIMIT) return ef;
+                // Strip premium details from gated findings
+                const { howToFix, expectedImprovement, businessImpact, ...rest } = ef;
+                return { ...rest, locked: true };
+              }
+            );
+            // Strip detailed recommendations after first 3
+            gated.recommendations = enrichment.recommendations.map(
+              (rec: any, idx: number) => {
+                if (idx < 3) return rec;
+                return { title: rec.title, impact: rec.impact, locked: true };
+              }
+            );
+            response.enrichment = gated;
+          }
+        }
       } else {
-        // Show scores but blur/limit findings
+        // No email — show scores but blur/limit findings
         response.findingsPreview = (analysis.findings || []).slice(0, 3);
         response.findingsTotal = (analysis.findings || []).length;
         response.variantsCount = (analysis.variants || []).length;

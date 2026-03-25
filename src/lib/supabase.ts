@@ -197,6 +197,7 @@ export interface AnalysisRow {
   completed_at: string | null;
   error_message: string | null;
   selected_variant?: number | null;
+  report_unlocked?: boolean;
 }
 
 /** Serializable benchmark results stored in Supabase JSONB column. */
@@ -371,14 +372,14 @@ export async function updateAnalysis(token: string, updates: Partial<AnalysisRow
   if (error) {
     // If the error is about a missing column (e.g. edit_history not yet migrated),
     // retry without the problematic field so the critical update still goes through
-    if (error.message.includes("schema cache") || error.message.includes("edit_history")) {
-      const { edit_history, ...safeUpdates } = updates as Record<string, unknown>;
+    if (error.message.includes("schema cache") || error.message.includes("edit_history") || error.message.includes("report_unlocked")) {
+      const { edit_history, report_unlocked, ...safeUpdates } = updates as Record<string, unknown>;
       const { error: retryError } = await supabase
         .from("analyses")
         .update({ ...safeUpdates, updated_at: new Date().toISOString() })
         .eq("token", token);
       if (retryError) throw new Error(`Failed to update analysis: ${retryError.message}`);
-      console.warn("updateAnalysis: edit_history column not available, saved without it");
+      console.warn("updateAnalysis: some columns not available (edit_history/report_unlocked), saved without them");
       return;
     }
     throw new Error(`Failed to update analysis: ${error.message}`);

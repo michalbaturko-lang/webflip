@@ -1,14 +1,17 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useTranslations, useLocale } from "next-intl";
-import { CheckCircle, ArrowRight } from "lucide-react";
+import { CheckCircle, ArrowRight, FileText } from "lucide-react";
 import { motion } from "framer-motion";
 
 export default function SuccessPage() {
   const params = useParams<{ token: string }>();
+  const searchParams = useSearchParams();
   const t = useTranslations("success");
   const locale = useLocale();
+
+  const isReportPurchase = searchParams.get("product") === "analysis-report";
 
   return (
     <div
@@ -31,32 +34,55 @@ export default function SuccessPage() {
           className="text-2xl md:text-3xl font-bold mb-3"
           style={{ color: "var(--text-primary)" }}
         >
-          {t("title")}
+          {isReportPurchase ? t("reportTitle") : t("title")}
         </h1>
 
         <p
           className="text-base mb-8 leading-relaxed"
           style={{ color: "var(--text-muted)" }}
         >
-          {t("description")}
+          {isReportPurchase ? t("reportDescription") : t("description")}
         </p>
 
         <div
           className="glass rounded-xl p-4 mb-8 text-left text-sm space-y-2"
           style={{ color: "var(--text-muted)" }}
         >
-          <p>{t("nextStep1")}</p>
-          <p>{t("nextStep2")}</p>
-          <p>{t("nextStep3")}</p>
+          {isReportPurchase ? (
+            <>
+              <p>{t("reportNextStep1")}</p>
+              <p>{t("reportNextStep2")}</p>
+              <p>{t("reportNextStep3")}</p>
+            </>
+          ) : (
+            <>
+              <p>{t("nextStep1")}</p>
+              <p>{t("nextStep2")}</p>
+              <p>{t("nextStep3")}</p>
+            </>
+          )}
         </div>
 
-        <a
-          href={`/${locale}/analyze/${params.token}`}
-          className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-blue-500 hover:bg-blue-400 text-white font-semibold transition-colors"
-        >
-          {t("backToPreview")}
-          <ArrowRight className="h-4 w-4" />
-        </a>
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+          <a
+            href={`/${locale}/analyze/${params.token}`}
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-blue-500 hover:bg-blue-400 text-white font-semibold transition-colors"
+          >
+            {isReportPurchase ? t("backToReport") : t("backToPreview")}
+            <ArrowRight className="h-4 w-4" />
+          </a>
+          {isReportPurchase && (
+            <a
+              href={`/api/analyze/${params.token}/report-pdf`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-green-500/30 bg-green-500/10 text-green-400 font-semibold hover:bg-green-500/20 transition-colors"
+            >
+              <FileText className="h-4 w-4" />
+              {t("downloadReport")}
+            </a>
+          )}
+        </div>
       </motion.div>
     </div>
   );

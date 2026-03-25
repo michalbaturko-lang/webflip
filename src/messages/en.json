@@ -346,4 +346,33 @@
     "businessImpact": "Business impact",
     "priority": "Priority: {score}/10",
     "value": "Value: {score}/100",
-    "roi": "ROI: {value
+    "roi": "ROI: {value}",
+    "unlockReportTitle": "Unlock the Full Analysis Report",
+    "unlockReportDesc": "Get detailed fix instructions, expected improvements, business impact analysis, and a downloadable PDF report for every finding.",
+    "unlockFeature1": "How-to-fix guides",
+    "unlockFeature2": "Expected improvements",
+    "unlockFeature3": "Business impact analysis",
+    "unlockFeature4": "PDF report download",
+    "unlockReportCta": "Unlock Full Report",
+    "unlockReportLoading": "Redirecting to payment...",
+    "unlockReportGuarantee": "One-time payment. Full report access forever.",
+    "reportUnlockedLabel": "Full report unlocked",
+    "downloadPdf": "Download PDF Report",
+    "lockedFindingHint": "Unlock the full report to see detailed fix instructions and expected improvements."
+  },
+  "success": {
+    "title": "Payment Successful!",
+    "description": "Thank you for your purchase. Your redesign is confirmed and our team will begin the handover process.",
+    "nextStep1": "1. We will prepare your selected redesign for deployment.",
+    "nextStep2": "2. You will receive an email with the full source code and deployment instructions.",
+    "nextStep3": "3. Our team is available for any questions during the transition.",
+    "backToPreview": "Back to your analysis",
+    "reportTitle": "Report Unlocked!",
+    "reportDescription": "Your full analysis report is now available. You can download the PDF or view all findings with detailed fix instructions.",
+    "reportNextStep1": "1. All findings now include detailed how-to-fix instructions.",
+    "reportNextStep2": "2. Download your PDF report anytime from the analysis page.",
+    "reportNextStep3": "3. Use the action plan to prioritize improvements.",
+    "backToReport": "View Full Report",
+    "downloadReport": "Download PDF Report"
+  }
+}

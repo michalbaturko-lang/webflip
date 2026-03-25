@@ -44,18 +44,28 @@ export async function POST(request: Request) {
 
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
-    const { token, variantIndex } = session.metadata || {};
+    const { token, variantIndex, productType } = session.metadata || {};
 
     if (!token) {
       console.error("Webhook: missing token in session metadata");
       return NextResponse.json({ received: true });
     }
 
+    const isAnalysisReport = productType === "analysis-report";
+
     try {
-      // Update analysis record with payment info
-      await updateAnalysis(token, {
-        selected_variant: variantIndex ? Number(variantIndex) : null,
-      });
+      // Update analysis record based on product type
+      if (isAnalysisReport) {
+        // Plan B: Unlock the full analysis report
+        await updateAnalysis(token, {
+          report_unlocked: true,
+        });
+      } else {
+        // Original flow: Select variant
+        await updateAnalysis(token, {
+          selected_variant: variantIndex ? Number(variantIndex) : null,
+        });
+      }
 
       // Update CRM record with Stripe payment details
       const supabase = createServerClient();
@@ -91,12 +101,15 @@ export async function POST(request: Request) {
           await supabase.from("crm_activities").insert({
             crm_record_id: crmRecord.id,
             type: "payment_received",
-            subject: "Payment received via Stripe Checkout",
+            subject: isAnalysisReport
+              ? "Analysis report purchased via Stripe Checkout"
+              : "Payment received via Stripe Checkout",
             metadata: {
               stripe_session_id: session.id,
               amount: session.amount_total ? session.amount_total / 100 : null,
               currency: session.currency,
-              variant_index: variantIndex ? Number(variantIndex) : null,
+              product_type: productType || "redesign",
+              variant_index: !isAnalysisReport && variantIndex ? Number(variantIndex) : null,
             },
           });
         }
