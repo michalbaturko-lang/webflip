@@ -97,9 +97,26 @@ export async function getVideoData(
 
   if (error || !record) return null;
 
-  const meta = (record.metadata as Record<string, unknown>) ?? {};
-  const analysis = (meta.analysis as Record<string, unknown>) ?? {};
-  const rawScores = (analysis.scores as Record<string, number>) ?? {};
+  // Fetch scores from analyses table via analysis_id
+  let analysisData: Record<string, unknown> | null = null;
+  if (record.analysis_id) {
+    const { data: analysis } = await db
+      .from("analyses")
+      .select("*")
+      .eq("id", record.analysis_id)
+      .single();
+    analysisData = analysis as Record<string, unknown> | null;
+  }
+  if (!analysisData) return null;
+
+  const rawScores: Record<string, number> = {
+    performance: (analysisData.score_performance as number) ?? 50,
+    mobile: (analysisData.score_ux as number) ?? 50,
+    seo: (analysisData.score_seo as number) ?? 50,
+    security: (analysisData.score_security as number) ?? 50,
+    accessibility: (analysisData.score_accessibility as number) ?? 50,
+    design: (analysisData.score_ai_visibility as number) ?? 50,
+  };
 
   // Build score array in the format the video expects
   const scores = Object.entries(SCORE_LABELS).map(([key, label]) => ({
