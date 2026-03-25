@@ -1,29 +1,24 @@
 import { getRequestConfig } from "next-intl/server";
-import { headers } from "next/headers";
 import { routing } from "./routing";
 import type { Locale } from "./config";
 
-export default getRequestConfig(async () => {
-  // Do NOT use requestLocale - it hangs indefinitely in Vercel serverless.
-  // Instead, extract locale from the x-next-intl-locale header set by middleware,
-  // or fall back to parsing the URL path.
+export default getRequestConfig(async ({ requestLocale }) => {
+  // Use requestLocale with a sync fallback — both requestLocale and headers()
+  // can hang indefinitely in Vercel serverless, so we race with a short timeout.
+  // The layout's NextIntlClientProvider already delivers correct messages to all
+  // client components, so this fallback only affects pure server components.
   let locale: Locale = routing.defaultLocale;
 
   try {
-    const headersList = await headers();
-    const intlLocale = headersList.get("x-next-intl-locale");
-    if (intlLocale && routing.locales.includes(intlLocale as Locale)) {
-      locale = intlLocale as Locale;
-    } else {
-      // Fallback: parse locale from URL path
-      const nextUrl = headersList.get("x-invoke-path") || headersList.get("x-matched-path") || "";
-      const match = nextUrl.match(/^\/([a-z]{2})(\/|$)/);
-      if (match && routing.locales.includes(match[1] as Locale)) {
-        locale = match[1] as Locale;
-      }
+    const resolved = await Promise.race([
+      requestLocale,
+      new Promise<string | undefined>((r) => setTimeout(() => r(undefined), 50)),
+    ]);
+    if (resolved && routing.locales.includes(resolved as Locale)) {
+      locale = resolved as Locale;
     }
   } catch {
-    // headers() may fail in some contexts, use default
+    // Fall back to default
   }
 
   return {
