@@ -139,10 +139,23 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json({ url: session.url });
-  } catch (err) {
-    console.error("POST /api/checkout error:", err);
+  } catch (err: unknown) {
+    // Log detailed Stripe error fields for debugging
+    const stripeErr = err as { message?: string; type?: string; code?: string; param?: string };
+    console.error("POST /api/checkout error:", {
+      message: stripeErr.message,
+      type: stripeErr.type,
+      code: stripeErr.code,
+      param: stripeErr.param,
+    });
+    const clientMessage =
+      stripeErr.type === "StripeInvalidRequestError"
+        ? `Payment configuration error: ${stripeErr.message}`
+        : stripeErr.type === "StripeAuthenticationError"
+        ? "Payment service authentication failed"
+        : "Internal server error";
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: clientMessage },
       { status: 500 }
     );
   }
