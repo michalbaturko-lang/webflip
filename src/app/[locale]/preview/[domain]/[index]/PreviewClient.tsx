@@ -54,7 +54,11 @@ export default function PreviewClient() {
       try {
         const doc = iframe.contentDocument;
         if (doc?.documentElement) {
-          setInitialHtml(doc.documentElement.outerHTML);
+          // Include DOCTYPE to prevent quirks-mode white screen on restore
+          const doctype = doc.doctype
+            ? `<!DOCTYPE ${doc.doctype.name}>\n`
+            : "<!DOCTYPE html>\n";
+          setInitialHtml(doctype + doc.documentElement.outerHTML);
         }
       } catch {
         // Cross-origin
@@ -81,11 +85,18 @@ export default function PreviewClient() {
 
   // Use srcdoc for safe HTML updates (#8)
   const handleHtmlUpdate = useCallback((newHtml: string) => {
-    if (iframeRef.current) {
+    if (!iframeRef.current) return;
+
+    if (newHtml && newHtml.trim().length > 0) {
       iframeRef.current.srcdoc = newHtml;
       setIsEditorActive(true);
+    } else {
+      // Fallback: if HTML is empty (e.g. original snapshot was lost), re-fetch from API
+      iframeRef.current.removeAttribute("srcdoc");
+      iframeRef.current.src = iframeSrc;
+      setIsEditorActive(false);
     }
-  }, []);
+  }, [iframeSrc]);
 
   // Keyboard shortcut: Escape to exit edit mode
   useEffect(() => {

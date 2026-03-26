@@ -639,6 +639,25 @@ function fillTemplate(template: string, data: TemplateData): string {
 function postProcessHtml(html: string, variant: DesignVariant): string {
   let result = html;
 
+  // Ensure logo visibility on light navbars — prevent white-on-white logos
+  if (!result.includes("wf-logo-contrast")) {
+    const logoContrastCSS = `
+    /* wf-logo-contrast: ensure logos are visible on light backgrounds */
+    nav img, .navbar img, header nav img, header > a img, header > div > a img {
+      filter: brightness(0) opacity(0.85);
+      transition: filter 0.2s;
+    }
+    nav img:hover, .navbar img:hover, header nav img:hover, header > a img:hover, header > div > a img:hover {
+      filter: brightness(0) opacity(1);
+    }
+    @media (prefers-color-scheme: dark) {
+      nav img, .navbar img, header nav img, header > a img, header > div > a img {
+        filter: brightness(1) invert(0);
+      }
+    }`;
+    result = result.replace("</style>", `${logoContrastCSS}\n  </style>`);
+  }
+
   // Ensure prefers-reduced-motion media query exists
   if (!result.includes("prefers-reduced-motion")) {
     const reducedMotionCSS = `
