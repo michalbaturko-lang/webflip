@@ -72,11 +72,13 @@ export default function VisualEditor({
     const iframe = iframeRef.current;
     if (!iframe) return;
 
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
     const handleLoad = () => {
       if (editorMode !== "browse") {
         injectedRef.current = false;
         // Small delay to ensure DOM is ready
-        setTimeout(() => {
+        timeoutId = setTimeout(() => {
           injectScript();
           iframe.contentWindow?.postMessage(
             { type: "wf-cmd-set-mode", mode: editorMode },
@@ -87,7 +89,10 @@ export default function VisualEditor({
     };
 
     iframe.addEventListener("load", handleLoad);
-    return () => iframe.removeEventListener("load", handleLoad);
+    return () => {
+      iframe.removeEventListener("load", handleLoad);
+      if (timeoutId !== null) clearTimeout(timeoutId);
+    };
   }, [editorMode, injectScript, iframeRef]);
 
   // Update iframe rect for positioning

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { GripVertical, ArrowUp, ArrowDown } from "lucide-react";
 import type { EditorMode } from "@/lib/visual-editor/messages";
 
@@ -23,6 +23,7 @@ export default function SectionManager({
   const [sections, setSections] = useState<SectionInfo[]>([]);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [iframeTop, setIframeTop] = useState(0);
+  const scanTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Scan sections in iframe
   const scanSections = useCallback(() => {
@@ -65,14 +66,22 @@ export default function SectionManager({
     return () => clearInterval(interval);
   }, [scanSections]);
 
+  // Clean up pending scan timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (scanTimeoutRef.current !== null) clearTimeout(scanTimeoutRef.current);
+    };
+  }, []);
+
   const handleMoveUp = useCallback(
     (index: number) => {
       if (index <= 0) return;
       iframeRef.current?.contentWindow?.postMessage(
         { type: "wf-cmd-reorder-section", fromIndex: index, toIndex: index - 1 },
-        "*"
+        window.location.origin
       );
-      setTimeout(scanSections, 200);
+      if (scanTimeoutRef.current !== null) clearTimeout(scanTimeoutRef.current);
+      scanTimeoutRef.current = setTimeout(() => setSections(scanSections()), 200);
     },
     [iframeRef, scanSections]
   );
@@ -82,9 +91,10 @@ export default function SectionManager({
       if (index >= sections.length - 1) return;
       iframeRef.current?.contentWindow?.postMessage(
         { type: "wf-cmd-reorder-section", fromIndex: index, toIndex: index + 1 },
-        "*"
+        window.location.origin
       );
-      setTimeout(scanSections, 200);
+      if (scanTimeoutRef.current !== null) clearTimeout(scanTimeoutRef.current);
+      scanTimeoutRef.current = setTimeout(() => setSections(scanSections()), 200);
     },
     [iframeRef, sections.length, scanSections]
   );
