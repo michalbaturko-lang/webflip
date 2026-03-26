@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin/auth";
 import { createServerClient } from "@/lib/supabase";
+import { sendOutreachEmail } from "@/lib/outreach-email";
 import {
   getVideoTemplateVars,
   processVideoPlaceholders,
 } from "@/lib/outreach/video-integration";
+import { getLandingPageUrl } from "@/lib/outreach/sequence-engine";
 
 export async function POST(request: NextRequest) {
   try {
@@ -56,7 +58,7 @@ export async function POST(request: NextRequest) {
     const { data: records, error: recordError } = await supabase
       .from("crm_records")
       .select(
-        "id, outreach_sequence_id, outreach_sequence_step, contact_email, linkedin_url"
+        "id, outreach_sequence_id, outreach_sequence_step, contact_email, linkedin_url, company_name, domain, suitability_score, stage, tags"
       )
       .in("id", targetRecordIds);
 
@@ -69,7 +71,7 @@ export async function POST(request: NextRequest) {
 
     const { data: sequences, error: seqError } = await supabase
       .from("outreach_sequences")
-      .select("id, steps");
+      .select("id, name, steps");
 
     if (seqError) throw new Error(`Failed to fetch sequences: ${seqError.message}`);
 
@@ -128,25 +130,67 @@ export async function POST(request: NextRequest) {
             continue;
           }
 
+          // Skip bounced or unsubscribed contacts
+          const tags: string[] = record.tags || [];
+          if (tags.includes("bounced") || tags.includes("unsubscribed")) {
+            results.push({
+              record_id: record.id,
+              status: "skipped",
+              reason: "Contact is bounced or unsubscribed",
+            });
+            continue;
+          }
+
+          // Map template name to email type
+          const templateLower = (nextStep.template || "").toLowerCase();
+          let emailType: "cold_intro" | "follow_up" | "final_push" = "cold_intro";
+          if (templateLower.includes("follow")) emailType = "follow_up";
+          else if (templateLower.includes("final") || templateLower.includes("push") || templateLower.includes("last")) emailType = "final_push";
+
+          const companyName = record.company_name || record.domain;
+          const landingPageUrl = getLandingPageUrl(record as any);
+
+          // Build email params
+          const emailParams: any = {
+            to: record.contact_email,
+            type: emailType,
+            companyName,
+            domain: record.domain,
+            landingPageUrl,
+          };
+
+          if (emailType === "cold_intro") {
+            emailParams.suitabilityScore = record.suitability_score || 75;
+            emailParams.topIssues = ["Zastaralý design webu", "Nízké skóre výkonu", "Chybějící mobilní optimalizace"];
+          } else if (emailType === "final_push") {
+            emailParams.expirationDays = 7;
+          }
+
+          // Actually send the email via Resend
+          const sendResult = await sendOutreachEmail(emailParams);
+
+          if (!sendResult.success) {
+            results.push({
+              record_id: record.id,
+              status: "failed",
+              reason: sendResult.error || "Failed to send email",
+            });
+            continue;
+          }
+
           // Inject video template variables if available
           const videoVars = await getVideoTemplateVars(record.id);
-          const processedTemplate = processVideoPlaceholders(
-            nextStep.template,
-            videoVars
-          );
-          const processedSubject = nextStep.subject
-            ? processVideoPlaceholders(nextStep.subject, videoVars)
-            : nextStep.subject;
 
-          // Create outreach email log
+          // Log to outreach_email_logs
           const { error: emailLogError } = await supabase
             .from("outreach_email_logs")
             .insert({
               crm_record_id: record.id,
               sequence_id: record.outreach_sequence_id,
               sequence_step: nextStep.step_number,
-              template_name: processedTemplate,
-              subject: processedSubject,
+              template_name: nextStep.template,
+              subject: nextStep.subject || "",
+              resend_email_id: sendResult.emailId || null,
               status: "sent",
               sent_at: now,
               metadata: {
@@ -157,25 +201,28 @@ export async function POST(request: NextRequest) {
               },
             });
 
-          if (!emailLogError) {
-            // Create activity log
-            await supabase.from("crm_activities").insert({
-              crm_record_id: record.id,
-              type: "email_sent",
-              subject: nextStep.subject,
-              sequence_name: seq.name || null,
-              sequence_step: nextStep.step_number,
-            });
-
-            stepExecuted = true;
-          } else {
-            results.push({
-              record_id: record.id,
-              status: "failed",
-              reason: emailLogError.message,
-            });
-            continue;
+          if (emailLogError) {
+            console.error(`[outreach/execute] Failed to log email for record ${record.id}:`, emailLogError);
           }
+
+          // Create activity log
+          await supabase.from("crm_activities").insert({
+            crm_record_id: record.id,
+            type: "email_sent",
+            subject: nextStep.subject,
+            sequence_name: seq.name || null,
+            sequence_step: nextStep.step_number,
+          });
+
+          // Update stage if still prospect
+          if (record.stage === "prospect") {
+            await supabase
+              .from("crm_records")
+              .update({ stage: "contacted" })
+              .eq("id", record.id);
+          }
+
+          stepExecuted = true;
         }
 
         // Execute LinkedIn step

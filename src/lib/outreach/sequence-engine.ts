@@ -94,18 +94,27 @@ export async function processOutreachSequences(options?: {
       for (const record of records || []) {
         const crmRecord = record as CrmRecord;
 
-        // Skip if record has reached end of sequence
-        if (crmRecord.outreach_sequence_step >= sequence.steps.length) {
-          continue;
-        }
-
         // Skip excluded stages
         if (["paid", "churned", "lost"].includes(crmRecord.stage)) {
           summary.skipped++;
           continue;
         }
 
-        const currentStep = sequence.steps[crmRecord.outreach_sequence_step];
+        // Skip bounced or unsubscribed contacts
+        const tags = crmRecord.tags || [];
+        if (tags.includes("bounced") || tags.includes("unsubscribed")) {
+          summary.skipped++;
+          continue;
+        }
+
+        // outreach_sequence_step = last completed step (0 = none)
+        // Find the next step to execute by step_number
+        const completedStep = crmRecord.outreach_sequence_step;
+        const currentStep = sequence.steps.find(
+          (s) => s.step_number === completedStep + 1
+        );
+
+        // No next step means sequence is complete for this record
         if (!currentStep) continue;
 
         // Check if delay has elapsed
@@ -149,6 +158,8 @@ export async function processOutreachSequences(options?: {
         }
 
         // Process by channel
+        let stepSuccess = false;
+
         if (step.channel === "email") {
           // Check email limit
           if (emailsSent >= maxEmails) {
@@ -162,6 +173,7 @@ export async function processOutreachSequences(options?: {
           if (result.success) {
             emailsSent++;
             summary.emails_sent++;
+            stepSuccess = true;
           } else {
             summary.errors++;
           }
@@ -170,15 +182,18 @@ export async function processOutreachSequences(options?: {
           const result = await processLinkedInStep(record, sequence, step);
           if (result.success) {
             summary.linkedin_tasks_created++;
+            stepSuccess = true;
           } else {
             summary.errors++;
           }
           summary.results.push(result);
         }
 
-        // Advance the sequence step for this record
-        await advanceRecordSequenceStep(record.id, step.step_number + 1);
-        summary.processed++;
+        // Only advance the sequence step on success
+        if (stepSuccess) {
+          await advanceRecordSequenceStep(record.id, step.step_number);
+          summary.processed++;
+        }
       } catch (err) {
         const error = err instanceof Error ? err.message : String(err);
         console.error(`[sequence-engine] Error processing record ${record.id}:`, err);
@@ -251,8 +266,8 @@ async function processEmailStep(
 
     // Add type-specific parameters
     if (emailType === "cold_intro") {
-      emailParams.suitabilityScore = record.suitability_score || 0;
-      emailParams.topIssues = []; // Could be populated from analysis
+      emailParams.suitabilityScore = record.suitability_score || 75;
+      // topIssues will use defaults in sendOutreachEmail if empty
     } else if (emailType === "final_push") {
       emailParams.expirationDays = 7;
     }

@@ -36,9 +36,13 @@ export interface CrmRecord {
   suitability_score: number | null;
   stage: CrmStage;
   outreach_channel: string | null;
+  outreach_sequence_id: string | null;
+  outreach_slug: string | null;
   first_contact_date: string | null;
   last_contact_date: string | null;
   outreach_sequence_step: number;
+  landing_page_visits: number;
+  last_visit_date: string | null;
   trial_start_date: string | null;
   trial_end_date: string | null;
   trial_page_views: number;

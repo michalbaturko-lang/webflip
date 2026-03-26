@@ -47,14 +47,10 @@ export async function GET(
       analysis = data;
     }
 
-    // Track visit
-    await supabase
-      .from("crm_records")
-      .update({
-        landing_page_visits: (record.landing_page_visits || 0) + 1,
-        last_visit_date: new Date().toISOString(),
-      })
-      .eq("id", record.id);
+    // Track visit (atomic increment to avoid race conditions)
+    await supabase.rpc("increment_landing_page_visits", {
+      record_id: record.id,
+    });
 
     // Log activity
     await supabase.from("crm_activities").insert({

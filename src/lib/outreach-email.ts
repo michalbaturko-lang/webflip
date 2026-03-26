@@ -131,22 +131,21 @@ export async function sendOutreachEmail(
 
   // Build email content
   switch (type) {
-    case "cold_intro":
-      if (!params.suitabilityScore || !params.topIssues) {
-        return {
-          success: false,
-          error: "cold_intro requires suitabilityScore and topIssues",
-        };
-      }
+    case "cold_intro": {
+      const score = params.suitabilityScore ?? 75;
+      const issues = params.topIssues?.length
+        ? params.topIssues
+        : ["Zastaralý design webu", "Nízké skóre výkonu"];
       subject = `Připravili jsme redesign pro ${companyName}`;
       html = getOutreachColdIntroHtml({
         companyName,
         domain,
         landingPageUrl,
-        suitabilityScore: params.suitabilityScore,
-        topIssues: params.topIssues,
+        suitabilityScore: score,
+        topIssues: issues,
       });
       break;
+    }
 
     case "follow_up":
       subject = `${companyName} — váš redesign stále čeká`;
