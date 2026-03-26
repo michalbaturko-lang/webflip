@@ -297,10 +297,14 @@ export function getInjectionScript(): string {
   }
 
   // ── Blur handler for text editing ─────────────────────────────
+  var blurTimeout = null;
   function handleBlur(e) {
     if (isTextEditing && selectedEl && e.target === selectedEl) {
+      // Cancel any previously queued blur timeout to prevent duplicate calls
+      if (blurTimeout) clearTimeout(blurTimeout);
       // Small delay to allow click on toolbar
-      setTimeout(function() {
+      blurTimeout = setTimeout(function() {
+        blurTimeout = null;
         if (isTextEditing) stopTextEditing(true);
       }, 200);
     }
